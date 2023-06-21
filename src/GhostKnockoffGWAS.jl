@@ -13,7 +13,9 @@ using RCall
 R"library(ghostbasil)" # todo: write C++ wrapper to avoid R
 R"library(liftOver)"
 
-export ghostbasil, graphical_group_S
+export ghostbasil, 
+    ghostbasil_parallel_by_block,
+    graphical_group_S
 
 include("ghostbasil.jl")
 include("utilities.jl")
