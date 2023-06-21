@@ -15,7 +15,13 @@ R"library(liftOver)"
 
 export ghostbasil, 
     ghostbasil_parallel_by_block,
-    graphical_group_S
+    graphical_group_S,
+    # utilities
+    zscore2pval,
+    zscore,
+    zscore2pval,
+    pval2zscore,
+    pval
 
 include("ghostbasil.jl")
 include("utilities.jl")
