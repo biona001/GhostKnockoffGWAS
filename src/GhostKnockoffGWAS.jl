@@ -11,10 +11,12 @@ using Distributions
 using DelimitedFiles
 using RCall
 R"library(ghostbasil)" # todo: write C++ wrapper to avoid R
+R"library(liftOver)"
 
-export ghostbasil
+export ghostbasil, graphical_group_S
 
 include("ghostbasil.jl")
 include("utilities.jl")
+include("solve_blocks.jl")
 
 end # module GhostKnockoffGWAS
