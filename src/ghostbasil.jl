@@ -3,8 +3,8 @@ function ghostbasil(
     z::Vector{Float64},    # Z scores
     chr::Vector{Int},      # chromosome of each Z score
     pos::Vector{Int},      # position of each Z score (specify hg build with hg_build)
-    ref::Vector{String},   # ref allele of Z score
-    alt::Vector{String},   # alt allele of Z score
+    effect_allele::Vector{String},       # effect allele of Z score
+    non_effect_allele::Vector{String},   # non-effect allele of Z score
     N::Int,                # effective sample size
     hg_build::Int,         # human genome build, must be 19 or 38
     outdir::String;        # output directory (must exist)
@@ -15,11 +15,14 @@ function ghostbasil(
     A_scaling_factor = 0.01
     )
     # check for errors
+    any(isnan, z) && error("Z score contains NaN!")
+    any(isinf, z) && error("Z score contains Inf!")
     isdir(outdir) || error("outdir $outdir does not exist!")
     N > 0 || error("Effective sample size N should be >0")
     hg_build == 19 || hg_build == 38 || error("Human genome build must be 19 or 38")
-    length(z) == length(chr) == length(pos) == length(ref) == length(alt) ||
-        error("Length of z, chr, pos, ref, and alt should be the same")
+    length(z) == length(chr) == length(pos) == 
+        length(effect_allele) == length(non_effect_allele) ||
+        error("Length of z, chr, pos, effect_allele, and non_effect_allele should be the same")
 
     # matrices to be passed into ghostbasil (~25GB to store these in memory)
     Sigma = Matrix{Float64}[]              # overall covariance matrix for all chrom
@@ -30,6 +33,7 @@ function ghostbasil(
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
+    flip_sign_idx = Int[]
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
@@ -41,8 +45,8 @@ function ghostbasil(
         files = readdir(joinpath(knockoff_dir, "chr$c"))
         chr_idx = findall(x -> x == c, chr)
         GWAS_pos = pos[chr_idx]
-        GWAS_ref = ref[chr_idx]
-        GWAS_alt = alt[chr_idx]
+        GWAS_ea = effect_allele[chr_idx]
+        GWAS_nea = non_effect_allele[chr_idx]
         zscores = z[chr_idx]
         for f in files
             endswith(f, ".h5") || continue
@@ -57,16 +61,34 @@ function ghostbasil(
                 shared_snps = intersect(LD_pos, GWAS_pos)
                 # delete SNPs if ref/alt don't match
                 remove_idx = Int[]
+                empty!(flip_sign_idx)
                 for (i, snp) in enumerate(shared_snps)
                     GWAS_idx = findfirst(x -> x == snp, GWAS_pos)
                     LD_idx = findfirst(x -> x == snp, LD_pos)
-                    ref_mismatch = Sigma_info[LD_idx, "ref"] != GWAS_ref[GWAS_idx]
-                    alt_mismatch = Sigma_info[LD_idx, "alt"] != GWAS_alt[GWAS_idx]
-                    if ref_mismatch || alt_mismatch
+                    ref_match_ea = Sigma_info[LD_idx, "ref"] == GWAS_ea[GWAS_idx]
+                    alt_match_nea = Sigma_info[LD_idx, "alt"] == GWAS_nea[GWAS_idx]
+                    ref_match_nea = Sigma_info[LD_idx, "ref"] == GWAS_nea[GWAS_idx]
+                    alt_match_ea = Sigma_info[LD_idx, "alt"] == GWAS_ea[GWAS_idx]
+                    if ref_match_ea && alt_match_nea 
+                        continue
+                    elseif ref_match_nea && alt_match_ea
+                        zscores[GWAS_idx] *= -1
+                        push!(flip_sign_idx, LD_idx)
+                        continue
+                    else # SNP cannot get matched to LD panel
                         push!(remove_idx, i)
                     end
                 end
                 deleteat!(shared_snps, unique!(remove_idx))
+                # also flip the signs of Σ/S/etc if ref/alt were opposite
+                # note: sign in result["S"] not flipped (only on reps)
+                for var in ["Sigma", "Sigma2", "D", "SigmaInv", "SigmaInv2"]
+                    mat = result[var]
+                    for idx in flip_sign_idx
+                        mat[:, idx] .*= -1
+                        mat[idx, :] .*= -1
+                    end
+                end
                 # save matching snps info
                 LD_keep_idx = indexin(shared_snps, LD_pos)
                 GWAS_keep_idx = indexin(shared_snps, GWAS_pos)
@@ -112,7 +134,11 @@ function ghostbasil(
 
     # some checks
     nregions == 1703 || @warn("Number of successfully solved region is $nregions, expected 1703")
-    println("Matched $nsnps SNPs with Z-scores to the reference panel")
+    if nsnps == 0
+        error("Matched $nsnps SNPs with Z-scores to the reference panel")
+    else
+        println("Matched $nsnps SNPs with Z-scores to the reference panel")
+    end
     length(Zscores) == length(groups) || error("Number of Zscores should match groups")
     sum(size.(Sigma, 1)) == sum(size.(S, 1)) == size(df, 1) || 
         error("Dimension of Sigma, S, or df doesn't match")
