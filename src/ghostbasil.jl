@@ -24,7 +24,6 @@ function ghostbasil(
     # matrices to be passed into ghostbasil (~25GB to store these in memory)
     Sigma = Matrix{Float64}[]              # overall covariance matrix for all chrom
     S = Matrix{Float64}[]                  # overall block diagonal matrix for all chrom
-#     Sblocks = Vector{Matrix{Float64}}[]    # intermediate array, Sblocks[i] are diagonal blocks of S[i]
     
     # intermediate vectors
     groups  = String[]                     # group membership vector over all SNPs (original + knockoffs)
@@ -88,16 +87,9 @@ function ghostbasil(
                 # sample ghost knockoffs knockoffs
                 Σinv = inv(Symmetric(Σ))
                 Zko = ghost_knockoffs(zscores[GWAS_keep_idx], D, Σinv, m=m)
-                # sample ghost knockoffs knockoffs under conditional independence
-#                 D2 = result["D2"][LD_keep_idx, LD_keep_idx]
-#                 Σ2 = result["Sigma2"][LD_keep_idx, LD_keep_idx]
-#                 Σ2inv = inv(Symmetric(Σ2))
-#                 Zko = ghost_knockoffs(zscores[GWAS_keep_idx], D2, Σ2inv, m=m)
             end
 
             # save mapped Zscores and some other variables
-#             push!(Sigma, Σ2)
-#             push!(S, D2)
             push!(Sigma, Σ)
             push!(S, D)
             append!(Zscores, zscores[GWAS_keep_idx])
@@ -109,12 +101,6 @@ function ghostbasil(
             for k in 1:m
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
-#             Si_block = Matrix{Float64}[]
-#             for g in unique(grp)
-#                 idx = findall(x -> x == g, grp)
-#                 push!(Si_block, D2[idx, idx])
-#             end
-#             push!(Sblocks, Si_block)
 
             # update counters
             nsnps += length(shared_snps)
@@ -145,22 +131,13 @@ function ghostbasil(
         R"""
         B <- c()
         for(i in 1:length(S)){
-            #Si <- c()
-            #for(k in 1:length(Sblocks[[i]])){
-            #    Sik <- as.matrix(Sblocks[[i]][[k]])
-            #    Sik_shrunk <- 0.95*Sik + 0.05*diag(1,nrow(Sik))
-            #    Si <- append(Si, list(Sik_shrunk))
-            #}
             Si <- as.matrix(S[[i]]) + A_scaling_factor*diag(1,nrow(S[[i]]))
             Si <- BlockMatrix(list(Si))
             Ci <- Sigma[[i]] - S[[i]]
-            #Ci <- 0.95*Ci
             Bi <- BlockGroupGhostMatrix(Ci, Si, m+1)
-            #Bi_dense = Bi$to_dense()
             B  <- append(B, list(Bi))
         }
         A <- BlockBlockGroupGhostMatrix(B)
-        # Adense = A$to_dense()
         result <- ghostbasil(A, rt, delta.strong.size = 500, max.strong.size = nrow(A), n.threads=ncores, use.strong.rule=F)
         betas <- as.matrix(result$betas)
         lambdas <- result$lmdas
@@ -262,5 +239,4 @@ function ghostbasil(
     selected_groups = unique_groups[selected_idx]
     selected_snps = findall(x -> x in selected_groups, groups_original)
     return selected_groups, selected_snps
-#     return nothing
 end
