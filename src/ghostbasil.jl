@@ -72,9 +72,9 @@ function ghostbasil(
                     if ref_match_ea && alt_match_nea 
                         continue
                     elseif ref_match_nea && alt_match_ea
-                        zscores[GWAS_idx] *= -1
-                        push!(flip_sign_idx, LD_idx)
-                        continue
+                        push!(remove_idx, i)
+                        # zscores[GWAS_idx] *= -1
+                        # push!(flip_sign_idx, LD_idx)
                     else # SNP cannot get matched to LD panel
                         push!(remove_idx, i)
                     end
@@ -309,6 +309,7 @@ function ghostbasil_parallel_by_block(
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
     Zscores_store = Float64[]
+    flip_sign_idx = Int[]
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
@@ -336,16 +337,33 @@ function ghostbasil_parallel_by_block(
                 shared_snps = intersect(LD_pos, GWAS_pos)
                 # delete SNPs if ref/alt don't match
                 remove_idx = Int[]
+                empty!(flip_sign_idx)
                 for (i, snp) in enumerate(shared_snps)
                     GWAS_idx = findfirst(x -> x == snp, GWAS_pos)
                     LD_idx = findfirst(x -> x == snp, LD_pos)
-                    ref_mismatch = Sigma_info[LD_idx, "ref"] != GWAS_ref[GWAS_idx]
-                    alt_mismatch = Sigma_info[LD_idx, "alt"] != GWAS_alt[GWAS_idx]
-                    if ref_mismatch || alt_mismatch
+                    ref_match_ea = Sigma_info[LD_idx, "ref"] == GWAS_ea[GWAS_idx]
+                    alt_match_nea = Sigma_info[LD_idx, "alt"] == GWAS_nea[GWAS_idx]
+                    ref_match_nea = Sigma_info[LD_idx, "ref"] == GWAS_nea[GWAS_idx]
+                    alt_match_ea = Sigma_info[LD_idx, "alt"] == GWAS_ea[GWAS_idx]
+                    if ref_match_ea && alt_match_nea 
+                        continue
+                    elseif ref_match_nea && alt_match_ea
+                        push!(remove_idx, i)
+                        # zscores[GWAS_idx] *= -1
+                        # push!(flip_sign_idx, LD_idx)
+                    else # SNP cannot get matched to LD panel
                         push!(remove_idx, i)
                     end
                 end
-                deleteat!(shared_snps, unique!(remove_idx))
+                # also flip the signs of Σ/S/etc if ref/alt were opposite
+                # note: sign in result["S"] not flipped (only on reps)
+                for var in ["Sigma", "Sigma2", "D", "SigmaInv", "SigmaInv2"]
+                    mat = result[var]
+                    for idx in flip_sign_idx
+                        mat[:, idx] .*= -1
+                        mat[idx, :] .*= -1
+                    end
+                end
                 # save matching snps info
                 LD_keep_idx = indexin(shared_snps, LD_pos)
                 GWAS_keep_idx = indexin(shared_snps, GWAS_pos)
