@@ -1,8 +1,8 @@
-function ghostbasil(
+function ghostbasil_parallel(
     knockoff_dir::String,  # Directory that stores knockoff results (i.e. output from part 1)
     z::Vector{Float64},    # Z scores
     chr::Vector{Int},      # chromosome of each Z score
-    pos::Vector{Int},      # position of each Z score (specify hg build with hg_build)
+    pos::Vector{Int},      # position of each Z score (tentatively assuming hg19 coordinates)
     effect_allele::Vector{String},       # effect allele of Z score
     non_effect_allele::Vector{String},   # non-effect allele of Z score
     N::Int,                # effective sample size
@@ -24,15 +24,13 @@ function ghostbasil(
         length(effect_allele) == length(non_effect_allele) ||
         error("Length of z, chr, pos, effect_allele, and non_effect_allele should be the same")
 
-    # matrices to be passed into ghostbasil (~25GB to store these in memory)
-    Sigma = Matrix{Float64}[]              # overall covariance matrix for all chrom
-    S = Matrix{Float64}[]                  # overall block diagonal matrix for all chrom
-    
     # intermediate vectors
-    groups  = String[]                     # group membership vector over all SNPs (original + knockoffs)
+    beta = Float64[]                       # full beta vector over all regions
+    groups = String[]                      # group membership vector over all SNPs (original + knockoffs)
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
+    Zscores_store = Float64[]
     flip_sign_idx = Int[]
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
@@ -100,22 +98,22 @@ function ghostbasil(
             end
 
             # generate knockoffs for z scores
-            # todo: use 2 stage procedure for efficiency
             t2 += @elapsed begin
-                # use original Sigma and D for pseudo-validation
-                D = result["D"][LD_keep_idx, LD_keep_idx]
-                Σ = result["Sigma"][LD_keep_idx, LD_keep_idx]
-                Zko_train = Knockoffs.sample_mvn_efficient(Σ, D, m + 1)
+                # use original Sigma and D (S matrix for rep+nonrep variables) for pseudo-validation
+                Si = result["D"][LD_keep_idx, LD_keep_idx]
+                Σi = result["Sigma"][LD_keep_idx, LD_keep_idx]
+                Zko_train = Knockoffs.sample_mvn_efficient(Σi, Si, m + 1)
                 # sample ghost knockoffs knockoffs
-                Σinv = inv(Symmetric(Σ))
-                Zko = ghost_knockoffs(zscores[GWAS_keep_idx], D, Σinv, m=m)
+                Σi_inv = inv(Symmetric(Σi))
+                Zko = ghost_knockoffs(zscores[GWAS_keep_idx], Si, Σi_inv, m=m)
             end
 
             # save mapped Zscores and some other variables
-            push!(Sigma, Σ)
-            push!(S, D)
-            append!(Zscores, zscores[GWAS_keep_idx])
-            append!(Zscores, Zko)
+            empty!(Zscores_store)
+            empty!(Zscores_ko_train)
+            append!(Zscores_store, zscores[GWAS_keep_idx])
+            append!(Zscores_store, Zko)
+            append!(Zscores, Zscores_store)
             append!(Zscores_ko_train, Zko_train)
             current_groups = result["groups"][LD_keep_idx]
             grp = ["chr$(c)_$(fname)_group$(g)_0" for g in current_groups] # the last _0 implies this is original variable
@@ -123,83 +121,80 @@ function ghostbasil(
             for k in 1:m
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
+            length(Zscores_store) == (m+1) * length(current_groups) || 
+                error("Number of Zscores should match groups")
+
+            # run GhostBasil
+            t31 = @elapsed begin
+                ntrain = 4N / 5
+                nvalid = N / 5
+                Ci = Σi - Si
+                Si_scaled = Si + A_scaling_factor*I
+                # r, r train, and r validate
+                r = Zscores_store ./ sqrt(N)
+                rt = r + sqrt(nvalid / (N*ntrain)) .* Zscores_ko_train
+                rv = 1/nvalid * (N*r - ntrain*rt)
+                @rput Ci Si Si_scaled r m ncores rt rv
+                R"""
+                # make S into a block matrix with a single block
+                Si_scaled <- BlockMatrix(list(Si_scaled))
+                # Si_test <- Si$to_dense()
+                # form Bi
+                Bi <- BlockGroupGhostMatrix(Ci, Si_scaled, m+1)
+                # Bi_test <- Bi$to_dense()
+                # @rget Bi_test
+                # p = length(shared_snps)
+                # @test all(Bi_test[1:p, 1:p] .≈ Σi + 0.01I)
+                # @test all(Bi_test[1:p, p+1:2p] .≈ Σi - Si)
+                # @test all(Bi_test[p+1:2p, p+1:2p] .≈ Σi + 0.01I)
+                # @test all(Bi_test[p+1:2p, 2p+1:3p] .≈ Σi - Si)
+                result <- ghostbasil(Bi, rt, delta.strong.size=500, 
+                    max.strong.size = nrow(Bi), n.threads=ncores, use.strong.rule=F)
+                betas <- as.matrix(result$betas)
+                lambdas <- result$lmdas
+                """
+            end
+
+            t32 = @elapsed begin
+                R"""
+                # find best lambda
+                Get.f<-function(beta,A,r){return(t(beta)%*%r/sqrt(A$quad_form(beta)))}
+                f.lambda<-apply(betas,2,Get.f,A=Bi,r=rv)
+                f.lambda[is.na(f.lambda)]<--Inf
+                lambda<-lambdas[which.max(f.lambda)]
+                """
+            end
+
+            t33 = @elapsed begin
+                R"""
+                # refit ghostbasil
+                lambda.seq <- lambdas[lambdas > lambda]
+                lambda.seq <- c(lambda.seq, lambda)
+                fit.basil<-ghostbasil(Bi, r=r,user.lambdas=lambda.seq, 
+                    delta.strong.size=500, max.strong.size = nrow(Bi), use.strong.rule=F)
+                beta_i <- fit.basil$betas[,ncol(fit.basil$betas)]
+                R2 <- fit.basil$rsqs
+                """
+                @rget beta_i R2 betas
+            end
+            t3 += t31 + t32 + t33
+
+            # scale beta so that across regions the effect sizes are comparable
+            beta_i_scaled = beta_i ./ maximum(abs.(beta_i)) .* maximum(abs.(r))
 
             # update counters
+            append!(beta, beta_i_scaled)
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: nsnps = $nsnps")
-            flush(stdout)
+            println("region $nregions: nsnps = $nsnps, t1=$t1, t2=$t2, t3=$t3, t31 = $t31, t32 = $t32, t33 = $t33")
         end
     end
 
     # some checks
     nregions == 1703 || @warn("Number of successfully solved region is $nregions, expected 1703")
-    if nsnps == 0
-        error("Matched $nsnps SNPs with Z-scores to the reference panel")
-    else
-        println("Matched $nsnps SNPs with Z-scores to the reference panel")
-    end
-    length(Zscores) == length(groups) || error("Number of Zscores should match groups")
-    sum(size.(Sigma, 1)) == sum(size.(S, 1)) == size(df, 1) || 
-        error("Dimension of Sigma, S, or df doesn't match")
-
-    # run GhostBasil
-    # note: lambda is chosen via pseudo-summary statistic approach
-    # todo: wrap ghostbasil C++ code with Julia
-    t3 = @elapsed begin
-        ntrain = 4N / 5
-        nvalid = N / 5
-        # r, r train, and r validate
-        r = Zscores ./ sqrt(N)
-        rt = r + sqrt(nvalid / (N*ntrain)) .* Zscores_ko_train
-        rv = 1/nvalid * (N*r - ntrain*rt)
-        @rput Sigma S r m ncores rt rv A_scaling_factor
-        R"""
-        B <- c()
-        for(i in 1:length(S)){
-            Si <- as.matrix(S[[i]]) + A_scaling_factor*diag(1,nrow(S[[i]]))
-            Si <- BlockMatrix(list(Si))
-            Ci <- Sigma[[i]] - S[[i]]
-            Bi <- BlockGroupGhostMatrix(Ci, Si, m+1)
-            B  <- append(B, list(Bi))
-        }
-        A <- BlockBlockGroupGhostMatrix(B)
-        result <- ghostbasil(A, rt, delta.strong.size = 500, max.strong.size = nrow(A), n.threads=ncores, use.strong.rule=F)
-        betas <- as.matrix(result$betas)
-        lambdas <- result$lmdas
-        
-        # find best lambda
-        Get.f<-function(beta,A,r){return(t(beta)%*%r/sqrt(A$quad_form(beta)))}
-        f.lambda<-apply(betas,2,Get.f,A=A,r=rv)
-        f.lambda[is.na(f.lambda)]<--Inf
-        lambda<-lambdas[which.max(f.lambda)]
-        
-        # refit ghostbasil
-        lambda.seq <- lambdas[lambdas > lambda]
-        lambda.seq <- c(lambda.seq, lambda)
-        fit.basil<-ghostbasil(A, r=r,user.lambdas=lambda.seq, delta.strong.size = 500, max.strong.size = nrow(A), use.strong.rule=F)
-        beta<-fit.basil$betas[,ncol(fit.basil$betas)]
-        ll <- fit.basil$lmdas
-        """
-        @rget beta ll lambdas
-    end
-
-    # testing group structure
-#     Sigma_full = BlockDiagonal(Sigma) |> Matrix
-#     S_full = BlockDiagonal(S) |> Matrix
-#     non_zero_idx = CartesianIndex[]
-#     for g in unique(groups)
-#         idx = findall(x -> x == g, groups)
-#         for i in idx, j in idx
-#             push!(non_zero_idx, CartesianIndex(i, j))
-#         end
-#     end
-#     @test length(intersect(findall(!iszero, S_full), non_zero_idx)) == length(non_zero_idx)
-#     [findall(!iszero, S_full) non_zero_idx]
-    
-    # testing A and Ci structure in ghostbasil
-#     @rget Ci
-#     @test all(Ci .≈ Sigma[end] - S[end])    
+    println("Matched $nsnps SNPs with Z-scores to the reference panel")
+    length(Zscores) == length(groups) || 
+        error("Number of Zscores should match groups")
 
     # knockoff filter
     t4 = @elapsed begin
@@ -219,7 +214,7 @@ function ghostbasil(
             end
         end
         kappa, tau, W = Knockoffs.MK_statistics(T_group0, T_groupk)
-
+        
         # save analysis result
         df[!, :group] = groups[original_idx]
         df[!, :zscores] = Zscores[original_idx]
@@ -234,7 +229,7 @@ function ghostbasil(
         df[!, :W] = W_full
         df[!, :kappa] = kappa_full
         df[!, :tau] = tau_full
-        df[!, :pvals] = 2ccdf.(Normal(), abs.(df[!, :zscores])) # convert zscores to marginal p-values
+        df[!, :pvals] = zscore2pval(df[!, :zscores])
         CSV.write(joinpath(outdir, outname * ".txt"), df)
     end
 
@@ -254,15 +249,15 @@ function ghostbasil(
         println(io, "ghostbasil_time,$t3")
         println(io, "knockoff_filter_time,$t4")
         println(io, "total_time,", time() - start_t)
-        println(io, "significant_marginal_pvals,", count(x -> x < 5e-8, df[!, :pvals]))
     end
 
     # also save full lambda sequence
     writedlm(joinpath(outdir, outname * "_lambdas.txt"), lambdas)
 
-    q = mk_threshold(tau, kappa, m, 0.1)
-    selected_idx = findall(x -> x ≥ q, W)
-    selected_groups = unique_groups[selected_idx]
-    selected_snps = findall(x -> x in selected_groups, groups_original)
-    return selected_groups, selected_snps
+#     q = mk_threshold(tau, kappa, m, 0.1)
+#     selected_idx = findall(x -> x ≥ q, W)
+#     selected_groups = unique_groups[selected_idx]
+#     selected_snps = findall(x -> x in selected_groups, groups_original)
+#     return selected_groups, selected_snps
+    return nothing
 end

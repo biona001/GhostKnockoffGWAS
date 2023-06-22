@@ -12,7 +12,7 @@ using DelimitedFiles
 using RCall
 
 export ghostbasil, 
-    ghostbasil_parallel_by_block,
+    ghostbasil_parallel,
     graphical_group_S,
     # utilities
     zscore2pval,
@@ -22,6 +22,7 @@ export ghostbasil,
     pval
 
 include("ghostbasil.jl")
+include("ghostbasil_parallel.jl")
 include("utilities.jl")
 include("solve_blocks.jl")
 
