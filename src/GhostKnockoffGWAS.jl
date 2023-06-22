@@ -10,8 +10,6 @@ using Random
 using Distributions
 using DelimitedFiles
 using RCall
-R"library(ghostbasil)" # todo: write C++ wrapper to avoid R
-R"library(liftOver)"
 
 export ghostbasil, 
     ghostbasil_parallel_by_block,
@@ -26,5 +24,11 @@ export ghostbasil,
 include("ghostbasil.jl")
 include("utilities.jl")
 include("solve_blocks.jl")
+
+function __init__()
+    # import R packages (todo: should we write C++ wrapper?)
+    R"library(ghostbasil)"
+    R"library(liftOver)"
+end
 
 end # module GhostKnockoffGWAS
