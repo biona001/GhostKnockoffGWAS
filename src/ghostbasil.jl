@@ -203,7 +203,6 @@ function ghostbasil(
 
     # knockoff filter
     t4 = @elapsed begin
-        # todo: abstract away this logic into Knockoffs.jl
         original_idx = findall(x -> endswith(x, "_0"), groups)
         T0 = beta[original_idx]
         Tk = [beta[findall(x -> endswith(x, "_$k"), groups)] for k in 1:m]
@@ -211,11 +210,10 @@ function ghostbasil(
         T_groupk = [Float64[] for k in 1:m]
         groups_original = groups[findall(x -> endswith(x, "_0"), groups)]
         unique_groups = unique(groups_original)
-        for g in unique_groups
-            idx = findall(x -> x == g, groups_original)
-            push!(T_group0, sum(abs, @view(T0[idx])))# / length(idx))
+        for idx in find_matching_indices(unique_groups, groups_original)
+            push!(T_group0, sum(abs, @view(T0[idx])))
             for k in 1:m
-                push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))# / length(idx))
+                push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
             end
         end
         kappa, tau, W = Knockoffs.MK_statistics(T_group0, T_groupk)
@@ -225,8 +223,7 @@ function ghostbasil(
         df[!, :zscores] = Zscores[original_idx]
         df[!, :lasso_beta] = beta[original_idx]
         W_full, kappa_full, tau_full = Float64[], Float64[], Float64[]
-        for g in groups_original
-            idx = findfirst(x -> x == g, unique_groups)
+        for idx in indexin(groups_original, unique_groups)
             push!(W_full, W[idx])
             push!(kappa_full, kappa[idx])
             push!(tau_full, tau[idx])
@@ -260,9 +257,10 @@ function ghostbasil(
     # also save full lambda sequence
     writedlm(joinpath(outdir, outname * "_lambdas.txt"), lambdas)
 
-    q = mk_threshold(tau, kappa, m, 0.1)
-    selected_idx = findall(x -> x ≥ q, W)
-    selected_groups = unique_groups[selected_idx]
-    selected_snps = findall(x -> x in selected_groups, groups_original)
-    return selected_groups, selected_snps
+    # q = mk_threshold(tau, kappa, m, 0.1)
+    # selected_idx = findall(x -> x ≥ q, W)
+    # selected_groups = unique_groups[selected_idx]
+    # selected_snps = findall(x -> x in selected_groups, groups_original)
+    # return selected_groups, selected_snps
+    return nothing
 end
