@@ -180,7 +180,11 @@ function ghostbasil_parallel(
             t3 += t31 + t32 + t33
 
             # scale beta so that across regions the effect sizes are comparable
-            beta_i_scaled = beta_i ./ maximum(abs.(beta_i)) .* maximum(abs.(r))
+            max_beta_i = maximum(abs.(beta_i))
+            beta_i_scaled = max_beta_i == 0 ? beta_i :
+                (beta_i ./ maximum(abs.(beta_i)) .* maximum(abs.(r)))
+            any(isnan, beta_i_scaled) && error("beta contains NaN!")
+            any(isinf, beta_i_scaled) && error("beta contains Inf")
 
             # update counters
             append!(beta, beta_i_scaled)
