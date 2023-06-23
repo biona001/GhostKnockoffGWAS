@@ -39,6 +39,7 @@ function graphical_group_S(
     liftOver_chain_dir::String = "",
     method::Symbol = :maxent,
     group_def::String="hc",
+    rk::Number=Inf, # minimum rank of Σ before truncating the remaining eigvals to `min_maf`
     verbose=true
     )
     isdir(outdir) || error("output directory $outdir does not exist!")
@@ -50,7 +51,7 @@ function graphical_group_S(
     import_sigma_time = @elapsed begin
         bm = hail_block_matrix(bm_file, ht_file);
         Sigma, Sigma_info = get_block(bm, chr, start_pos, end_pos, 
-            min_maf=min_maf, snps_to_keep=snps_to_keep, enforce_psd=true)
+            min_maf=min_maf, snps_to_keep=snps_to_keep, enforce_psd=true, rk=rk)
     end
 
     # append hg38 coordinates to Sigma_info and remove SNPs that can't be converted to hg38
