@@ -187,6 +187,7 @@ function ghostbasil_parallel(
             nsnps += length(shared_snps)
             nregions += 1
             println("region $nregions: nsnps = $nsnps, t1=$t1, t2=$t2, t3=$t3, t31 = $t31, t32 = $t32, t33 = $t33")
+            flush(stdout)
         end
     end
 
