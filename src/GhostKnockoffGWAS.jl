@@ -13,7 +13,6 @@ using RCall
 
 export ghostbasil, 
     ghostbasil_parallel,
-    graphical_group_S,
     # utilities
     zscore2pval,
     zscore,
@@ -24,7 +23,6 @@ export ghostbasil,
 include("ghostbasil.jl")
 include("ghostbasil_parallel.jl")
 include("utilities.jl")
-include("solve_blocks.jl")
 
 function __init__()
     # import R packages (todo: should we write C++ wrapper?)
