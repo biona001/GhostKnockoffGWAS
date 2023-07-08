@@ -12,7 +12,9 @@ function ghostbasil(
     outname::String="result",
     ncores = Threads.nthreads(),
     target_chrs=1:22,
-    A_scaling_factor = 0.01
+    A_scaling_factor = 0.01,
+    nmonte_carlo::Int=10, # needed in zhaomeng's new approach for tuning lambda
+    kappa::Number=0.6     # needed in zhaomeng's new approach for tuning lambda
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -27,12 +29,13 @@ function ghostbasil(
     # matrices to be passed into ghostbasil (~25GB to store these in memory)
     Sigma = Matrix{Float64}[]              # overall covariance matrix for all chrom
     S = Matrix{Float64}[]                  # overall block diagonal matrix for all chrom
-    
+
     # intermediate vectors
     groups  = String[]                     # group membership vector over all SNPs (original + knockoffs)
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
-    Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
+    Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil (Zscores_ko_train is a sample from N(0, A))
+    Zt_SigmaInv_Z = 0.0                    # needed to evaluate σ in zhaomeng's validation approach
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
@@ -93,16 +96,20 @@ function ghostbasil(
                 # use original Sigma and D for pseudo-validation
                 D = result["D"][LD_keep_idx, LD_keep_idx]
                 Σ = result["Sigma"][LD_keep_idx, LD_keep_idx]
-                Zko_train = Knockoffs.sample_mvn_efficient(Σ, D, m + 1)
+                Zko_train = Float64[]
+                for i in 1:nmonte_carlo
+                    append!(Zko_train, Knockoffs.sample_mvn_efficient(Σ, D, m + 1))
+                end
                 # sample ghost knockoffs knockoffs
                 Σinv = inv(Symmetric(Σ))
                 Zko = ghost_knockoffs(zscores[GWAS_keep_idx], D, Σinv, m=m)
             end
 
             # save mapped Zscores and some other variables
+            zscore_tmp = @view(zscores[GWAS_keep_idx])
             push!(Sigma, Σ)
             push!(S, D)
-            append!(Zscores, zscores[GWAS_keep_idx])
+            append!(Zscores, zscore_tmp)
             append!(Zscores, Zko)
             append!(Zscores_ko_train, Zko_train)
             current_groups = result["groups"][LD_keep_idx]
@@ -111,6 +118,7 @@ function ghostbasil(
             for k in 1:m
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
+            Zt_SigmaInv_Z += dot(zscore_tmp, Σinv, zscore_tmp)
 
             # update counters
             nsnps += length(shared_snps)
@@ -134,14 +142,52 @@ function ghostbasil(
     # run GhostBasil
     # note: lambda is chosen via pseudo-summary statistic approach
     # todo: wrap ghostbasil C++ code with Julia
+    # t3 = @elapsed begin
+    #     ntrain = 4N / 5
+    #     nvalid = N / 5
+    #     # r, r train, and r validate
+    #     r = Zscores ./ sqrt(N)
+    #     rt = r + sqrt(nvalid / (N*ntrain)) .* Zscores_ko_train
+    #     rv = 1/nvalid * (N*r - ntrain*rt)
+    #     @rput Sigma S r m ncores rt rv A_scaling_factor
+    #     R"""
+    #     B <- c()
+    #     for(i in 1:length(S)){
+    #         Si <- as.matrix(S[[i]]) + A_scaling_factor*diag(1,nrow(S[[i]]))
+    #         Si <- BlockMatrix(list(Si))
+    #         Ci <- Sigma[[i]] - S[[i]]
+    #         Bi <- BlockGroupGhostMatrix(Ci, Si, m+1)
+    #         B  <- append(B, list(Bi))
+    #     }
+    #     A <- BlockBlockGroupGhostMatrix(B)
+    #     result <- ghostbasil(A, rt, delta.strong.size = 500, max.strong.size = nrow(A), n.threads=ncores, use.strong.rule=F)
+    #     betas <- as.matrix(result$betas)
+    #     lambdas <- result$lmdas
+        
+    #     # find best lambda
+    #     Get.f<-function(beta,A,r){return(t(beta)%*%r/sqrt(A$quad_form(beta)))}
+    #     f.lambda<-apply(betas,2,Get.f,A=A,r=rv)
+    #     f.lambda[is.na(f.lambda)]<--Inf
+    #     lambda<-lambdas[which.max(f.lambda)]
+        
+    #     # refit ghostbasil
+    #     lambda.seq <- lambdas[lambdas > lambda]
+    #     lambda.seq <- c(lambda.seq, lambda)
+    #     fit.basil<-ghostbasil(A, r=r,user.lambdas=lambda.seq, delta.strong.size = 500, max.strong.size = nrow(A), use.strong.rule=F)
+    #     beta<-fit.basil$betas[,ncol(fit.basil$betas)]
+    #     ll <- fit.basil$lmdas
+    #     """
+    #     @rget beta ll lambdas
+    # end
+
+    # run GhostBasil
+    # note: lambda is chosen via zhaomeng's new approach
     t3 = @elapsed begin
-        ntrain = 4N / 5
-        nvalid = N / 5
-        # r, r train, and r validate
+        exp_norm = sqrt(N) * maximum(abs, Zscores_ko_train)
         r = Zscores ./ sqrt(N)
-        rt = r + sqrt(nvalid / (N*ntrain)) .* Zscores_ko_train
-        rv = 1/nvalid * (N*r - ntrain*rt)
-        @rput Sigma S r m ncores rt rv A_scaling_factor
+        σ = sqrt(max((nsnps+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
+        lambda = kappa * σ / N * exp_norm 
+        @rput Sigma S r m ncores A_scaling_factor lambda
         R"""
         B <- c()
         for(i in 1:length(S)){
@@ -152,24 +198,15 @@ function ghostbasil(
             B  <- append(B, list(Bi))
         }
         A <- BlockBlockGroupGhostMatrix(B)
-        result <- ghostbasil(A, rt, delta.strong.size = 500, max.strong.size = nrow(A), n.threads=ncores, use.strong.rule=F)
-        betas <- as.matrix(result$betas)
-        lambdas <- result$lmdas
-        
-        # find best lambda
-        Get.f<-function(beta,A,r){return(t(beta)%*%r/sqrt(A$quad_form(beta)))}
-        f.lambda<-apply(betas,2,Get.f,A=A,r=rv)
-        f.lambda[is.na(f.lambda)]<--Inf
-        lambda<-lambdas[which.max(f.lambda)]
         
         # refit ghostbasil
-        lambda.seq <- lambdas[lambdas > lambda]
-        lambda.seq <- c(lambda.seq, lambda)
-        fit.basil<-ghostbasil(A, r=r,user.lambdas=lambda.seq, delta.strong.size = 500, max.strong.size = nrow(A), use.strong.rule=F)
+        fit.basil<-ghostbasil(A, r=r, user.lambdas=c(lambda), 
+            delta.strong.size = 500, max.strong.size = nrow(A), 
+            use.strong.rule=F)
         beta<-fit.basil$betas[,ncol(fit.basil$betas)]
         ll <- fit.basil$lmdas
         """
-        @rget beta ll lambdas
+        @rget beta ll
     end
 
     # testing group structure
