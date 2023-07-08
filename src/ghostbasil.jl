@@ -202,7 +202,7 @@ function ghostbasil(
         # refit ghostbasil
         fit.basil<-ghostbasil(A, r=r, user.lambdas=c(lambda), 
             delta.strong.size = 500, max.strong.size = nrow(A), 
-            use.strong.rule=F)
+            use.strong.rule=F, n.threads=ncores)
         beta<-fit.basil$betas[,ncol(fit.basil$betas)]
         ll <- fit.basil$lmdas
         """
