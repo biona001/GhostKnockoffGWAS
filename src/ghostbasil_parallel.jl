@@ -15,7 +15,8 @@ function ghostbasil_parallel(
     A_scaling_factor = 0.01,
     nmonte_carlo::Int=10, # needed in zhaomeng's new approach for tuning lambda
     kappa::Number=0.6,    # needed in zhaomeng's new approach for tuning lambda
-    scale_beta::Bool=true # whether to scale betas in each block so they are comparable
+    scale_beta::Bool=true, # whether to scale betas in each block so they are comparable
+    pseudo_validate::Bool = false # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -33,7 +34,7 @@ function ghostbasil_parallel(
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
-    lambdas = Float64[]                    # lambda used in each block
+    # lambdas = Float64[]                    # lambda used in each block
     Zscores_store = Float64[]
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
@@ -119,75 +120,79 @@ function ghostbasil_parallel(
             length(Zscores_store) == (m+1) * length(current_groups) || 
                 error("Number of Zscores should match groups")
 
-            # run GhostBasil (pseudo-validation)
-            # t3 = @elapsed begin
-            #     ntrain = 4N / 5
-            #     nvalid = N / 5
-            #     Ci = Σi - Si
-            #     Si_scaled = Si + A_scaling_factor*I
-            #     # r, r train, and r validate
-            #     r = Zscores_store ./ sqrt(N)
-            #     rt = r + sqrt(nvalid / (N*ntrain)) .* Zscores_ko_train
-            #     rv = 1/nvalid * (N*r - ntrain*rt)
-            #     @rput Ci Si Si_scaled r m ncores rt rv
-            #     R"""
-            #     # make S into a block matrix with a single block
-            #     Si_scaled <- BlockMatrix(list(Si_scaled))
-            #     # Si_test <- Si$to_dense()
-            #     # form Bi
-            #     Bi <- BlockGroupGhostMatrix(Ci, Si_scaled, m+1)
-            #     # Bi_test <- Bi$to_dense()
-            #     # @rget Bi_test
-            #     # p = length(shared_snps)
-            #     # @test all(Bi_test[1:p, 1:p] .≈ Σi + 0.01I)
-            #     # @test all(Bi_test[1:p, p+1:2p] .≈ Σi - Si)
-            #     # @test all(Bi_test[p+1:2p, p+1:2p] .≈ Σi + 0.01I)
-            #     # @test all(Bi_test[p+1:2p, 2p+1:3p] .≈ Σi - Si)
-            #     result <- ghostbasil(Bi, rt, delta.strong.size=500, 
-            #         max.strong.size = nrow(Bi), n.threads=ncores, use.strong.rule=F)
-            #     betas <- as.matrix(result$betas)
-            #     lambdas <- result$lmdas
+            # run GhostBasil
+            if pseudo_validate
+                # pseudo-validation
+                t3 = @elapsed begin
+                    ntrain = 4N / 5
+                    nvalid = N / 5
+                    Ci = Σi - Si
+                    Si_scaled = Si + A_scaling_factor*I
+                    # r, r train, and r validate
+                    r = Zscores_store ./ sqrt(N)
+                    rt = r + sqrt(nvalid / (N*ntrain)) .* Zscores_ko_train
+                    rv = 1/nvalid * (N*r - ntrain*rt)
+                    @rput Ci Si Si_scaled r m ncores rt rv
+                    R"""
+                    # make S into a block matrix with a single block
+                    Si_scaled <- BlockMatrix(list(Si_scaled))
+                    # Si_test <- Si$to_dense()
+                    # form Bi
+                    Bi <- BlockGroupGhostMatrix(Ci, Si_scaled, m+1)
+                    # Bi_test <- Bi$to_dense()
+                    # @rget Bi_test
+                    # p = length(shared_snps)
+                    # @test all(Bi_test[1:p, 1:p] .≈ Σi + 0.01I)
+                    # @test all(Bi_test[1:p, p+1:2p] .≈ Σi - Si)
+                    # @test all(Bi_test[p+1:2p, p+1:2p] .≈ Σi + 0.01I)
+                    # @test all(Bi_test[p+1:2p, 2p+1:3p] .≈ Σi - Si)
+                    result <- ghostbasil(Bi, rt, delta.strong.size=500, 
+                        max.strong.size = nrow(Bi), n.threads=ncores, use.strong.rule=F)
+                    betas <- as.matrix(result$betas)
+                    lambdas <- result$lmdas
 
-            #     # find best lambda
-            #     Get.f<-function(beta,A,r){return(t(beta)%*%r/sqrt(A$quad_form(beta)))}
-            #     f.lambda<-apply(betas,2,Get.f,A=Bi,r=rv)
-            #     f.lambda[is.na(f.lambda)]<--Inf
-            #     lambda<-lambdas[which.max(f.lambda)]
+                    # find best lambda
+                    Get.f<-function(beta,A,r){return(t(beta)%*%r/sqrt(A$quad_form(beta)))}
+                    f.lambda<-apply(betas,2,Get.f,A=Bi,r=rv)
+                    f.lambda[is.na(f.lambda)]<--Inf
+                    lambda<-lambdas[which.max(f.lambda)]
 
-            #     # refit ghostbasil
-            #     lambda.seq <- lambdas[lambdas > lambda]
-            #     lambda.seq <- c(lambda.seq, lambda)
-            #     fit.basil<-ghostbasil(Bi, r=r,user.lambdas=lambda.seq, 
-            #         delta.strong.size=500, max.strong.size = nrow(Bi), use.strong.rule=F)
-            #     beta_i <- fit.basil$betas[,ncol(fit.basil$betas)]
-            #     R2 <- fit.basil$rsqs
-            #     """
-            #     @rget beta_i R2 betas
-            # end
-
-            # run GhostBasil (lambda chosen using zhaomeng's new approach)
-            t3 = @elapsed begin
-                Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
-                exp_norm = sqrt(N) * maximum(abs, Zscores_ko_train)
-                r = Zscores_store ./ sqrt(N)
-                σ = sqrt(max((nsnps+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
-                lambda = kappa * σ / N * exp_norm 
-                Ci = Σi - Si
-                Si_scaled = Si + A_scaling_factor*I
-                @rput Ci Si Si_scaled r m ncores A_scaling_factor lambda
-                R"""
-                # make S into a block matrix with a single block
-                Si_scaled <- BlockMatrix(list(Si_scaled))
-                # form Bi
-                Bi <- BlockGroupGhostMatrix(Ci, Si_scaled, m+1)
-                # run ghostbasil on one specific lambda
-                result <- ghostbasil(Bi, r, delta.strong.size=500, 
-                    max.strong.size = nrow(Bi), n.threads=ncores, 
-                    user.lambdas=c(lambda), use.strong.rule=F)
-                beta_i <- result$betas[,ncol(result$betas)]
-                """
-                @rget beta_i
+                    # refit ghostbasil
+                    lambda.seq <- lambdas[lambdas > lambda]
+                    lambda.seq <- c(lambda.seq, lambda)
+                    fit.basil<-ghostbasil(Bi, r=r,user.lambdas=lambda.seq, 
+                        delta.strong.size=500, max.strong.size = nrow(Bi), use.strong.rule=F)
+                    beta_i <- fit.basil$betas[,ncol(fit.basil$betas)]
+                    R2 <- fit.basil$rsqs
+                    """
+                end
+            else
+                # lambda chosen using zhaomeng's new approach
+                t3 = @elapsed begin
+                    Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
+                    exp_norm = sqrt(N) * maximum(abs, Zscores_ko_train)
+                    r = Zscores_store ./ sqrt(N)
+                    σ = sqrt(max((nsnps+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
+                    lambda = kappa * σ / N * exp_norm
+                    lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
+                    lambda_path = range(lambda, lambdamax, length=100) |> collect |> reverse!
+                    Ci = Σi - Si
+                    Si_scaled = Si + A_scaling_factor*I
+                    @rput Ci Si Si_scaled r m ncores A_scaling_factor lambda lambda_path
+                    R"""
+                    # make S into a block matrix with a single block
+                    Si_scaled <- BlockMatrix(list(Si_scaled))
+                    # form Bi
+                    Bi <- BlockGroupGhostMatrix(Ci, Si_scaled, m+1)
+                    # run ghostbasil on one specific lambda
+                    result <- ghostbasil(Bi, r, delta.strong.size=500, 
+                        max.strong.size = nrow(Bi), n.threads=ncores, 
+                        user.lambdas=lambda_path, use.strong.rule=F)
+                    beta_i <- result$betas[,ncol(result$betas)]
+                    """
+                end
             end
+            @rget beta_i
 
             # scale beta so that across regions the effect sizes are comparable
             if scale_beta
@@ -202,10 +207,10 @@ function ghostbasil_parallel(
 
             # update counters
             append!(beta, beta_i_scaled)
-            push!(lambdas, lambda)
+            # push!(lambdas, lambda)
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: nsnps = $nsnps, t1=$t1, t2=$t2, t3=$t3")
+            println("region $nregions: nsnps = $nsnps, t1=$t1, t2=$t2, t3=$t3, left = $(nsnps + N + 1), right = $Zt_SigmaInv_Z")
             flush(stdout)
         end
     end
@@ -269,12 +274,7 @@ function ghostbasil_parallel(
     end
 
     # also save lambdas used in each block
-    writedlm(joinpath(outdir, outname * "_lambdas.txt"), lambdas)
+    # writedlm(joinpath(outdir, outname * "_lambdas.txt"), lambdas)
 
-#     q = mk_threshold(tau, kappa, m, 0.1)
-#     selected_idx = findall(x -> x ≥ q, W)
-#     selected_groups = unique_groups[selected_idx]
-#     selected_snps = findall(x -> x in selected_groups, groups_original)
-#     return selected_groups, selected_snps
     return nothing
 end
