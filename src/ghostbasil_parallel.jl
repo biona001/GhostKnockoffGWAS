@@ -210,7 +210,7 @@ function ghostbasil_parallel(
             # push!(lambdas, lambda)
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: nsnps = $nsnps, t1=$t1, t2=$t2, t3=$t3, left = $(nsnps + N + 1), right = $Zt_SigmaInv_Z")
+            println("region $nregions: nsnps = $nsnps, t1=$t1, t2=$t2, t3=$t3")
             flush(stdout)
         end
     end
