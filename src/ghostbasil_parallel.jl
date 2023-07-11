@@ -123,7 +123,7 @@ function ghostbasil_parallel(
             # run GhostBasil
             if pseudo_validate
                 # pseudo-validation
-                t3 = @elapsed begin
+                t3 += @elapsed begin
                     ntrain = 4N / 5
                     nvalid = N / 5
                     Ci = Σi - Si
@@ -168,7 +168,7 @@ function ghostbasil_parallel(
                 end
             else
                 # lambda chosen using zhaomeng's new approach
-                t3 = @elapsed begin
+                t3 += @elapsed begin
                     Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
                     exp_norm = sqrt(N) * maximum(abs, Zscores_ko_train)
                     r = Zscores_store ./ sqrt(N)
