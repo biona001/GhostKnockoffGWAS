@@ -172,7 +172,7 @@ function ghostbasil_parallel(
                     Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
                     exp_norm = sqrt(N) * maximum(abs, Zscores_ko_train)
                     r = Zscores_store ./ sqrt(N)
-                    σ = sqrt(max((nsnps+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
+                    σ = sqrt(max((length(zscore_tmp)+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
                     lambda = kappa * σ / N * exp_norm
                     lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
                     lambda_path = range(lambda, lambdamax, length=100) |> collect |> reverse!
