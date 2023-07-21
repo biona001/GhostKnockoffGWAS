@@ -15,7 +15,8 @@ function ghostbasil(
     A_scaling_factor = 0.01,
     nmonte_carlo::Int=10, # needed in zhaomeng's new approach for tuning lambda
     kappa::Number=0.6,     # needed in zhaomeng's new approach for tuning lambda
-    pseudo_validate::Bool = false # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
+    pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
+    LD_shrinkage::Bool=false # if true, we will try to perform shrinkage to LD matrix following method in susie
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -97,17 +98,23 @@ function ghostbasil(
                 # use original Sigma and D for pseudo-validation
                 D = result["D"][LD_keep_idx, LD_keep_idx]
                 Σ = result["Sigma"][LD_keep_idx, LD_keep_idx]
+                zscore_tmp = @view(zscores[GWAS_keep_idx])
+                if LD_shrinkage
+                    # γ = find_optimal_shrinkage(Σ, zscore_tmp)
+                    γ = 0.1
+                    Σ = (1 - γ)*Σ + γ*I
+                    D = (1 - γ)*D + (m+1)/m*γ*I
+                end
                 Zko_train = Float64[]
                 for i in 1:nmonte_carlo
                     append!(Zko_train, Knockoffs.sample_mvn_efficient(Σ, D, m + 1))
                 end
                 # sample ghost knockoffs knockoffs
                 Σinv = inv(Symmetric(Σ))
-                Zko = ghost_knockoffs(zscores[GWAS_keep_idx], D, Σinv, m=m)
+                Zko = ghost_knockoffs(zscore_tmp, D, Σinv, m=m)
             end
 
             # save mapped Zscores and some other variables
-            zscore_tmp = @view(zscores[GWAS_keep_idx])
             push!(Sigma, Σ)
             push!(S, D)
             append!(Zscores, zscore_tmp)
@@ -133,7 +140,7 @@ function ghostbasil(
             # update counters
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: nsnps = $nsnps, left = $(nsnps + N + 1), right = $Zt_SigmaInv_Z")
+            println("region $nregions: nsnps = $nsnps, left = $(nsnps + N + 1), right = $Zt_SigmaInv_Z, f = $f, γ = $γ")
             flush(stdout)
         end
     end

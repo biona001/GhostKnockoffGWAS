@@ -10,6 +10,7 @@ using Random
 using Distributions
 using DelimitedFiles
 using RCall
+using Optim
 
 export ghostbasil, 
     ghostbasil_parallel,

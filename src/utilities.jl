@@ -44,3 +44,41 @@ function find_matching_indices(a::AbstractVector, b::AbstractVector)
     return c
 end
 
+function find_optimal_shrinkage(Σ::AbstractMatrix, z::AbstractVector)
+    opt = optimize(
+        γ -> neg_mvn_logl_under_null(Σ, z, γ), 
+        0, 0.25, Brent(), show_trace=true, abs_tol=0.000001,
+        iterations = 20,
+    )
+    return opt.minimizer
+end
+
+# function neg_mvn_logl_under_null_naive(Σ::AbstractMatrix, z::AbstractVector)
+#     return 0.5logdet(Symmetric(Σ)) + dot(z, inv(Symmetric(Σ)), z)
+# end
+# function neg_mvn_logl_under_null_naive(Σ::AbstractMatrix, z::AbstractVector, γ::Number)
+#     return mvn_logl_under_null_naive((1-γ)*Σ + γ*I, z)
+# end
+# @time neg_mvn_logl_under_null_naive(Σ, zscore_tmp)
+
+function neg_mvn_logl_under_null(Σ::AbstractMatrix, z::AbstractVector, γ::Number)
+    return mvn_logl_under_null((1-γ)*Σ + γ*I, z)
+end
+function neg_mvn_logl_under_null(Σ::AbstractMatrix, z::AbstractVector)
+    L = cholesky(Symmetric(Σ))
+    u = zeros(length(z))
+    ldiv!(u, UpperTriangular(L.factors)', z)
+    return 0.5logdet(L) + dot(u, u)
+end
+# @time neg_mvn_logl_under_null(Σ, zscore_tmp)
+# @time neg_mvn_logl_under_null(Σ, zscore_tmp, 1.0)
+# @time neg_mvn_logl_under_null(Σ, zscore_tmp, 0.5)
+# @time neg_mvn_logl_under_null(Σ, zscore_tmp, 0.1)
+# @time neg_mvn_logl_under_null(Σ, zscore_tmp, 0.0)
+# γ = find_optimal_shrinkage(Σ, zscore_tmp)
+
+
+# function mvn_logl_under_null(L::Cholesky, z::AbstractVector, u=zeros(length(z)))
+#     ldiv!(u, UpperTriangular(L.factors)', z)
+#     return -0.5logdet(L) - dot(u, u)
+# end

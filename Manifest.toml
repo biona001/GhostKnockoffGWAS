@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "6c873116bb65d2e2a80f15134527be803d311aaa"
+project_hash = "01f1c33b35c3c8119c1dbdbfe6b35d619ef5604e"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -685,9 +685,9 @@ version = "0.5.5+0"
 
 [[deps.Optim]]
 deps = ["Compat", "FillArrays", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "PositiveFactorizations", "Printf", "SparseArrays", "StatsBase"]
-git-tree-sha1 = "a89b11f0f354f06099e4001c151dffad7ebab015"
+git-tree-sha1 = "e3a6546c1577bfd701771b477b794a52949e7594"
 uuid = "429524aa-4258-5aef-a3af-852621145aeb"
-version = "1.7.5"
+version = "1.7.6"
 
 [[deps.OrderedCollections]]
 git-tree-sha1 = "d321bf2de576bf25ec4d3e4360faca399afca282"
