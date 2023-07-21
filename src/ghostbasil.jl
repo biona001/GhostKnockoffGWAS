@@ -13,8 +13,7 @@ function ghostbasil(
     ncores = Threads.nthreads(),
     target_chrs=1:22,
     A_scaling_factor = 0.01,
-    nmonte_carlo::Int=10, # needed in zhaomeng's new approach for tuning lambda
-    kappa::Number=0.6,     # needed in zhaomeng's new approach for tuning lambda
+    lambda_scale::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
     pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
     LD_shrinkage::Bool=false # if true, we will try to perform shrinkage to LD matrix following method in susie
     )
@@ -106,9 +105,7 @@ function ghostbasil(
                     D = (1 - γ)*D + (m+1)/m*γ*I
                 end
                 Zko_train = Float64[]
-                for i in 1:nmonte_carlo
-                    append!(Zko_train, Knockoffs.sample_mvn_efficient(Σ, D, m + 1))
-                end
+                append!(Zko_train, Knockoffs.sample_mvn_efficient(Σ, D, m + 1))
                 # sample ghost knockoffs knockoffs
                 Σinv = inv(Symmetric(Σ))
                 Zko = ghost_knockoffs(zscore_tmp, D, Σinv, m=m)
@@ -140,7 +137,7 @@ function ghostbasil(
             # update counters
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: nsnps = $nsnps, left = $(nsnps + N + 1), right = $Zt_SigmaInv_Z, f = $f, γ = $γ")
+            println("region $nregions: nsnps = $nsnps, left = $(nsnps + N + 1), right = $Zt_SigmaInv_Z, f = $f")
             flush(stdout)
         end
     end
@@ -195,19 +192,16 @@ function ghostbasil(
             beta<-fit.basil$betas[,ncol(fit.basil$betas)]
             ll <- fit.basil$lmdas
             """
+            @rget lambdas
         end
     else
-        # run GhostBasil (lambda chosen via zhaomeng's new approach)
+        # simply set lambda = 0.6*lambdamax where lambdamax is maximum Z score / sqrt(N)
         t3 = @elapsed begin
             # compute lambda sequence
-            # note: explicitly giving a lambda sequence runs faster than specifying a single lambda
-            exp_norm = sqrt(N) * maximum(abs, Zscores_ko_train)
+            lambdamax = 1.5 * (maximum(abs, Zscores_ko_train) / sqrt(N))
+            lambdas = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
             r = Zscores ./ sqrt(N)
-            σ = sqrt(max((nsnps+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
-            lambda = kappa * σ / N * exp_norm 
-            lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
-            lambda_path = range(lambda, lambdamax, length=100) |> collect |> reverse!
-            @rput Sigma S r m ncores A_scaling_factor lambda_path lambda
+            @rput Sigma S r m ncores A_scaling_factor lambdas
             R"""
             B <- c()
             for(i in 1:length(S)){
@@ -220,7 +214,7 @@ function ghostbasil(
             A <- BlockBlockGroupGhostMatrix(B)
 
             # fit ghostbasil
-            fit.basil<-ghostbasil(A, r=r, user.lambdas=lambda_path, 
+            fit.basil<-ghostbasil(A, r=r, user.lambdas=lambdas, 
                 delta.strong.size = 500, max.strong.size = nrow(A), 
                 use.strong.rule=F, n.threads=ncores)
             beta <- fit.basil$betas[,ncol(fit.basil$betas)]

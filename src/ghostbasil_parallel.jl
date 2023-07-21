@@ -13,8 +13,7 @@ function ghostbasil_parallel(
     ncores = Threads.nthreads(),
     target_chrs=1:22,
     A_scaling_factor = 0.01,
-    nmonte_carlo::Int=10, # needed in zhaomeng's new approach for tuning lambda
-    kappa::Number=0.6,    # needed in zhaomeng's new approach for tuning lambda
+    lambda_scale::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
     scale_beta::Bool=true, # whether to scale betas in each block so they are comparable
     pseudo_validate::Bool = false # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
     )
@@ -34,7 +33,6 @@ function ghostbasil_parallel(
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
-    # lambdas = Float64[]                    # lambda used in each block
     Zscores_store = Float64[]
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
@@ -95,16 +93,14 @@ function ghostbasil_parallel(
                 Si = result["D"][LD_keep_idx, LD_keep_idx]
                 Σi = result["Sigma"][LD_keep_idx, LD_keep_idx]
                 Zko_train = Float64[]
-                for i in 1:nmonte_carlo
-                    append!(Zko_train, Knockoffs.sample_mvn_efficient(Σi, Si, m + 1))
-                end
+                append!(Zko_train, Knockoffs.sample_mvn_efficient(Σi, Si, m + 1))
                 # sample ghost knockoffs knockoffs
                 Σi_inv = inv(Symmetric(Σi))
-                Zko = ghost_knockoffs(zscores[GWAS_keep_idx], Si, Σi_inv, m=m)
+                zscore_tmp = @view(zscores[GWAS_keep_idx])
+                Zko = ghost_knockoffs(zscore_tmp, Si, Σi_inv, m=m)
             end
 
             # save mapped Zscores and some other variables
-            zscore_tmp = @view(zscores[GWAS_keep_idx])
             empty!(Zscores_store)
             empty!(Zscores_ko_train)
             append!(Zscores_store, zscore_tmp)
@@ -167,18 +163,14 @@ function ghostbasil_parallel(
                     """
                 end
             else
-                # lambda chosen using zhaomeng's new approach
+                # simply set lambda = 0.6*lambdamax where lambdamax is maximum Z score / sqrt(N)
                 t3 += @elapsed begin
-                    Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
-                    exp_norm = sqrt(N) * maximum(abs, Zscores_ko_train)
-                    r = Zscores_store ./ sqrt(N)
-                    σ = sqrt(max((length(zscore_tmp)+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
-                    lambda = kappa * σ / N * exp_norm
-                    lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
-                    lambda_path = range(lambda, lambdamax, length=100) |> collect |> reverse!
+                    lambdamax = 1.5 * (maximum(abs, Zscores_ko_train) / sqrt(N))
+                    lambda_path = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
                     Ci = Σi - Si
                     Si_scaled = Si + A_scaling_factor*I
-                    @rput Ci Si Si_scaled r m ncores A_scaling_factor lambda lambda_path
+                    r = Zscores_store ./ sqrt(N)
+                    @rput Ci Si Si_scaled r m ncores A_scaling_factor lambda_path
                     R"""
                     # make S into a block matrix with a single block
                     Si_scaled <- BlockMatrix(list(Si_scaled))
