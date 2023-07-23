@@ -116,9 +116,8 @@ function ghostbasil_parallel(
             length(Zscores_store) == (m+1) * length(current_groups) || 
                 error("Number of Zscores should match groups")
 
-            # run GhostBasil
+            # run GhostBasil with pseudo-validation
             if pseudo_validate
-                # pseudo-validation
                 t3 += @elapsed begin
                     ntrain = 4N / 5
                     nvalid = N / 5
@@ -128,7 +127,7 @@ function ghostbasil_parallel(
                     r = Zscores_store ./ sqrt(N)
                     rt = r + sqrt(nvalid / (N*ntrain)) .* Zscores_ko_train
                     rv = 1/nvalid * (N*r - ntrain*rt)
-                    @rput Ci Si Si_scaled r m ncores rt rv
+                    @rput Ci Si_scaled r m ncores rt rv
                     R"""
                     # make S into a block matrix with a single block
                     Si_scaled <- BlockMatrix(list(Si_scaled))
@@ -161,16 +160,22 @@ function ghostbasil_parallel(
                     beta_i <- fit.basil$betas[,ncol(fit.basil$betas)]
                     R2 <- fit.basil$rsqs
                     """
+                    @rget lambda
                 end
-            else
-                # simply set lambda = 0.6*lambdamax where lambdamax is maximum Z score / sqrt(N)
+            end
+            @rget beta_i
+
+            # run GhostBasil by setting lambda = 0.6*lambdamax where lambdamax makes beta = 0
+            # this is more stringent than pseudovalidation, so if beta from 
+            # pseudo-validation is too dense, we re-run using this approach
+            if !pseudo_validate || count(!iszero, beta_i) / length(beta_i) > 0.5
                 t3 += @elapsed begin
                     lambdamax = 1.5 * (maximum(abs, Zscores_ko_train) / sqrt(N))
                     lambda_path = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
                     Ci = Σi - Si
                     Si_scaled = Si + A_scaling_factor*I
                     r = Zscores_store ./ sqrt(N)
-                    @rput Ci Si Si_scaled r m ncores A_scaling_factor lambda_path
+                    @rput Ci Si_scaled r m ncores A_scaling_factor lambda_path
                     R"""
                     # make S into a block matrix with a single block
                     Si_scaled <- BlockMatrix(list(Si_scaled))
@@ -182,6 +187,7 @@ function ghostbasil_parallel(
                         user.lambdas=lambda_path, use.strong.rule=F)
                     beta_i <- result$betas[,ncol(result$betas)]
                     """
+                    lambda = lambda_path[end]
                 end
             end
             @rget beta_i
@@ -202,7 +208,7 @@ function ghostbasil_parallel(
             # push!(lambdas, lambda)
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: nsnps = $nsnps, t1=$t1, t2=$t2, t3=$t3")
+            println("region $nregions: chr $c, lambda = $lambda, nz beta = $(count(!iszero, beta_i_scaled)), nsnps = $(length(shared_snps))")
             flush(stdout)
         end
     end
