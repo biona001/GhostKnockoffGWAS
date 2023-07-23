@@ -15,7 +15,8 @@ function ghostbasil_parallel(
     A_scaling_factor = 0.01,
     lambda_scale::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
     scale_beta::Bool=true, # whether to scale betas in each block so they are comparable
-    pseudo_validate::Bool = false # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
+    pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
+    κ::Number = 0.6, # if using pseudovalidation, and sparsity level is below κ, switch over to more stringent method
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -162,13 +163,13 @@ function ghostbasil_parallel(
                     """
                     @rget lambda
                 end
+                @rget beta_i
             end
-            @rget beta_i
 
             # run GhostBasil by setting lambda = 0.6*lambdamax where lambdamax makes beta = 0
             # this is more stringent than pseudovalidation, so if beta from 
             # pseudo-validation is too dense, we re-run using this approach
-            if !pseudo_validate || count(!iszero, beta_i) / length(beta_i) > 0.5
+            if !pseudo_validate || count(!iszero, beta_i) / length(beta_i) > κ
                 t3 += @elapsed begin
                     lambdamax = 1.5 * (maximum(abs, Zscores_ko_train) / sqrt(N))
                     lambda_path = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
