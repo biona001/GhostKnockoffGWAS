@@ -19,6 +19,10 @@ function ghostbasil_parallel(
     κ::Number = 0.6, # if using pseudovalidation, and sparsity level is below κ, switch over to more stringent method
     save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
     )
+    # lambda path (only used when pseudo_validate = false)
+    lambdamax = maximum(abs, z) / sqrt(N)
+    lambda_path = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
+
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
     any(isinf, z) && error("Z score contains Inf!")
@@ -172,8 +176,8 @@ function ghostbasil_parallel(
             # pseudo-validation is too dense, we re-run using this approach
             if !pseudo_validate || count(!iszero, beta_i) / length(beta_i) > κ
                 t3 += @elapsed begin
-                    lambdamax = 1.5 * (maximum(abs, Zscores_ko_train) / sqrt(N))
-                    lambda_path = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
+                    # lambdamax = 1.5 * (maximum(abs, Zscores_ko_train) / sqrt(N))
+                    # lambda_path = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
                     Ci = Σi - Si
                     Si_scaled = Si + A_scaling_factor*I
                     r = Zscores_store ./ sqrt(N)
