@@ -17,6 +17,7 @@ function ghostbasil_parallel(
     scale_beta::Bool=true, # whether to scale betas in each block so they are comparable
     pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
     κ::Number = 0.6, # if using pseudovalidation, and sparsity level is below κ, switch over to more stringent method
+    save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -221,13 +222,13 @@ function ghostbasil_parallel(
         error("Number of Zscores should match groups")
 
     # knockoff filter
-    if length(target_chrs) == 1
+    if save_intermdiate_result
         # save group and beta information and apply knockoff filter later
         writedlm(joinpath(outdir, outname * "_groups.txt"), groups)
         writedlm(joinpath(outdir, outname * "_betas.txt"), beta)
         writedlm(joinpath(outdir, outname * "_Zscores.txt"), Zscores)
         CSV.write(joinpath(outdir, outname * "_stats.csv"), df)
-    else # running across all chromosomes, so apply knockoff filter immediately
+    else # apply knockoff filter immediately
         t4 = @elapsed begin
             original_idx = findall(x -> endswith(x, "_0"), groups)
             T0 = beta[original_idx]

@@ -15,7 +15,8 @@ function ghostbasil(
     A_scaling_factor = 0.01,
     lambda_scale::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
     pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
-    LD_shrinkage::Bool=false # if true, we will try to perform shrinkage to LD matrix following method in susie
+    LD_shrinkage::Bool=false, # if true, we will try to perform shrinkage to LD matrix following method in susie
+    save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -242,56 +243,64 @@ function ghostbasil(
 #     @test all(Ci .≈ Sigma[end] - S[end])    
 
     # knockoff filter
-    t4 = @elapsed begin
-        original_idx = findall(x -> endswith(x, "_0"), groups)
-        T0 = beta[original_idx]
-        Tk = [beta[findall(x -> endswith(x, "_$k"), groups)] for k in 1:m]
-        T_group0 = Float64[]
-        T_groupk = [Float64[] for k in 1:m]
-        groups_original = groups[findall(x -> endswith(x, "_0"), groups)]
-        unique_groups = unique(groups_original)
-        for idx in find_matching_indices(unique_groups, groups_original)
-            push!(T_group0, sum(abs, @view(T0[idx])))
-            for k in 1:m
-                push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
+    if save_intermdiate_result
+        # save group and beta information and apply knockoff filter later
+        writedlm(joinpath(outdir, outname * "_groups.txt"), groups)
+        writedlm(joinpath(outdir, outname * "_betas.txt"), beta)
+        writedlm(joinpath(outdir, outname * "_Zscores.txt"), Zscores)
+        CSV.write(joinpath(outdir, outname * "_stats.csv"), df)
+    else
+        t4 = @elapsed begin
+            original_idx = findall(x -> endswith(x, "_0"), groups)
+            T0 = beta[original_idx]
+            Tk = [beta[findall(x -> endswith(x, "_$k"), groups)] for k in 1:m]
+            T_group0 = Float64[]
+            T_groupk = [Float64[] for k in 1:m]
+            groups_original = groups[findall(x -> endswith(x, "_0"), groups)]
+            unique_groups = unique(groups_original)
+            for idx in find_matching_indices(unique_groups, groups_original)
+                push!(T_group0, sum(abs, @view(T0[idx])))
+                for k in 1:m
+                    push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
+                end
             end
-        end
-        kappa, tau, W = Knockoffs.MK_statistics(T_group0, T_groupk)
+            kappa, tau, W = Knockoffs.MK_statistics(T_group0, T_groupk)
 
-        # save analysis result
-        df[!, :group] = groups[original_idx]
-        df[!, :zscores] = Zscores[original_idx]
-        df[!, :lasso_beta] = beta[original_idx]
-        W_full, kappa_full, tau_full = Float64[], Float64[], Float64[]
-        for idx in indexin(groups_original, unique_groups)
-            push!(W_full, W[idx])
-            push!(kappa_full, kappa[idx])
-            push!(tau_full, tau[idx])
+            # save analysis result
+            df[!, :group] = groups[original_idx]
+            df[!, :zscores] = Zscores[original_idx]
+            df[!, :lasso_beta] = beta[original_idx]
+            W_full, kappa_full, tau_full = Float64[], Float64[], Float64[]
+            for idx in indexin(groups_original, unique_groups)
+                push!(W_full, W[idx])
+                push!(kappa_full, kappa[idx])
+                push!(tau_full, tau[idx])
+            end
+            df[!, :W] = W_full
+            df[!, :kappa] = kappa_full
+            df[!, :tau] = tau_full
+            df[!, :pvals] = 2ccdf.(Normal(), abs.(df[!, :zscores])) # convert zscores to marginal p-values
+            CSV.write(joinpath(outdir, outname * ".txt"), df)
         end
-        df[!, :W] = W_full
-        df[!, :kappa] = kappa_full
-        df[!, :tau] = tau_full
-        df[!, :pvals] = 2ccdf.(Normal(), abs.(df[!, :zscores])) # convert zscores to marginal p-values
-        CSV.write(joinpath(outdir, outname * ".txt"), df)
-    end
 
-    # save summary info
-    open(joinpath(outdir, outname * "_summary.txt"), "w") do io
-        # Q-value (i.e. threshold for knockoff filter)
-        for fdr in [0.01, 0.05, 0.1, 0.15, 0.2]
-            q = mk_threshold(tau, kappa, m, fdr)
-            println(io, "target_fdr_$(fdr),$q")
-            println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≥ q, W))
+        # save summary info
+        open(joinpath(outdir, outname * "_summary.txt"), "w") do io
+            # Q-value (i.e. threshold for knockoff filter)
+            for fdr in [0.01, 0.05, 0.1, 0.15, 0.2]
+                q = mk_threshold(tau, kappa, m, fdr)
+                println(io, "target_fdr_$(fdr),$q")
+                println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≥ q, W))
+            end
+            println(io, "m,$m")
+            println(io, "nregions,$nregions")
+            println(io, "nsnps,$nsnps")
+            println(io, "import_time,$t1")
+            println(io, "sample_knockoff_time,$t2")
+            println(io, "ghostbasil_time,$t3")
+            println(io, "knockoff_filter_time,$t4")
+            println(io, "total_time,", time() - start_t)
+            println(io, "significant_marginal_pvals,", count(x -> x < 5e-8, df[!, :pvals]))
         end
-        println(io, "m,$m")
-        println(io, "nregions,$nregions")
-        println(io, "nsnps,$nsnps")
-        println(io, "import_time,$t1")
-        println(io, "sample_knockoff_time,$t2")
-        println(io, "ghostbasil_time,$t3")
-        println(io, "knockoff_filter_time,$t4")
-        println(io, "total_time,", time() - start_t)
-        println(io, "significant_marginal_pvals,", count(x -> x < 5e-8, df[!, :pvals]))
     end
 
     # also save full lambda sequence
