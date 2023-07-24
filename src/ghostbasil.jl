@@ -37,7 +37,6 @@ function ghostbasil(
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil (Zscores_ko_train is a sample from N(0, A))
-    Zt_SigmaInv_Z = 0.0                    # needed to evaluate σ in zhaomeng's validation approach
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
@@ -100,14 +99,13 @@ function ghostbasil(
                 Σ = result["Sigma"][LD_keep_idx, LD_keep_idx]
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
                 if LD_shrinkage
-                    # γ = find_optimal_shrinkage(Σ, zscore_tmp)
-                    γ = 0.1
+                    γ = find_optimal_shrinkage(Σ, zscore_tmp)
+                    γ > 0.1 && @warn "large gamma detected! γ = $γ !!"
                     Σ = (1 - γ)*Σ + γ*I
                     D = (1 - γ)*D + (m+1)/m*γ*I
                 end
-                Zko_train = Float64[]
-                append!(Zko_train, Knockoffs.sample_mvn_efficient(Σ, D, m + 1))
                 # sample ghost knockoffs knockoffs
+                Zko_train = Knockoffs.sample_mvn_efficient(Σ, D, m + 1)
                 Σinv = inv(Symmetric(Σ))
                 Zko = ghost_knockoffs(zscore_tmp, D, Σinv, m=m)
             end
@@ -124,21 +122,11 @@ function ghostbasil(
             for k in 1:m
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
-            Zt_SigmaInv_Z += dot(zscore_tmp, Σinv, zscore_tmp)
-
-            # if one needs to compute above quadratic form on only subset of eigenvalues:
-            # F = eigen(Σinv)
-            # result = 0.0
-            # for i in eachindex(F.values)
-            #     result += (dot(zscore_tmp, F.vectors[:, i])^2 * F.values[i])
-            # end
-            # result
-            # dot(zscore_tmp, Σinv, zscore_tmp)
 
             # update counters
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: nsnps = $nsnps, left = $(nsnps + N + 1), right = $Zt_SigmaInv_Z, f = $f")
+            println("region $nregions: nsnps = $nsnps, γ = $γ, f = $f")
             flush(stdout)
         end
     end

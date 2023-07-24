@@ -98,11 +98,16 @@ function ghostbasil_parallel(
                 # use original Sigma and D (S matrix for rep+nonrep variables) for pseudo-validation
                 Si = result["D"][LD_keep_idx, LD_keep_idx]
                 Σi = result["Sigma"][LD_keep_idx, LD_keep_idx]
-                Zko_train = Float64[]
-                append!(Zko_train, Knockoffs.sample_mvn_efficient(Σi, Si, m + 1))
-                # sample ghost knockoffs knockoffs
-                Σi_inv = inv(Symmetric(Σi))
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
+                if LD_shrinkage
+                    γ = find_optimal_shrinkage(Σi, zscore_tmp)
+                    γ > 0.1 && @warn "large gamma detected! γ = $γ !!"
+                    Σi = (1 - γ)*Σ + γ*I
+                    Si = (1 - γ)*Si + (m+1)/m*γ*I
+                end
+                # sample ghost knockoffs knockoffs
+                Zko_train = Knockoffs.sample_mvn_efficient(Σi, Si, m + 1)
+                Σi_inv = inv(Symmetric(Σi))
                 Zko = ghost_knockoffs(zscore_tmp, Si, Σi_inv, m=m)
             end
 

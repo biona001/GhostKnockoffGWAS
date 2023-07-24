@@ -47,8 +47,8 @@ end
 function find_optimal_shrinkage(Σ::AbstractMatrix, z::AbstractVector)
     opt = optimize(
         γ -> neg_mvn_logl_under_null(Σ, z, γ), 
-        0, 0.25, Brent(), show_trace=true, abs_tol=0.000001,
-        iterations = 20,
+        0, 1.0, Brent(), show_trace=false, 
+        iterations = 50,
     )
     return opt.minimizer
 end
@@ -62,7 +62,7 @@ end
 # @time neg_mvn_logl_under_null_naive(Σ, zscore_tmp)
 
 function neg_mvn_logl_under_null(Σ::AbstractMatrix, z::AbstractVector, γ::Number)
-    return mvn_logl_under_null((1-γ)*Σ + γ*I, z)
+    return neg_mvn_logl_under_null((1-γ)*Σ + γ*I, z)
 end
 function neg_mvn_logl_under_null(Σ::AbstractMatrix, z::AbstractVector)
     L = cholesky(Symmetric(Σ))
