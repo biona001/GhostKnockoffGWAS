@@ -13,16 +13,12 @@ function ghostbasil_parallel(
     ncores = Threads.nthreads(),
     target_chrs=1:22,
     A_scaling_factor = 0.01,
-    lambda_scale::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
+    kappa::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
     scale_beta::Bool=true, # whether to scale betas in each block so they are comparable
     pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
-    κ::Number = 0.6, # if using pseudovalidation, and sparsity level is below κ, switch over to more stringent method
     save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
+    LD_shrinkage::Bool=false, # if true, we will try to perform shrinkage to LD matrix following method in susie
     )
-    # lambda path (only used when pseudo_validate = false)
-    lambdamax = maximum(abs, z) / sqrt(N)
-    lambda_path = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
-
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
     any(isinf, z) && error("Z score contains Inf!")
@@ -102,7 +98,7 @@ function ghostbasil_parallel(
                 if LD_shrinkage
                     γ = find_optimal_shrinkage(Σi, zscore_tmp)
                     γ > 0.1 && @warn "large gamma detected! γ = $γ !!"
-                    Σi = (1 - γ)*Σ + γ*I
+                    Σi = (1 - γ)*Σi + γ*I
                     Si = (1 - γ)*Si + (m+1)/m*γ*I
                 end
                 # sample ghost knockoffs knockoffs
@@ -127,8 +123,9 @@ function ghostbasil_parallel(
             length(Zscores_store) == (m+1) * length(current_groups) || 
                 error("Number of Zscores should match groups")
 
-            # run GhostBasil with pseudo-validation
+            # run GhostBasil
             if pseudo_validate
+                # tune λ via pseudo-validation
                 t3 += @elapsed begin
                     ntrain = 4N / 5
                     nvalid = N / 5
@@ -173,16 +170,12 @@ function ghostbasil_parallel(
                     """
                     @rget lambda
                 end
-                @rget beta_i
-            end
-
-            # run GhostBasil by setting lambda = 0.6*lambdamax where lambdamax makes beta = 0
-            # this is more stringent than pseudovalidation, so if beta from 
-            # pseudo-validation is too dense, we re-run using this approach
-            if !pseudo_validate || count(!iszero, beta_i) / length(beta_i) > κ
+            else
+                # set lambda = kappa*lambdamax where lambdamax = max(Z) / sqrt(N)
                 t3 += @elapsed begin
-                    # lambdamax = 1.5 * (maximum(abs, Zscores_ko_train) / sqrt(N))
-                    # lambda_path = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
+                    lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
+                    lambda_path = range(kappa*lambdamax, lambdamax, length=100) |> collect |> reverse!
+                    lambda = lambda_path[end]
                     Ci = Σi - Si
                     Si_scaled = Si + A_scaling_factor*I
                     r = Zscores_store ./ sqrt(N)
@@ -198,7 +191,6 @@ function ghostbasil_parallel(
                         user.lambdas=lambda_path, use.strong.rule=F)
                     beta_i <- result$betas[,ncol(result$betas)]
                     """
-                    lambda = lambda_path[end]
                 end
             end
             @rget beta_i

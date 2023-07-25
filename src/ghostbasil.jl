@@ -13,7 +13,7 @@ function ghostbasil(
     ncores = Threads.nthreads(),
     target_chrs=1:22,
     A_scaling_factor = 0.01,
-    lambda_scale::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
+    kappa::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
     pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
     LD_shrinkage::Bool=false, # if true, we will try to perform shrinkage to LD matrix following method in susie
     save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
@@ -184,11 +184,11 @@ function ghostbasil(
             @rget lambdas
         end
     else
-        # simply set lambda = 0.6*lambdamax where lambdamax is maximum Z score / sqrt(N)
+        # set lambda = kappa*lambdamax where lambdamax = max(Z) / sqrt(N)
         t3 = @elapsed begin
             # compute lambda sequence
-            lambdamax = 1.5 * (maximum(abs, Zscores_ko_train) / sqrt(N))
-            lambdas = range(lambda_scale*lambdamax, lambdamax, length=100) |> collect |> reverse!
+            lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
+            lambdas = range(kappa*lambdamax, lambdamax, length=100) |> collect |> reverse!
             r = Zscores ./ sqrt(N)
             @rput Sigma S r m ncores A_scaling_factor lambdas
             R"""
