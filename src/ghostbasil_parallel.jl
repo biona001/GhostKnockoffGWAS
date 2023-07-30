@@ -132,7 +132,6 @@ function ghostbasil_parallel(
             for i in eachindex(zscore_tmp)
                 shuffle!(perms[i])
                 @views permute!(Zscores_store[i:p:end], perms[i])
-                @views permute!(Zscores_ko_train[i:p:end], perms[i])
             end
 
             # run GhostBasil
