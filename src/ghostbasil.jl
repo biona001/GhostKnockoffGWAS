@@ -37,6 +37,9 @@ function ghostbasil(
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil (Zscores_ko_train is a sample from N(0, A))
+    Zt_SigmaInv_Z = 0.0                    # needed to evaluate σ in zhaomeng's validation approach
+    monte_carlo_store = Float64[]          # needed for monte carlo simulation in zhaomeng's method
+    nmonte_carlo = pseudo_validate ? 0 : 10# needed to estimate Lasso's λ via zhaomeng's new validation method
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
@@ -108,6 +111,13 @@ function ghostbasil(
                 Zko_train = Knockoffs.sample_mvn_efficient(Σ, D, m + 1)
                 Σinv = inv(Symmetric(Σ))
                 Zko = ghost_knockoffs(zscore_tmp, D, Σinv, m=m)
+                # estimate E( ||N(0, A)||_∞ ) for use in zhaomeng's new validation
+                if !pseudo_validate
+                    for i in 1:nmonte_carlo
+                        append!(monte_carlo_store, 
+                            Knockoffs.sample_mvn_efficient(Σ, D, m + 1))
+                    end
+                end
             end
 
             # save mapped Zscores and some other variables
@@ -122,11 +132,12 @@ function ghostbasil(
             for k in 1:m
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
+            Zt_SigmaInv_Z += dot(zscore_tmp, Σinv, zscore_tmp)
 
             # update counters
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: nsnps = $nsnps, γ = $γ, f = $f")
+            println("region $nregions: nsnps = $nsnps, left = $(nsnps + N + 1), right = $Zt_SigmaInv_Z, f = $f")
             flush(stdout)
         end
     end
@@ -187,8 +198,12 @@ function ghostbasil(
         # set lambda = kappa*lambdamax where lambdamax = max(Z) / sqrt(N)
         t3 = @elapsed begin
             # compute lambda sequence
+            exp_norm = (iseven(N) ? sqrt(N) : sqrt(N - 1)) * maximum(abs, monte_carlo_store)
+            r = Zscores ./ sqrt(N)
+            σ = sqrt(max((nsnps+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
+            lambda = kappa * σ / N * exp_norm 
             lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
-            lambdas = range(kappa*lambdamax, lambdamax, length=100) |> collect |> reverse!
+            lambdas = range(lambda, lambdamax, length=100) |> collect |> reverse!
             r = Zscores ./ sqrt(N)
             @rput Sigma S r m ncores A_scaling_factor lambdas
             R"""

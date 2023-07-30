@@ -36,8 +36,10 @@ function ghostbasil_parallel(
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
     Zscores_store = Float64[]
+    monte_carlo_store = Float64[]          # needed for monte carlo simulation in zhaomeng's method
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
+    nmonte_carlo = pseudo_validate ? 0 : 10# needed to estimate Lasso's λ via zhaomeng's new validation method
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
         ref=String[], alt=String[], pos_hg19=Int[], pos_hg38=Int[])
 
@@ -97,7 +99,7 @@ function ghostbasil_parallel(
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
                 if LD_shrinkage
                     γ = find_optimal_shrinkage(Σi, zscore_tmp)
-                    γ > 0.1 && @warn "large gamma detected! γ = $γ !!"
+                    γ > 0.1 && @warn "large gamma detected! γ = $γ in chr $c region $f"
                     Σi = (1 - γ)*Σi + γ*I
                     Si = (1 - γ)*Si + (m+1)/m*γ*I
                 end
@@ -171,11 +173,24 @@ function ghostbasil_parallel(
                     @rget lambda
                 end
             else
-                # set lambda = kappa*lambdamax where lambdamax = max(Z) / sqrt(N)
+                # lambdamax = maximum(abs, monte_carlo_store) / sqrt(N)
+                # lambda_old = kappa*lambdamax
+                # estimate E( ||N(0, A)||_∞ )
+                empty!(monte_carlo_store)
+                for i in 1:nmonte_carlo
+                    append!(monte_carlo_store, Knockoffs.sample_mvn_efficient(Σi, Si, m + 1))
+                end
+                # set lambda = kappa*lambdamax where lambdamax = estimated from Chen et al 2023
                 t3 += @elapsed begin
-                    lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
-                    lambda_path = range(kappa*lambdamax, lambdamax, length=100) |> collect |> reverse!
-                    lambda = lambda_path[end]
+                    # define lambda according to zhaomeng's approach
+                    Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
+                    exp_norm = (iseven(N) ? sqrt(N) : sqrt(N - 1)) * maximum(abs, monte_carlo_store)
+                    r = Zscores_store ./ sqrt(N)
+                    σ = sqrt(max((length(zscore_tmp)+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
+                    lambda = kappa * σ / N * exp_norm
+                    lambdamax = maximum(abs, monte_carlo_store) / sqrt(N)
+                    lambda_path = range(lambda, lambdamax, length=100) |> collect |> reverse!
+                    # matrices for ghostbasil
                     Ci = Σi - Si
                     Si_scaled = Si + A_scaling_factor*I
                     r = Zscores_store ./ sqrt(N)
