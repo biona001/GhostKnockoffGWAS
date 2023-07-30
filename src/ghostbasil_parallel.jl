@@ -112,8 +112,8 @@ function ghostbasil_parallel(
             # save mapped Zscores and some other variables
             empty!(Zscores_store)
             empty!(Zscores_ko_train)
-            append!(Zscores_store, zscore_tmp)
-            append!(Zscores_store, Zko)
+            append!(Zscores_store, zscore_tmp) # append original Z scores 
+            append!(Zscores_store, Zko)        # append knockoffs
             append!(Zscores, Zscores_store)
             append!(Zscores_ko_train, Zko_train)
             current_groups = result["groups"][LD_keep_idx]
@@ -122,8 +122,18 @@ function ghostbasil_parallel(
             for k in 1:m
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
-            length(Zscores_store) == (m+1) * length(current_groups) || 
+            length(Zscores_store) == (m+1) * length(current_groups) == 
+                length(Zscores_ko_train) || 
                 error("Number of Zscores should match groups")
+
+            # randomly permute order of Z and Zko to avoid ordering bias
+            p = length(zscore_tmp)
+            perms = [collect(1:m+1) for _ in 1:p]
+            for i in eachindex(zscore_tmp)
+                shuffle!(perms[i])
+                @views permute!(Zscores_store[i:p:end], perms[i])
+                @views permute!(Zscores_ko_train[i:p:end], perms[i])
+            end
 
             # run GhostBasil
             if pseudo_validate
@@ -185,12 +195,11 @@ function ghostbasil_parallel(
                     # define lambda according to zhaomeng's approach
                     Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
                     exp_norm = (iseven(N) ? sqrt(N) : sqrt(N - 1)) * maximum(abs, monte_carlo_store)
-                    r = Zscores_store ./ sqrt(N)
                     σ = sqrt(max((length(zscore_tmp)+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
                     lambda = kappa * σ / N * exp_norm
                     lambdamax = maximum(abs, monte_carlo_store) / sqrt(N)
                     lambda_path = range(lambda, lambdamax, length=100) |> collect |> reverse!
-                    # matrices for ghostbasil
+                    # prepare inputs for ghostbasil
                     Ci = Σi - Si
                     Si_scaled = Si + A_scaling_factor*I
                     r = Zscores_store ./ sqrt(N)
@@ -210,6 +219,11 @@ function ghostbasil_parallel(
             end
             @rget beta_i
 
+            # undo shuffling of Z and Zko
+            for i in eachindex(zscore_tmp)
+                @views invpermute!(beta_i[i:p:end], perms[i])
+            end
+
             # scale beta so that across regions the effect sizes are comparable
             if scale_beta
                 max_beta_i = maximum(abs, beta_i)
@@ -223,7 +237,6 @@ function ghostbasil_parallel(
 
             # update counters
             append!(beta, beta_i_scaled)
-            # push!(lambdas, lambda)
             nsnps += length(shared_snps)
             nregions += 1
             println("region $nregions: chr $c, lambda = $lambda, nz beta = $(count(!iszero, beta_i_scaled)), nsnps = $(length(shared_snps))")
