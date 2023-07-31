@@ -10,7 +10,7 @@ function ghostbasil(
     outdir::String;        # output directory (must exist)
     m::Int=5,
     outname::String="result",
-    ncores = Threads.nthreads(),
+    ncores = 1,
     target_chrs=1:22,
     A_scaling_factor = 0.01,
     kappa::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
@@ -45,8 +45,6 @@ function ghostbasil(
     start_t = time()
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
         ref=String[], alt=String[], pos_hg19=Int[], pos_hg38=Int[])
-
-    # Zscores_original = Float64[]
 
     # assemble knockoff results across regions
     nregions, nsnps = 0, 0
@@ -136,16 +134,15 @@ function ghostbasil(
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
             Zt_SigmaInv_Z += dot(zscore_tmp, Σinv, zscore_tmp)
-            # append!(Zscores_original, zscore_tmp, Zko)
 
             # randomly permute order of Z and Zko to avoid ordering bias
-            p = length(zscore_tmp)
-            perms = [collect(1:m+1) for _ in 1:p]
-            for i in 1:p
-                shuffle!(perms[i])
-                Zi = @view(Zscores[(m+1)*nsnps+1:end])
-                @views permute!(Zi[i:p:end], perms[i])
-            end
+            # p = length(zscore_tmp)
+            # perms = [collect(1:m+1) for _ in 1:p]
+            # for i in 1:p
+            #     shuffle!(perms[i])
+            #     Zi = @view(Zscores[(m+1)*nsnps+1:end])
+            #     @views permute!(Zi[i:p:end], perms[i])
+            # end
 
             # update counters
             nsnps += length(shared_snps)
@@ -155,17 +152,6 @@ function ghostbasil(
             flush(stdout)
         end
     end
-
-    # undo shuffling
-    # counter = 0
-    # for perms in permutations
-    #     p = length(perms)
-    #     for i in eachindex(perms)
-    #         Zi = @view(Zscores[counter+1:counter+(m+1)*p])
-    #         @views invpermute!(Zi[i:p:end], perms[i])
-    #     end
-    #     counter += (m+1)*p
-    # end
 
     # some checks
     nregions == 1703 || @warn("Number of successfully solved region is $nregions, expected 1703")
@@ -254,17 +240,17 @@ function ghostbasil(
     @rget beta
 
     # undo shuffling of Z and Zko
-    counter = 0
-    for perms in permutations
-        p = length(perms)
-        for i in eachindex(perms)
-            beta_i = @view(beta[counter+1:counter+(m+1)*p])
-            Zscores_i = @view(Zscores[counter+1:counter+(m+1)*p])
-            @views invpermute!(beta_i[i:p:end], perms[i])
-            @views invpermute!(Zscores_i[i:p:end], perms[i])
-        end
-        counter += (m+1)*p
-    end
+    # counter = 0
+    # for perms in permutations
+    #     p = length(perms)
+    #     for i in eachindex(perms)
+    #         beta_i = @view(beta[counter+1:counter+(m+1)*p])
+    #         Zscores_i = @view(Zscores[counter+1:counter+(m+1)*p])
+    #         @views invpermute!(beta_i[i:p:end], perms[i])
+    #         @views invpermute!(Zscores_i[i:p:end], perms[i])
+    #     end
+    #     counter += (m+1)*p
+    # end
 
     # testing group structure
 #     Sigma_full = BlockDiagonal(Sigma) |> Matrix

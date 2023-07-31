@@ -10,7 +10,7 @@ function ghostbasil_parallel(
     outdir::String;        # output directory (must exist)
     m::Int=5,
     outname::String="result",
-    ncores = Threads.nthreads(),
+    ncores = 1,
     target_chrs=1:22,
     A_scaling_factor = 0.01,
     kappa::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
@@ -127,12 +127,12 @@ function ghostbasil_parallel(
                 error("Number of Zscores should match groups")
 
             # randomly permute order of Z and Zko to avoid ordering bias
-            p = length(zscore_tmp)
-            perms = [collect(1:m+1) for _ in 1:p]
-            for i in eachindex(zscore_tmp)
-                shuffle!(perms[i])
-                @views permute!(Zscores_store[i:p:end], perms[i])
-            end
+            # p = length(zscore_tmp)
+            # perms = [collect(1:m+1) for _ in 1:p]
+            # for i in eachindex(zscore_tmp)
+            #     shuffle!(perms[i])
+            #     @views permute!(Zscores_store[i:p:end], perms[i])
+            # end
 
             # run GhostBasil
             if pseudo_validate
@@ -219,10 +219,10 @@ function ghostbasil_parallel(
             @rget beta_i
 
             # undo shuffling of Z and Zko
-            for i in eachindex(zscore_tmp)
-                @views invpermute!(beta_i[i:p:end], perms[i])
-                @views invpermute!(Zscores_store[i:p:end], perms[i])
-            end
+            # for i in eachindex(zscore_tmp)
+            #     @views invpermute!(beta_i[i:p:end], perms[i])
+            #     @views invpermute!(Zscores_store[i:p:end], perms[i])
+            # end
 
             # scale beta so that across regions the effect sizes are comparable
             if scale_beta
