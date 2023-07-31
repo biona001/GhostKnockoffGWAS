@@ -3,25 +3,27 @@
 # where `chr` = 1, 2, ..., 22
 #       `start_pos` = integer
 #       `end_pos` = inteter
-#       `method` = :maxent, :mvr, or :sdp
+#       `method` = maxent, mvr, or sdp
 #       `outdir` = output directory (must exist)
 # if we want to include typed SNPs only, we must provide a list of typed SNP's position
 # into the argument "snps_to_keep". Not providing means we will use all SNPs.
 
-# ml openssl/3.0.7
-# ml julia/1.8.4 R/4.0.2 java/11.0.11 python/3.9.0
+# For Sherlock users, load needed modules
+# ml julia/1.8.4 R/4.0.2 openssl/3.0.7 java/11.0.11 python/3.9.0
 
-# using EasyLD
-# using Knockoffs
-# using LinearAlgebra
-# using StatsBase
-# using DelimitedFiles
-# using JLD2
-# using HDF5
-# using CSV
-# using DataFrames
-# using RCall
-# R"library(liftOver)"
+sleep(60rand()) # prevent too many jobs starting at the same time
+
+using CSV
+using DataFrames
+using EasyLD
+using Knockoffs
+using LinearAlgebra
+using StatsBase
+using DelimitedFiles
+using JLD2
+using HDF5
+using RCall
+R"library(liftOver)"
 
 function graphical_group_S(
     bm_file::String, # path to the `.bm` hail block matrix folder
@@ -79,9 +81,9 @@ function graphical_group_S(
             m=m, tol=tol, verbose=verbose)
 
         # solve S using modified Sigma (enforcing conditional independence)
-        Sigma2 = cond_indep_corr(Sigma, groups, group_reps)
-        S2, D2, obj2 = solve_s_graphical_group(Symmetric(Sigma2), groups, group_reps, method,
-            m=m, tol=tol, verbose=verbose)
+        # Sigma2 = cond_indep_corr(Sigma, groups, group_reps)
+        # S2, D2, obj2 = solve_s_graphical_group(Symmetric(Sigma2), groups, group_reps, method,
+        #     m=m, tol=tol, verbose=verbose)
     end
 
     # save result in .h5 format
@@ -91,15 +93,13 @@ function graphical_group_S(
         joinpath(dir, "LD_start$(start_pos)_end$(end_pos).h5"), 
         Dict(
             "S" => S,
-            "S2" => S2,
             "D" => D,
-            "D2" => D2,
             "Sigma" => Sigma,
-            "Sigma2" => Sigma2,
             "SigmaInv" => inv(Sigma),
-            "SigmaInv2" => inv(Sigma2),
             "groups" => groups,
             "group_reps" => group_reps,
+            "Sigma_reps" => Sigma[group_reps, group_reps],
+            "Sigma_reps_inv" => inv(Sigma[group_reps, group_reps])
         )
     )
     CSV.write(joinpath(dir, "Info_start$(start_pos)_end$(end_pos).csv"), Sigma_info)
@@ -159,3 +159,42 @@ function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
     Sigma_info .= @views Sigma_info[perm, :]
     return nothing
 end
+
+# some directories
+bm_file = "/scratch/users/bbchu/LD_matrices/UKBB.EUR.ldadj.bm"
+ht_file = "/scratch/users/bbchu/LD_matrices/UKBB.EUR.ldadj.variant.ht"
+liftOver_chain_dir = "/oak/stanford/groups/zihuai/GeneticsResources/LiftOver/hg19ToHg38.over.chain"
+
+# inputs
+chr = ARGS[1]
+start_pos = parse(Int, ARGS[2])
+end_pos = parse(Int, ARGS[3])
+method = Symbol(ARGS[4]) # maxent, mvr, or sdp
+group_def = ARGS[5] # "hc" or "id"
+rk = parse(Int, ARGS[6]) #50, or 300
+outdir = ARGS[7]
+
+# testing one region
+# chr = "1"
+# start_pos = 100826405
+# end_pos = 102041015
+# m=5
+# tol=0.0001 
+# min_maf=0.01
+# force_block_diag=true
+# add_hg38_coordinates=true
+# method = :maxent
+# group_def = "hc"
+# verbose=true
+# outdir = "/oak/stanford/groups/zihuai/pan_ukb_group_knockoffs/maxent_hc"
+
+# import typed SNP positions and ref/alt 
+# snps_to_keep = nothing
+bimfile = "/oak/stanford/groups/zihuai/UKB_data/genotyped_call/ukb_cal_chr$(chr)_v2.bim"
+typed_df = CSV.read(bimfile, DataFrame, header=false)
+snps_to_keep = typed_df[!, 4]
+
+graphical_group_S(bm_file, ht_file, chr, start_pos, 
+    end_pos, outdir, snps_to_keep=snps_to_keep, 
+    method=method, group_def=group_def, rk=rk,
+    liftOver_chain_dir=liftOver_chain_dir)
