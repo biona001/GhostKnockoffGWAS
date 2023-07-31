@@ -221,6 +221,7 @@ function ghostbasil_parallel(
             # undo shuffling of Z and Zko
             for i in eachindex(zscore_tmp)
                 @views invpermute!(beta_i[i:p:end], perms[i])
+                @views invpermute!(Zscores_store[i:p:end], perms[i])
             end
 
             # scale beta so that across regions the effect sizes are comparable

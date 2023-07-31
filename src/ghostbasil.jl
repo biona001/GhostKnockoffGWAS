@@ -259,7 +259,9 @@ function ghostbasil(
         p = length(perms)
         for i in eachindex(perms)
             beta_i = @view(beta[counter+1:counter+(m+1)*p])
+            Zscores_i = @view(Zscores[counter+1:counter+(m+1)*p])
             @views invpermute!(beta_i[i:p:end], perms[i])
+            @views invpermute!(Zscores_i[i:p:end], perms[i])
         end
         counter += (m+1)*p
     end
