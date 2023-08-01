@@ -82,3 +82,62 @@ end
 #     ldiv!(u, UpperTriangular(L.factors)', z)
 #     return -0.5logdet(L) - dot(u, u)
 # end
+
+# counts number of Z scores that can be matched to LD panel
+# ~400 seconds is running on typed SNPs only
+function count_matchable_snps(
+    knockoff_dir::String,  # Directory that stores knockoff results (i.e. output from part 1)
+    z::Vector{Float64},    # Z scores
+    chr::Vector{Int},      # chromosome of each Z score
+    pos::Vector{Int},      # position of each Z score (specify hg build with hg_build)
+    effect_allele::Vector{String},       # effect allele of Z score
+    non_effect_allele::Vector{String},   # non-effect allele of Z score
+    hg_build::Int,
+    target_chrs=1:22,
+    )
+    nregions, nsnps = 0, 0
+    for c in target_chrs
+        files = readdir(joinpath(knockoff_dir, "chr$c"))
+        chr_idx = findall(x -> x == c, chr)
+        GWAS_pos = pos[chr_idx]
+        GWAS_ea = effect_allele[chr_idx]
+        GWAS_nea = non_effect_allele[chr_idx]
+        zscores = z[chr_idx]
+        for f in files
+            endswith(f, ".h5") || continue
+            fname = f[4:end-3]
+
+            # read knockoff results
+            result = JLD2.load(joinpath(knockoff_dir, "chr$c", f))
+            Sigma_info = CSV.read(joinpath(knockoff_dir, "chr$(c)", "Info_$fname.csv"), DataFrame)
+            # map reference LD panel to GWAS Z-scores by position
+            LD_pos = Sigma_info[!, "pos_hg$(hg_build)"]
+            shared_snps = intersect(LD_pos, GWAS_pos)
+            # delete SNPs if ref/alt don't match
+            remove_idx = Int[]
+            for (i, snp) in enumerate(shared_snps)
+                GWAS_idx = findfirst(x -> x == snp, GWAS_pos)
+                LD_idx = findfirst(x -> x == snp, LD_pos)
+                ref_match_ea = Sigma_info[LD_idx, "ref"] == GWAS_ea[GWAS_idx]
+                alt_match_nea = Sigma_info[LD_idx, "alt"] == GWAS_nea[GWAS_idx]
+                ref_match_nea = Sigma_info[LD_idx, "ref"] == GWAS_nea[GWAS_idx]
+                alt_match_ea = Sigma_info[LD_idx, "alt"] == GWAS_ea[GWAS_idx]
+                if ref_match_ea && alt_match_nea 
+                    continue
+                elseif ref_match_nea && alt_match_ea
+                    # push!(remove_idx, i)
+                    zscores[GWAS_idx] *= -1
+                else # SNP cannot get matched to LD panel
+                    push!(remove_idx, i)
+                end
+            end
+            deleteat!(shared_snps, unique!(remove_idx))
+
+            # update counters
+            nsnps += length(shared_snps)
+            nregions += 1
+        end
+        println("count_matchable_snps processed chr $c, cumulative SNPs = $nsnps")
+    end
+    return nsnps
+end

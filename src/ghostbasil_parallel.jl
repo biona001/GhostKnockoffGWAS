@@ -29,6 +29,15 @@ function ghostbasil_parallel(
         length(effect_allele) == length(non_effect_allele) ||
         error("Length of z, chr, pos, effect_allele, and non_effect_allele should be the same")
 
+    # find lambda value for lasso (this is used only when pseudo_validate=false)
+    lambdamax = maximum(abs, z) / sqrt(N)
+    lambdamin = 0.0001lambdamax
+    lambda_path = exp.(range(log(lambdamin), log(lambdamax), length=100)) |> reverse!
+    nsnps = count_matchable_snps(knockoff_dir, z, chr, pos, effect_allele, 
+        non_effect_allele, hg_build, target_chrs) # ~400 seconds on typed SNPs
+    lambda = kappa * maximum(abs, randn((m+1)*nsnps)) / sqrt(N)
+    lambda_path = lambda_path[findall(x -> x > lambda, lambda_path)]
+
     # intermediate vectors
     beta = Float64[]                       # full beta vector over all regions
     groups = String[]                      # group membership vector over all SNPs (original + knockoffs)
@@ -36,10 +45,11 @@ function ghostbasil_parallel(
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
     Zscores_store = Float64[]
-    monte_carlo_store = Float64[]          # needed for monte carlo simulation in zhaomeng's method
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
-    nmonte_carlo = pseudo_validate ? 0 : 10# needed to estimate Lasso's λ via zhaomeng's new validation method
+    # monte_carlo_store = Float64[]          # needed for monte carlo simulation in zhaomeng's method
+    # nmonte_carlo = pseudo_validate ? 0 : 10# needed to estimate Lasso's λ via zhaomeng's new validation method
+    γ_mean = 0.0                           # keeps track of LD shrinkage across regions
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
         ref=String[], alt=String[], pos_hg19=Int[], pos_hg38=Int[])
 
@@ -99,7 +109,7 @@ function ghostbasil_parallel(
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
                 if LD_shrinkage
                     γ = find_optimal_shrinkage(Σi, zscore_tmp)
-                    γ > 0.1 && @warn "large gamma detected! γ = $γ in chr $c region $f"
+                    γ_mean += γ
                     Σi = (1 - γ)*Σi + γ*I
                     Si = (1 - γ)*Si + (m+1)/m*γ*I
                 end
@@ -184,20 +194,23 @@ function ghostbasil_parallel(
             else
                 # lambdamax = maximum(abs, monte_carlo_store) / sqrt(N)
                 # lambda_old = kappa*lambdamax
+
                 # estimate E( ||N(0, A)||_∞ )
-                empty!(monte_carlo_store)
-                for i in 1:nmonte_carlo
-                    append!(monte_carlo_store, Knockoffs.sample_mvn_efficient(Σi, Si, m + 1))
-                end
+                # empty!(monte_carlo_store)
+                # for i in 1:nmonte_carlo
+                #     append!(monte_carlo_store, Knockoffs.sample_mvn_efficient(Σi, Si, m + 1))
+                # end
+
                 # set lambda = kappa*lambdamax where lambdamax = estimated from Chen et al 2023
                 t3 += @elapsed begin
                     # define lambda according to zhaomeng's approach
-                    Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
-                    exp_norm = (iseven(N) ? sqrt(N) : sqrt(N - 1)) * maximum(abs, monte_carlo_store)
-                    σ = sqrt(max((length(zscore_tmp)+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
-                    lambda = kappa * σ / N * exp_norm
-                    lambdamax = maximum(abs, monte_carlo_store) / sqrt(N)
-                    lambda_path = range(lambda, lambdamax, length=100) |> collect |> reverse!
+                    # Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
+                    # exp_norm = (iseven(N) ? sqrt(N) : sqrt(N - 1)) * maximum(abs, monte_carlo_store)
+                    # σ = sqrt(max((length(zscore_tmp)+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
+                    # lambda = kappa * σ / N * exp_norm
+                    # lambdamax = maximum(abs, monte_carlo_store) / sqrt(N)
+                    # lambda_path = range(lambda, lambdamax, length=100) |> collect |> reverse!
+
                     # prepare inputs for ghostbasil
                     Ci = Σi - Si
                     Si_scaled = Si + A_scaling_factor*I
@@ -302,6 +315,8 @@ function ghostbasil_parallel(
             println(io, "m,$m")
             println(io, "nregions,$nregions")
             println(io, "nsnps,$nsnps")
+            println(io, "lasso_lambda,$lambda")
+            println(io, "mean_LD_shrinkage,$(γ_mean / nregions)")
             println(io, "import_time,$t1")
             println(io, "sample_knockoff_time,$t2")
             println(io, "ghostbasil_time,$t3")

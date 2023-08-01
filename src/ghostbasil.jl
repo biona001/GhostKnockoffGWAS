@@ -37,10 +37,11 @@ function ghostbasil(
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil (Zscores_ko_train is a sample from N(0, A))
-    Zt_SigmaInv_Z = 0.0                    # needed to evaluate σ in zhaomeng's validation approach
-    monte_carlo_store = Float64[]          # needed for monte carlo simulation in zhaomeng's method
-    nmonte_carlo = pseudo_validate ? 0 : 10# needed to estimate Lasso's λ via zhaomeng's new validation method
-    permutations = Vector{Vector{Int64}}[] # needed to randomly shuffle Z and Zko in each block
+    # Zt_SigmaInv_Z = 0.0                    # needed to evaluate σ in zhaomeng's validation approach
+    # monte_carlo_store = Float64[]          # needed for monte carlo simulation in zhaomeng's method
+    # nmonte_carlo = pseudo_validate ? 0 : 10# needed to estimate Lasso's λ via zhaomeng's new validation method
+    γ_mean = 0.0                           # keeps track of LD shrinkage across regions
+    # permutations = Vector{Vector{Int64}}[] # needed to randomly shuffle Z and Zko in each block
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
@@ -104,7 +105,7 @@ function ghostbasil(
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
                 if LD_shrinkage
                     γ = find_optimal_shrinkage(Σ, zscore_tmp)
-                    γ > 0.1 && @warn "large gamma detected! γ = $γ !!"
+                    γ_mean += γ
                     Σ = (1 - γ)*Σ + γ*I
                     D = (1 - γ)*D + (m+1)/m*γ*I
                 end
@@ -113,12 +114,12 @@ function ghostbasil(
                 Σinv = inv(Symmetric(Σ))
                 Zko = ghost_knockoffs(zscore_tmp, D, Σinv, m=m)
                 # estimate E( ||N(0, A)||_∞ ) for use in zhaomeng's new validation
-                if !pseudo_validate
-                    for i in 1:nmonte_carlo
-                        append!(monte_carlo_store, 
-                            Knockoffs.sample_mvn_efficient(Σ, D, m + 1))
-                    end
-                end
+                # if !pseudo_validate
+                #     for i in 1:nmonte_carlo
+                #         append!(monte_carlo_store, 
+                #             Knockoffs.sample_mvn_efficient(Σ, D, m + 1))
+                #     end
+                # end
             end
 
             # save mapped Zscores and some other variables
@@ -133,7 +134,7 @@ function ghostbasil(
             for k in 1:m
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
-            Zt_SigmaInv_Z += dot(zscore_tmp, Σinv, zscore_tmp)
+            # Zt_SigmaInv_Z += dot(zscore_tmp, Σinv, zscore_tmp)
 
             # randomly permute order of Z and Zko to avoid ordering bias
             # p = length(zscore_tmp)
@@ -147,8 +148,8 @@ function ghostbasil(
             # update counters
             nsnps += length(shared_snps)
             nregions += 1
-            push!(permutations, perms)
-            println("region $nregions: nsnps = $nsnps, left = $(nsnps + N + 1), right = $Zt_SigmaInv_Z, f = $f")
+            # push!(permutations, perms)
+            println("region $nregions: nsnps = $nsnps, f = $f")
             flush(stdout)
         end
     end
@@ -204,19 +205,27 @@ function ghostbasil(
             ll <- fit.basil$lmdas
             """
             @rget lambdas
+            lambda = lambdas[end]
         end
     else
-        # set lambda = kappa*lambdamax where lambdamax = max(Z) / sqrt(N)
+        # set lambda = kappa*lambdamax where lambdamax = max(Z*(M+1)) / sqrt(N)
         t3 = @elapsed begin
-            # compute lambda sequence
-            exp_norm = (iseven(N) ? sqrt(N) : sqrt(N - 1)) * maximum(abs, monte_carlo_store)
+            # compute lambda sequence based on zhaomeng's method
+            # exp_norm = (iseven(N) ? sqrt(N) : sqrt(N - 1)) * maximum(abs, monte_carlo_store)
+            # σ = sqrt(max((nsnps+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
+            # lambda = kappa * σ / N * exp_norm 
+            # lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
+            # lambdas = range(lambda, lambdamax, length=100) |> collect |> reverse!
+
+            # create lambda sequence for ghostbasil lasso
+            lambdamax = maximum(abs, z) / sqrt(N)
+            lambdamin = 0.0001lambdamax
+            lambda_path = exp.(range(log(lambdamin), log(lambdamax), length=100)) |> reverse! # default lambda_path in ghostbasil
+            lambda = kappa * maximum(abs, randn((m+1)*nsnps)) / sqrt(N)
+            lambda_path = lambda_path[findall(x -> x > lambda, lambda_path)]
+
             r = Zscores ./ sqrt(N)
-            σ = sqrt(max((nsnps+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
-            lambda = kappa * σ / N * exp_norm 
-            lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
-            lambdas = range(lambda, lambdamax, length=100) |> collect |> reverse!
-            r = Zscores ./ sqrt(N)
-            @rput Sigma S r m ncores A_scaling_factor lambdas
+            @rput Sigma S r m ncores A_scaling_factor lambda_path
             R"""
             B <- c()
             for(i in 1:length(S)){
@@ -229,7 +238,7 @@ function ghostbasil(
             A <- BlockBlockGroupGhostMatrix(B)
 
             # fit ghostbasil
-            fit.basil<-ghostbasil(A, r=r, user.lambdas=lambdas, 
+            fit.basil<-ghostbasil(A, r=r, user.lambdas=lambda_path, 
                 delta.strong.size = 500, max.strong.size = nrow(A), 
                 use.strong.rule=F, n.threads=ncores)
             beta <- fit.basil$betas[,ncol(fit.basil$betas)]
@@ -321,6 +330,8 @@ function ghostbasil(
             println(io, "m,$m")
             println(io, "nregions,$nregions")
             println(io, "nsnps,$nsnps")
+            println(io, "lasso_lambda,$lambda")
+            println(io, "mean_LD_shrinkage,$(γ_mean / nregions)")
             println(io, "import_time,$t1")
             println(io, "sample_knockoff_time,$t2")
             println(io, "ghostbasil_time,$t3")
@@ -331,7 +342,7 @@ function ghostbasil(
     end
 
     # also save full lambda sequence
-    writedlm(joinpath(outdir, outname * "_lambdas.txt"), lambdas)
+    # writedlm(joinpath(outdir, outname * "_lambdas.txt"), lambdas)
 
     return nothing
 end
