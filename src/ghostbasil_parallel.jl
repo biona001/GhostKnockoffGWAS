@@ -11,10 +11,10 @@ function ghostbasil_parallel(
     m::Int=5,
     outname::String="result",
     ncores = 1,
+    seed::Int = 2023,
     target_chrs=1:22,
     A_scaling_factor = 0.01,
     kappa::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
-    scale_beta::Bool=true, # whether to scale betas in each block so they are comparable
     pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
     save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
     LD_shrinkage::Bool=false, # if true, we will try to perform shrinkage to LD matrix following method in susie
@@ -30,6 +30,7 @@ function ghostbasil_parallel(
         error("Length of z, chr, pos, effect_allele, and non_effect_allele should be the same")
 
     # find lambda value for lasso (this is used only when pseudo_validate=false)
+    Random.seed!(seed)
     lambdamax = maximum(abs, z) / sqrt(N)
     lambdamin = 0.0001lambdamax
     lambda_path = exp.(range(log(lambdamin), log(lambdamax), length=100)) |> reverse!
@@ -47,8 +48,6 @@ function ghostbasil_parallel(
     Zscores_store = Float64[]
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
-    # monte_carlo_store = Float64[]          # needed for monte carlo simulation in zhaomeng's method
-    # nmonte_carlo = pseudo_validate ? 0 : 10# needed to estimate Lasso's λ via zhaomeng's new validation method
     γ_mean = 0.0                           # keeps track of LD shrinkage across regions
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
         ref=String[], alt=String[], pos_hg19=Int[], pos_hg38=Int[])
@@ -98,7 +97,6 @@ function ghostbasil_parallel(
                 if length(LD_keep_idx) == 0 || length(GWAS_keep_idx) == 0 
                     continue
                 end
-                # println("matched $(length(shared_snps)) snps")
             end
 
             # generate knockoffs for z scores
@@ -114,6 +112,7 @@ function ghostbasil_parallel(
                     Si = (1 - γ)*Si + (m+1)/m*γ*I
                 end
                 # sample ghost knockoffs knockoffs
+                Random.seed!(seed)
                 Zko_train = Knockoffs.sample_mvn_efficient(Σi, Si, m + 1)
                 Σi_inv = inv(Symmetric(Σi))
                 Zko = ghost_knockoffs(zscore_tmp, Si, Σi_inv, m=m)
@@ -192,25 +191,7 @@ function ghostbasil_parallel(
                     @rget lambda
                 end
             else
-                # lambdamax = maximum(abs, monte_carlo_store) / sqrt(N)
-                # lambda_old = kappa*lambdamax
-
-                # estimate E( ||N(0, A)||_∞ )
-                # empty!(monte_carlo_store)
-                # for i in 1:nmonte_carlo
-                #     append!(monte_carlo_store, Knockoffs.sample_mvn_efficient(Σi, Si, m + 1))
-                # end
-
-                # set lambda = kappa*lambdamax where lambdamax = estimated from Chen et al 2023
                 t3 += @elapsed begin
-                    # define lambda according to zhaomeng's approach
-                    # Zt_SigmaInv_Z = dot(zscore_tmp, Σi_inv, zscore_tmp)
-                    # exp_norm = (iseven(N) ? sqrt(N) : sqrt(N - 1)) * maximum(abs, monte_carlo_store)
-                    # σ = sqrt(max((length(zscore_tmp)+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
-                    # lambda = kappa * σ / N * exp_norm
-                    # lambdamax = maximum(abs, monte_carlo_store) / sqrt(N)
-                    # lambda_path = range(lambda, lambdamax, length=100) |> collect |> reverse!
-
                     # prepare inputs for ghostbasil
                     Ci = Σi - Si
                     Si_scaled = Si + A_scaling_factor*I
@@ -237,22 +218,11 @@ function ghostbasil_parallel(
             #     @views invpermute!(Zscores_store[i:p:end], perms[i])
             # end
 
-            # scale beta so that across regions the effect sizes are comparable
-            if scale_beta
-                max_beta_i = maximum(abs, beta_i)
-                beta_i_scaled = max_beta_i == 0 ? beta_i :
-                    (beta_i ./ maximum(abs, beta_i) .* maximum(abs, r))
-            else
-                beta_i_scaled = beta_i
-            end
-            any(isnan, beta_i_scaled) && error("beta contains NaN!")
-            any(isinf, beta_i_scaled) && error("beta contains Inf")
-
             # update counters
-            append!(beta, beta_i_scaled)
+            append!(beta, beta_i)
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: chr $c, lambda = $lambda, nz beta = $(count(!iszero, beta_i_scaled)), nsnps = $(length(shared_snps))")
+            println("region $nregions: chr $c, nz beta = $(count(!iszero, beta_i)), nsnps = $(length(shared_snps))")
             flush(stdout)
         end
     end
@@ -263,70 +233,66 @@ function ghostbasil_parallel(
     length(Zscores) == length(groups) || 
         error("Number of Zscores should match groups")
 
-    # knockoff filter
     if save_intermdiate_result
-        # save group and beta information and apply knockoff filter later
         writedlm(joinpath(outdir, outname * "_groups.txt"), groups)
         writedlm(joinpath(outdir, outname * "_betas.txt"), beta)
         writedlm(joinpath(outdir, outname * "_Zscores.txt"), Zscores)
         CSV.write(joinpath(outdir, outname * "_stats.csv"), df)
-    else # apply knockoff filter immediately
-        t4 = @elapsed begin
-            original_idx = findall(x -> endswith(x, "_0"), groups)
-            T0 = beta[original_idx]
-            Tk = [beta[findall(x -> endswith(x, "_$k"), groups)] for k in 1:m]
-            T_group0 = Float64[]
-            T_groupk = [Float64[] for k in 1:m]
-            groups_original = groups[findall(x -> endswith(x, "_0"), groups)]
-            unique_groups = unique(groups_original)
-            for idx in find_matching_indices(unique_groups, groups_original)
-                push!(T_group0, sum(abs, @view(T0[idx])))
-                for k in 1:m
-                    push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
-                end
-            end
-            kappa, tau, W = Knockoffs.MK_statistics(T_group0, T_groupk)
-            
-            # save analysis result
-            df[!, :group] = groups[original_idx]
-            df[!, :zscores] = Zscores[original_idx]
-            df[!, :lasso_beta] = beta[original_idx]
-            W_full, kappa_full, tau_full = Float64[], Float64[], Float64[]
-            for idx in indexin(groups_original, unique_groups)
-                push!(W_full, W[idx])
-                push!(kappa_full, kappa[idx])
-                push!(tau_full, tau[idx])
-            end
-            df[!, :W] = W_full
-            df[!, :kappa] = kappa_full
-            df[!, :tau] = tau_full
-            df[!, :pvals] = zscore2pval(df[!, :zscores])
-            CSV.write(joinpath(outdir, outname * ".txt"), df)
-        end
-
-        # save summary info
-        open(joinpath(outdir, outname * "_summary.txt"), "w") do io
-            # Q-value (i.e. threshold for knockoff filter)
-            for fdr in [0.01, 0.05, 0.1, 0.15, 0.2]
-                q = mk_threshold(tau, kappa, m, fdr)
-                println(io, "target_fdr_$(fdr),$q")
-                println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≥ q, W))
-            end
-            println(io, "m,$m")
-            println(io, "nregions,$nregions")
-            println(io, "nsnps,$nsnps")
-            println(io, "lasso_lambda,$lambda")
-            println(io, "mean_LD_shrinkage,$(γ_mean / nregions)")
-            println(io, "import_time,$t1")
-            println(io, "sample_knockoff_time,$t2")
-            println(io, "ghostbasil_time,$t3")
-            println(io, "knockoff_filter_time,$t4")
-            println(io, "total_time,", time() - start_t)
-        end
     end
 
-    # also save lambdas used in each block
-    # writedlm(joinpath(outdir, outname * "_lambdas.txt"), lambdas)
+    # knockoff filter immediately
+    t4 = @elapsed begin
+        original_idx = findall(x -> endswith(x, "_0"), groups)
+        T0 = beta[original_idx]
+        Tk = [beta[findall(x -> endswith(x, "_$k"), groups)] for k in 1:m]
+        T_group0 = Float64[]
+        T_groupk = [Float64[] for k in 1:m]
+        groups_original = groups[findall(x -> endswith(x, "_0"), groups)]
+        unique_groups = unique(groups_original)
+        for idx in find_matching_indices(unique_groups, groups_original)
+            push!(T_group0, sum(abs, @view(T0[idx])))
+            for k in 1:m
+                push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
+            end
+        end
+        kappa, tau, W = Knockoffs.MK_statistics(T_group0, T_groupk)
+        
+        # save analysis result
+        df[!, :group] = groups[original_idx]
+        df[!, :zscores] = Zscores[original_idx]
+        df[!, :lasso_beta] = beta[original_idx]
+        W_full, kappa_full, tau_full = Float64[], Float64[], Float64[]
+        for idx in indexin(groups_original, unique_groups)
+            push!(W_full, W[idx])
+            push!(kappa_full, kappa[idx])
+            push!(tau_full, tau[idx])
+        end
+        df[!, :W] = W_full
+        df[!, :kappa] = kappa_full
+        df[!, :tau] = tau_full
+        df[!, :pvals] = zscore2pval(df[!, :zscores])
+        CSV.write(joinpath(outdir, outname * ".txt"), df)
+    end
+
+    # save summary info
+    open(joinpath(outdir, outname * "_summary.txt"), "w") do io
+        # Q-value (i.e. threshold for knockoff filter)
+        for fdr in [0.01, 0.05, 0.1, 0.15, 0.2]
+            q = mk_threshold(tau, kappa, m, fdr)
+            println(io, "target_fdr_$(fdr),$q")
+            println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≥ q, W))
+        end
+        println(io, "m,$m")
+        println(io, "nregions,$nregions")
+        println(io, "nsnps,$nsnps")
+        println(io, "lasso_lambda,$lambda")
+        println(io, "mean_LD_shrinkage,$(γ_mean / nregions)")
+        println(io, "import_time,$t1")
+        println(io, "sample_knockoff_time,$t2")
+        println(io, "ghostbasil_time,$t3")
+        println(io, "knockoff_filter_time,$t4")
+        println(io, "total_time,", time() - start_t)
+    end
 
     return nothing
 end

@@ -11,6 +11,7 @@ function ghostbasil(
     m::Int=5,
     outname::String="result",
     ncores = 1,
+    seed::Int = 2023,
     target_chrs=1:22,
     A_scaling_factor = 0.01,
     kappa::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
@@ -37,9 +38,6 @@ function ghostbasil(
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil (Zscores_ko_train is a sample from N(0, A))
-    # Zt_SigmaInv_Z = 0.0                    # needed to evaluate σ in zhaomeng's validation approach
-    # monte_carlo_store = Float64[]          # needed for monte carlo simulation in zhaomeng's method
-    # nmonte_carlo = pseudo_validate ? 0 : 10# needed to estimate Lasso's λ via zhaomeng's new validation method
     γ_mean = 0.0                           # keeps track of LD shrinkage across regions
     # permutations = Vector{Vector{Int64}}[] # needed to randomly shuffle Z and Zko in each block
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
@@ -79,7 +77,6 @@ function ghostbasil(
                     if ref_match_ea && alt_match_nea 
                         continue
                     elseif ref_match_nea && alt_match_ea
-                        # push!(remove_idx, i)
                         zscores[GWAS_idx] *= -1
                     else # SNP cannot get matched to LD panel
                         push!(remove_idx, i)
@@ -93,7 +90,6 @@ function ghostbasil(
                 if length(LD_keep_idx) == 0 || length(GWAS_keep_idx) == 0 
                     continue
                 end
-                # println("matched $(length(shared_snps)) snps")
             end
 
             # generate knockoffs for z scores
@@ -110,16 +106,10 @@ function ghostbasil(
                     D = (1 - γ)*D + (m+1)/m*γ*I
                 end
                 # sample ghost knockoffs knockoffs
+                Random.seed!(seed)
                 Zko_train = Knockoffs.sample_mvn_efficient(Σ, D, m + 1)
                 Σinv = inv(Symmetric(Σ))
                 Zko = ghost_knockoffs(zscore_tmp, D, Σinv, m=m)
-                # estimate E( ||N(0, A)||_∞ ) for use in zhaomeng's new validation
-                # if !pseudo_validate
-                #     for i in 1:nmonte_carlo
-                #         append!(monte_carlo_store, 
-                #             Knockoffs.sample_mvn_efficient(Σ, D, m + 1))
-                #     end
-                # end
             end
 
             # save mapped Zscores and some other variables
@@ -134,7 +124,6 @@ function ghostbasil(
             for k in 1:m
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
-            # Zt_SigmaInv_Z += dot(zscore_tmp, Σinv, zscore_tmp)
 
             # randomly permute order of Z and Zko to avoid ordering bias
             # p = length(zscore_tmp)
@@ -208,22 +197,14 @@ function ghostbasil(
             lambda = lambdas[end]
         end
     else
-        # set lambda = kappa*lambdamax where lambdamax = max(Z*(M+1)) / sqrt(N)
         t3 = @elapsed begin
-            # compute lambda sequence based on zhaomeng's method
-            # exp_norm = (iseven(N) ? sqrt(N) : sqrt(N - 1)) * maximum(abs, monte_carlo_store)
-            # σ = sqrt(max((nsnps+N+1 - Zt_SigmaInv_Z) / (N+1), 0))
-            # lambda = kappa * σ / N * exp_norm 
-            # lambdamax = maximum(abs, Zscores_ko_train) / sqrt(N)
-            # lambdas = range(lambda, lambdamax, length=100) |> collect |> reverse!
-
             # create lambda sequence for ghostbasil lasso
+            Random.seed!(seed)
             lambdamax = maximum(abs, z) / sqrt(N)
             lambdamin = 0.0001lambdamax
             lambda_path = exp.(range(log(lambdamin), log(lambdamax), length=100)) |> reverse! # default lambda_path in ghostbasil
             lambda = kappa * maximum(abs, randn((m+1)*nsnps)) / sqrt(N)
             lambda_path = lambda_path[findall(x -> x > lambda, lambda_path)]
-
             r = Zscores ./ sqrt(N)
             @rput Sigma S r m ncores A_scaling_factor lambda_path
             R"""
@@ -278,71 +259,68 @@ function ghostbasil(
 #     @rget Ci
 #     @test all(Ci .≈ Sigma[end] - S[end])    
 
-    # knockoff filter
     if save_intermdiate_result
         # save group and beta information and apply knockoff filter later
         writedlm(joinpath(outdir, outname * "_groups.txt"), groups)
         writedlm(joinpath(outdir, outname * "_betas.txt"), beta)
         writedlm(joinpath(outdir, outname * "_Zscores.txt"), Zscores)
         CSV.write(joinpath(outdir, outname * "_stats.csv"), df)
-    else
-        t4 = @elapsed begin
-            original_idx = findall(x -> endswith(x, "_0"), groups)
-            T0 = beta[original_idx]
-            Tk = [beta[findall(x -> endswith(x, "_$k"), groups)] for k in 1:m]
-            T_group0 = Float64[]
-            T_groupk = [Float64[] for k in 1:m]
-            groups_original = groups[findall(x -> endswith(x, "_0"), groups)]
-            unique_groups = unique(groups_original)
-            for idx in find_matching_indices(unique_groups, groups_original)
-                push!(T_group0, sum(abs, @view(T0[idx])))
-                for k in 1:m
-                    push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
-                end
-            end
-            kappa, tau, W = Knockoffs.MK_statistics(T_group0, T_groupk)
-
-            # save analysis result
-            df[!, :group] = groups[original_idx]
-            df[!, :zscores] = Zscores[original_idx]
-            df[!, :lasso_beta] = beta[original_idx]
-            W_full, kappa_full, tau_full = Float64[], Float64[], Float64[]
-            for idx in indexin(groups_original, unique_groups)
-                push!(W_full, W[idx])
-                push!(kappa_full, kappa[idx])
-                push!(tau_full, tau[idx])
-            end
-            df[!, :W] = W_full
-            df[!, :kappa] = kappa_full
-            df[!, :tau] = tau_full
-            df[!, :pvals] = 2ccdf.(Normal(), abs.(df[!, :zscores])) # convert zscores to marginal p-values
-            CSV.write(joinpath(outdir, outname * ".txt"), df)
-        end
-
-        # save summary info
-        open(joinpath(outdir, outname * "_summary.txt"), "w") do io
-            # Q-value (i.e. threshold for knockoff filter)
-            for fdr in [0.01, 0.05, 0.1, 0.15, 0.2]
-                q = mk_threshold(tau, kappa, m, fdr)
-                println(io, "target_fdr_$(fdr),$q")
-                println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≥ q, W))
-            end
-            println(io, "m,$m")
-            println(io, "nregions,$nregions")
-            println(io, "nsnps,$nsnps")
-            println(io, "lasso_lambda,$lambda")
-            println(io, "mean_LD_shrinkage,$(γ_mean / nregions)")
-            println(io, "import_time,$t1")
-            println(io, "sample_knockoff_time,$t2")
-            println(io, "ghostbasil_time,$t3")
-            println(io, "knockoff_filter_time,$t4")
-            println(io, "total_time,", time() - start_t)
-            println(io, "significant_marginal_pvals,", count(x -> x < 5e-8, df[!, :pvals]))
-        end
     end
 
-    # also save full lambda sequence
-    # writedlm(joinpath(outdir, outname * "_lambdas.txt"), lambdas)
+    # knockoff filter
+    t4 = @elapsed begin
+        original_idx = findall(x -> endswith(x, "_0"), groups)
+        T0 = beta[original_idx]
+        Tk = [beta[findall(x -> endswith(x, "_$k"), groups)] for k in 1:m]
+        T_group0 = Float64[]
+        T_groupk = [Float64[] for k in 1:m]
+        groups_original = groups[findall(x -> endswith(x, "_0"), groups)]
+        unique_groups = unique(groups_original)
+        for idx in find_matching_indices(unique_groups, groups_original)
+            push!(T_group0, sum(abs, @view(T0[idx])))
+            for k in 1:m
+                push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
+            end
+        end
+        kappa, tau, W = Knockoffs.MK_statistics(T_group0, T_groupk)
+
+        # save analysis result
+        df[!, :group] = groups[original_idx]
+        df[!, :zscores] = Zscores[original_idx]
+        df[!, :lasso_beta] = beta[original_idx]
+        W_full, kappa_full, tau_full = Float64[], Float64[], Float64[]
+        for idx in indexin(groups_original, unique_groups)
+            push!(W_full, W[idx])
+            push!(kappa_full, kappa[idx])
+            push!(tau_full, tau[idx])
+        end
+        df[!, :W] = W_full
+        df[!, :kappa] = kappa_full
+        df[!, :tau] = tau_full
+        df[!, :pvals] = 2ccdf.(Normal(), abs.(df[!, :zscores])) # convert zscores to marginal p-values
+        CSV.write(joinpath(outdir, outname * ".txt"), df)
+    end
+
+    # save summary info
+    open(joinpath(outdir, outname * "_summary.txt"), "w") do io
+        # Q-value (i.e. threshold for knockoff filter)
+        for fdr in [0.01, 0.05, 0.1, 0.15, 0.2]
+            q = mk_threshold(tau, kappa, m, fdr)
+            println(io, "target_fdr_$(fdr),$q")
+            println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≥ q, W))
+        end
+        println(io, "m,$m")
+        println(io, "nregions,$nregions")
+        println(io, "nsnps,$nsnps")
+        println(io, "lasso_lambda,$lambda")
+        println(io, "mean_LD_shrinkage,$(γ_mean / nregions)")
+        println(io, "import_time,$t1")
+        println(io, "sample_knockoff_time,$t2")
+        println(io, "ghostbasil_time,$t3")
+        println(io, "knockoff_filter_time,$t4")
+        println(io, "total_time,", time() - start_t)
+        println(io, "significant_marginal_pvals,", count(x -> x < 5e-8, df[!, :pvals]))
+    end
 
     return nothing
 end
