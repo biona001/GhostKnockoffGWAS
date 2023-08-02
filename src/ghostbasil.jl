@@ -39,7 +39,7 @@ function ghostbasil(
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil (Zscores_ko_train is a sample from N(0, A))
     γ_mean = 0.0                           # keeps track of LD shrinkage across regions
-    # permutations = Vector{Vector{Int64}}[] # needed to randomly shuffle Z and Zko in each block
+    permutations = Vector{Vector{Int64}}[] # needed to randomly shuffle Z and Zko in each block
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     start_t = time()
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
@@ -126,18 +126,18 @@ function ghostbasil(
             end
 
             # randomly permute order of Z and Zko to avoid ordering bias
-            # p = length(zscore_tmp)
-            # perms = [collect(1:m+1) for _ in 1:p]
-            # for i in 1:p
-            #     shuffle!(perms[i])
-            #     Zi = @view(Zscores[(m+1)*nsnps+1:end])
-            #     @views permute!(Zi[i:p:end], perms[i])
-            # end
+            p = length(zscore_tmp)
+            perms = [collect(1:m+1) for _ in 1:p]
+            for i in 1:p
+                shuffle!(perms[i])
+                Zi = @view(Zscores[(m+1)*nsnps+1:end])
+                @views permute!(Zi[i:p:end], perms[i])
+            end
 
             # update counters
             nsnps += length(shared_snps)
             nregions += 1
-            # push!(permutations, perms)
+            push!(permutations, perms)
             println("region $nregions: nsnps = $nsnps, f = $f")
             flush(stdout)
         end
@@ -230,17 +230,17 @@ function ghostbasil(
     @rget beta
 
     # undo shuffling of Z and Zko
-    # counter = 0
-    # for perms in permutations
-    #     p = length(perms)
-    #     for i in eachindex(perms)
-    #         beta_i = @view(beta[counter+1:counter+(m+1)*p])
-    #         Zscores_i = @view(Zscores[counter+1:counter+(m+1)*p])
-    #         @views invpermute!(beta_i[i:p:end], perms[i])
-    #         @views invpermute!(Zscores_i[i:p:end], perms[i])
-    #     end
-    #     counter += (m+1)*p
-    # end
+    counter = 0
+    for perms in permutations
+        p = length(perms)
+        for i in eachindex(perms)
+            beta_i = @view(beta[counter+1:counter+(m+1)*p])
+            Zscores_i = @view(Zscores[counter+1:counter+(m+1)*p])
+            @views invpermute!(beta_i[i:p:end], perms[i])
+            @views invpermute!(Zscores_i[i:p:end], perms[i])
+        end
+        counter += (m+1)*p
+    end
 
     # testing group structure
 #     Sigma_full = BlockDiagonal(Sigma) |> Matrix

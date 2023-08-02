@@ -136,12 +136,12 @@ function ghostbasil_parallel(
                 error("Number of Zscores should match groups")
 
             # randomly permute order of Z and Zko to avoid ordering bias
-            # p = length(zscore_tmp)
-            # perms = [collect(1:m+1) for _ in 1:p]
-            # for i in eachindex(zscore_tmp)
-            #     shuffle!(perms[i])
-            #     @views permute!(Zscores_store[i:p:end], perms[i])
-            # end
+            p = length(zscore_tmp)
+            perms = [collect(1:m+1) for _ in 1:p]
+            for i in eachindex(zscore_tmp)
+                shuffle!(perms[i])
+                @views permute!(Zscores_store[i:p:end], perms[i])
+            end
 
             # run GhostBasil
             if pseudo_validate
@@ -213,10 +213,10 @@ function ghostbasil_parallel(
             @rget beta_i
 
             # undo shuffling of Z and Zko
-            # for i in eachindex(zscore_tmp)
-            #     @views invpermute!(beta_i[i:p:end], perms[i])
-            #     @views invpermute!(Zscores_store[i:p:end], perms[i])
-            # end
+            for i in eachindex(zscore_tmp)
+                @views invpermute!(beta_i[i:p:end], perms[i])
+                @views invpermute!(Zscores_store[i:p:end], perms[i])
+            end
 
             # update counters
             append!(beta, beta_i)
