@@ -9,7 +9,7 @@
 # into the argument "snps_to_keep". Not providing means we will use all SNPs.
 
 # For Sherlock users, load needed modules
-# ml julia/1.8.4 R/4.0.2 openssl/3.0.7 java/11.0.11 python/3.9.0
+# ml julia/1.8.4 R/4.0.2 java/11.0.11 python/3.9.0 openssl/3.0.7 system
 
 sleep(60rand()) # prevent too many jobs starting at the same time
 
@@ -53,7 +53,7 @@ function graphical_group_S(
     import_sigma_time = @elapsed begin
         bm = hail_block_matrix(bm_file, ht_file);
         Sigma, Sigma_info = get_block(bm, chr, start_pos, end_pos, 
-            min_maf=min_maf, snps_to_keep=snps_to_keep, enforce_psd=true, rk=rk)
+            min_maf=min_maf, snps_to_keep=snps_to_keep, enforce_psd=true)
     end
 
     # append hg38 coordinates to Sigma_info and remove SNPs that can't be converted to hg38
@@ -160,41 +160,42 @@ function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
     return nothing
 end
 
-# some directories
-bm_file = "/scratch/users/bbchu/LD_matrices/UKBB.EUR.ldadj.bm"
-ht_file = "/scratch/users/bbchu/LD_matrices/UKBB.EUR.ldadj.variant.ht"
-liftOver_chain_dir = "/oak/stanford/groups/zihuai/GeneticsResources/LiftOver/hg19ToHg38.over.chain"
-
 # inputs
-chr = ARGS[1]
-start_pos = parse(Int, ARGS[2])
-end_pos = parse(Int, ARGS[3])
-method = Symbol(ARGS[4]) # maxent, mvr, or sdp
-group_def = ARGS[5] # "hc" or "id"
-rk = parse(Int, ARGS[6]) #50, or 300
-outdir = ARGS[7]
+bm_file = ARGS[1]                   # e.g. UKBB.EUR.ldadj.bm
+ht_file = ARGS[2]                   # e.g. UKBB.EUR.ldadj.variant.ht
+population = ARGS[3]
+chr = ARGS[4]
+start_pos = parse(Int, ARGS[5])
+end_pos = parse(Int, ARGS[6])
+method = Symbol(ARGS[7]) # maxent, mvr, or sdp
+group_def = ARGS[8] # "hc" or "id"
+remove_imputed_variants = parse(Bool, ARGS[9])
+min_maf = parse(Float64, ARGS[10])
+liftOver_chain_dir = ARGS[11]
+outdir = ARGS[12]
 
 # testing one region
+# population = "EUR"
+# bm_file = "/oak/stanford/groups/zihuai/pan_ukb_LD_matrices/UKBB.$population.ldadj.bm"
+# ht_file = "/oak/stanford/groups/zihuai/pan_ukb_LD_matrices/UKBB.$population.ldadj.variant.ht"
 # chr = "1"
 # start_pos = 100826405
 # end_pos = 102041015
-# m=5
-# tol=0.0001 
-# min_maf=0.01
-# force_block_diag=true
-# add_hg38_coordinates=true
 # method = :maxent
 # group_def = "hc"
-# verbose=true
-# outdir = "/oak/stanford/groups/zihuai/pan_ukb_group_knockoffs/maxent_hc"
+# remove_imputed_variants = true
+# min_maf = 0.01
+# liftOver_chain_dir = "/oak/stanford/groups/zihuai/GeneticsResources/LiftOver/hg19ToHg38.over.chain"
+# outdir = remove_imputed_variants ? 
+#     "/oak/stanford/groups/zihuai/pan_ukb_group_knockoffs/$population" : 
+#     "/oak/stanford/groups/zihuai/pan_ukb_group_knockoffs/$(population)_all"
 
-# import typed SNP positions and ref/alt 
-# snps_to_keep = nothing
+# import typed SNP positions and ref/alt (used when remove_imputed_variants=true)
 bimfile = "/oak/stanford/groups/zihuai/UKB_data/genotyped_call/ukb_cal_chr$(chr)_v2.bim"
 typed_df = CSV.read(bimfile, DataFrame, header=false)
-snps_to_keep = typed_df[!, 4]
+snps_to_keep = remove_imputed_variants ? typed_df[!, 4] : nothing
 
 graphical_group_S(bm_file, ht_file, chr, start_pos, 
     end_pos, outdir, snps_to_keep=snps_to_keep, 
-    method=method, group_def=group_def, rk=rk,
+    method=method, group_def=group_def, 
     liftOver_chain_dir=liftOver_chain_dir)
