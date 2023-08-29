@@ -17,7 +17,7 @@ function ghostbasil_parallel(
     kappa::Number=0.6,     # for tuning lambda, only used when pseudo_validate = false
     pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
     save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
-    LD_shrinkage::Bool=false, # if true, we will try to perform shrinkage to LD matrix following method in susie
+    LD_shrinkage::Bool=true, # if true, we will try to perform shrinkage to LD matrix following method in susie
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
