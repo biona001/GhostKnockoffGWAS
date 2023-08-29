@@ -47,6 +47,7 @@ function ghostbasil_parallel(
     Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
     Zscores_store = Float64[]
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
+    t21, t22, t23, t24 = 0.0, 0.0, 0.0, 0.0# some timers
     start_t = time()
     γ_mean = 0.0                           # keeps track of LD shrinkage across regions
     df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
@@ -105,7 +106,7 @@ function ghostbasil_parallel(
                 Si = result["D"][LD_keep_idx, LD_keep_idx]
                 Σi = result["Sigma"][LD_keep_idx, LD_keep_idx]
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
-                if LD_shrinkage
+                t21 += @elapsed if LD_shrinkage
                     γ = find_optimal_shrinkage(Σi, zscore_tmp)
                     γ_mean += γ
                     Σi = (1 - γ)*Σi + γ*I
@@ -113,9 +114,9 @@ function ghostbasil_parallel(
                 end
                 # sample ghost knockoffs knockoffs
                 Random.seed!(seed)
-                Zko_train = Knockoffs.sample_mvn_efficient(Σi, Si, m + 1)
-                Σi_inv = inv(Symmetric(Σi))
-                Zko = ghost_knockoffs(zscore_tmp, Si, Σi_inv, m=m)
+                t22 += @elapsed Zko_train = Knockoffs.sample_mvn_efficient(Σi, Si, m + 1)
+                t23 += @elapsed Σi_inv = inv(Symmetric(Σi))
+                t24 += @elapsed Zko = ghost_knockoffs(zscore_tmp, Si, Σi_inv, m=m)
             end
 
             # save mapped Zscores and some other variables
@@ -292,6 +293,10 @@ function ghostbasil_parallel(
         println(io, "ghostbasil_time,$t3")
         println(io, "knockoff_filter_time,$t4")
         println(io, "total_time,", time() - start_t)
+        println(io, "sample_knockoff_time_t21=$t21")
+        println(io, "sample_knockoff_time_t22=$t22")
+        println(io, "sample_knockoff_time_t23=$t23")
+        println(io, "sample_knockoff_time_t24=$t24")
     end
 
     return nothing
