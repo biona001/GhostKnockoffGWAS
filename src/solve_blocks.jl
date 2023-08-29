@@ -1,12 +1,6 @@
 # put this block of code in a file `solve_blocks.jl`
-# usage: julia solve_blocks.jl chr start_pos end_pos method outdir
-# where `chr` = 1, 2, ..., 22
-#       `start_pos` = integer
-#       `end_pos` = inteter
-#       `method` = maxent, mvr, or sdp
-#       `outdir` = output directory (must exist)
-# if we want to include typed SNPs only, we must provide a list of typed SNP's position
-# into the argument "snps_to_keep". Not providing means we will use all SNPs.
+# usage: julia solve_blocks.jl ARGS1 ARGS2 ...
+# where the arguments ARGS1 ARGS2 starts from line 159
 
 # For Sherlock users, load needed modules
 # ml julia/1.8.4 R/4.0.2 java/11.0.11 python/3.9.0 openssl/3.0.7 system
@@ -29,13 +23,14 @@ function graphical_group_S(
     bm_file::String, # path to the `.bm` hail block matrix folder
     ht_file::String, # path to the `.ht` hail variant index folder
     chr::String, # 1, 2, ..., 22, or X/Y/M
-    start_pos::Int, 
+    start_pos::Int,
     end_pos::Int, 
     outdir::String;
     m=5,
     tol=0.0001, 
     min_maf=0.01, # only SNPs with maf > min_maf will be included in Sigma
-    snps_to_keep=nothing, # list of position (if provided, only SNPs in snps_to_keep will be included in Sigma)
+    typed_snp_pos::Vector{Int} = start_pos:end_pos, # pos that are typed (i.e. not imputed), by default assumes all SNPs are typed
+    remove_imputed_variants::Bool=true, # whether to build knockoffs using all SNPs (imputed or typed) or only for SNPs in typed_snp_pos
     force_block_diag=true, # whether to reorder row/col of S/Sigma/etc so S is returned as block diagonal 
     add_hg38_coordinates=true, # whether to augment Sigma_info with hg38 coordinates. SNPs that cannot be mapped to hg38 will be deleted
     liftOver_chain_dir::String = "",
@@ -53,7 +48,8 @@ function graphical_group_S(
     import_sigma_time = @elapsed begin
         bm = hail_block_matrix(bm_file, ht_file);
         Sigma, Sigma_info = get_block(bm, chr, start_pos, end_pos, 
-            min_maf=min_maf, snps_to_keep=snps_to_keep, enforce_psd=true)
+            min_maf=min_maf, enforce_psd=true, 
+            snps_to_keep=(remove_imputed_variants ? typed_snp_pos : nothing))
     end
 
     # append hg38 coordinates to Sigma_info and remove SNPs that can't be converted to hg38
@@ -65,8 +61,11 @@ function graphical_group_S(
     def_group_time = @elapsed begin
         groups = group_def == "hc" ? 
             hc_partition_groups(Symmetric(Sigma), cutoff=0.5, linkage=:average) : 
-            id_partition_groups(Symmetric(Sigma), rss_target=0.5)
-        group_reps = choose_group_reps(Symmetric(Sigma), groups, threshold=0.5)
+            id_partition_groups(Symmetric(Sigma), rss_target=0.5)        
+        prioritize_idx = filter(!isnothing, 
+            indexin(typed_snp_pos, Sigma_info[!, "pos_hg19"])) |> Vector{Int}
+        group_reps = choose_group_reps(Symmetric(Sigma), groups, threshold=0.5, 
+            prioritize_idx=prioritize_idx)
     end
 
     # reorder SNPs so D2/S2 is really block diagonal
@@ -183,7 +182,7 @@ outdir = ARGS[12]
 # end_pos = 102041015
 # method = :maxent
 # group_def = "hc"
-# remove_imputed_variants = true
+# remove_imputed_variants = false
 # min_maf = 0.01
 # liftOver_chain_dir = "/oak/stanford/groups/zihuai/GeneticsResources/LiftOver/hg19ToHg38.over.chain"
 # outdir = remove_imputed_variants ? 
@@ -193,9 +192,10 @@ outdir = ARGS[12]
 # import typed SNP positions and ref/alt (used when remove_imputed_variants=true)
 bimfile = "/oak/stanford/groups/zihuai/UKB_data/genotyped_call/ukb_cal_chr$(chr)_v2.bim"
 typed_df = CSV.read(bimfile, DataFrame, header=false)
-snps_to_keep = remove_imputed_variants ? typed_df[!, 4] : nothing
+typed_snp_pos = typed_df[!, 4]
 
 graphical_group_S(bm_file, ht_file, chr, start_pos, 
-    end_pos, outdir, snps_to_keep=snps_to_keep, 
-    method=method, group_def=group_def, 
-    liftOver_chain_dir=liftOver_chain_dir)
+    end_pos, outdir, method=method, group_def=group_def, 
+    liftOver_chain_dir=liftOver_chain_dir, 
+    remove_imputed_variants=remove_imputed_variants,
+    typed_snp_pos=typed_snp_pos)
