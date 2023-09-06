@@ -61,7 +61,7 @@ function graphical_group_S(
         if remove_imputed_variants
             groups, group_reps = define_groups_typed(Sigma, group_def)
         else
-            typed_idx = filter!(!isnothing, indexin(typed_snp_pos, Sigma_info[!, "pos_hg19"]))
+            typed_idx = filter!(!isnothing, indexin(typed_snp_pos, Sigma_info[!, "pos_hg19"])) |> Vector{Int}
             groups, group_reps = define_groups_imputed(Sigma, typed_idx, group_def)
         end
     end
@@ -154,20 +154,22 @@ end
 """
     define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector, group_def::String="hc")
 
-Defines group membership and representatives for imputation data, where representatives 
-are restricted to the typed variants. 
+Defines group membership and representatives for imputation data, where groups are
+entirely defined by the typed variants, and we prioritize choosing typed variants
+as representatives within groups.
 
 # Inputs
 + `Sigma`: Correlation matrix for all variants in current block (imputed and typed)
 + `typed_idx`: Indices of typed variants
 
 # The procedure:
-1. We first focus on directly genotyped data, define groups of directly 
-    genotyped data by average linkage hierarchical clustering.
-2. Identify representative variants for each group of directly genotyped variants. 
-    (Above two are same as what we have for directly genotyped data).
-3. Assign each imputed variant to the existing groups of directly genotyped variants, 
-    by maximizing its correlation with the directly genotyped variants in the group.
+1. Define groups using typed variants
+2. Assign imputed variants into existing groups, by finding the group
+    with the largest average correlation between the imputed variant
+    and the typed variant within the group
+3. Define representatives within groups, prioritizing typed variants,
+    but potentially choosing non-typed variants as representatives when
+    the typed variant pool is depleted
 """
 function define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector, group_def::String="hc")
     # define groups and reps on typed variants
@@ -175,12 +177,10 @@ function define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector,
     groups_typed = group_def == "hc" ? 
         hc_partition_groups(Sigma_typed, cutoff=0.5, linkage=:average) : 
         id_partition_groups(Sigma_typed, rss_target=0.5)        
-    group_reps_typed = choose_group_reps(Sigma_typed, groups_typed, threshold=0.5)
 
     # initialize group membership for all variants
     groups = zeros(Int, size(Sigma, 1))
     groups[typed_idx] .= groups_typed
-    group_reps = typed_idx[group_reps_typed] |> Vector{Int}
     
     # assign imputed variant to existing groups
     imputed_idx = setdiff(1:size(Sigma, 1), typed_idx)
@@ -189,7 +189,7 @@ function define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector,
         group_i, dist_i = 0, Inf
         for g in unique_groups_typed
             idx = typed_idx[findall(x -> x == g, groups_typed)]
-            d = mean(abs, @view(Sigma[i, idx]))
+            d = 1 - mean(abs, @view(Sigma[i, idx]))
             if d < dist_i
                 group_i, dist_i = g, d
             end
@@ -197,6 +197,10 @@ function define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector,
         groups[i] = group_i
     end
     all(!iszero, groups) || error("group membership vector contains 0! Shouldn't happen")
+
+    # now define representatives of groups, prioritizing typed variants
+    group_reps = choose_group_reps(Symmetric(Sigma), groups, threshold=0.5,
+        prioritize_idx=typed_idx)
 
     return groups, group_reps
 end
