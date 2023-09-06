@@ -56,16 +56,14 @@ function graphical_group_S(
     if add_hg38_coordinates
         Sigma, Sigma_info = augment_hg38(Sigma_info, Sigma, chr, liftOver_chain_dir)
     end
-
-    # define groups and representatives
+    
     def_group_time = @elapsed begin
-        groups = group_def == "hc" ? 
-            hc_partition_groups(Symmetric(Sigma), cutoff=0.5, linkage=:average) : 
-            id_partition_groups(Symmetric(Sigma), rss_target=0.5)        
-        prioritize_idx = filter(!isnothing, 
-            indexin(typed_snp_pos, Sigma_info[!, "pos_hg19"])) |> Vector{Int}
-        group_reps = choose_group_reps(Symmetric(Sigma), groups, threshold=0.5, 
-            prioritize_idx=prioritize_idx)
+        if remove_imputed_variants
+            groups, group_reps = define_groups_typed(Sigma, group_def)
+        else
+            typed_idx = filter!(!isnothing, indexin(typed_snp_pos, Sigma_info[!, "pos_hg19"]))
+            groups, group_reps = define_groups_imputed(Sigma, typed_idx, group_def)
+        end
     end
 
     # reorder SNPs so D2/S2 is really block diagonal
@@ -73,16 +71,10 @@ function graphical_group_S(
         rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
     end
 
-    # solve for S
+    # solve for S (defined on representatives) and D (S matrix for reps + non-reps)
     solve_S_time = @elapsed begin
-        # solve S using original Sigma
         S, D, obj = solve_s_graphical_group(Symmetric(Sigma), groups, group_reps, method,
             m=m, tol=tol, verbose=verbose)
-
-        # solve S using modified Sigma (enforcing conditional independence)
-        # Sigma2 = cond_indep_corr(Sigma, groups, group_reps)
-        # S2, D2, obj2 = solve_s_graphical_group(Symmetric(Sigma2), groups, group_reps, method,
-        #     m=m, tol=tol, verbose=verbose)
     end
 
     # save result in .h5 format
@@ -157,6 +149,72 @@ function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
     Sigma .= @views Sigma[perm, perm]
     Sigma_info .= @views Sigma_info[perm, :]
     return nothing
+end
+
+"""
+    define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector, group_def::String="hc")
+
+Defines group membership and representatives for imputation data, where representatives 
+are restricted to the typed variants. 
+
+# Inputs
++ `Sigma`: Correlation matrix for all variants in current block (imputed and typed)
++ `typed_idx`: Indices of typed variants
+
+# The procedure:
+1. We first focus on directly genotyped data, define groups of directly 
+    genotyped data by average linkage hierarchical clustering.
+2. Identify representative variants for each group of directly genotyped variants. 
+    (Above two are same as what we have for directly genotyped data).
+3. Assign each imputed variant to the existing groups of directly genotyped variants, 
+    by maximizing its correlation with the directly genotyped variants in the group.
+"""
+function define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector, group_def::String="hc")
+    # define groups and reps on typed variants
+    Sigma_typed = Symmetric(@view(Sigma[typed_idx, typed_idx]))
+    groups_typed = group_def == "hc" ? 
+        hc_partition_groups(Sigma_typed, cutoff=0.5, linkage=:average) : 
+        id_partition_groups(Sigma_typed, rss_target=0.5)        
+    group_reps_typed = choose_group_reps(Sigma_typed, groups_typed, threshold=0.5)
+
+    # initialize group membership for all variants
+    groups = zeros(Int, size(Sigma, 1))
+    groups[typed_idx] .= groups_typed
+    group_reps = typed_idx[group_reps_typed] |> Vector{Int}
+    
+    # assign imputed variant to existing groups
+    imputed_idx = setdiff(1:size(Sigma, 1), typed_idx)
+    unique_groups_typed = unique(groups_typed)
+    for i in imputed_idx
+        group_i, dist_i = 0, Inf
+        for g in unique_groups_typed
+            idx = typed_idx[findall(x -> x == g, groups_typed)]
+            d = mean(abs, @view(Sigma[i, idx]))
+            if d < dist_i
+                group_i, dist_i = g, d
+            end
+        end
+        groups[i] = group_i
+    end
+    all(!iszero, groups) || error("group membership vector contains 0! Shouldn't happen")
+
+    return groups, group_reps
+end
+
+"""
+    define_groups_typed(Sigma::AbstractMatrix, group_def::String="hc")
+
+Defines group membership and representatives, assuming `Sigma` is the correlation 
+matrix for typed variants. By default we use average linkage hierarchical clustering 
+to define groups and search for representatives within groups such that they explain
+50% of variation across groups. 
+"""
+function define_groups_typed(Sigma::AbstractMatrix, group_def::String="hc")
+    groups = group_def == "hc" ? 
+        hc_partition_groups(Symmetric(Sigma), cutoff=0.5, linkage=:average) : 
+        id_partition_groups(Symmetric(Sigma), rss_target=0.5)        
+    group_reps = choose_group_reps(Symmetric(Sigma), groups, threshold=0.5)
+    return groups, group_reps
 end
 
 # inputs
