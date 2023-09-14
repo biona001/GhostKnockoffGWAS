@@ -18,6 +18,7 @@ function ghostbasil_parallel(
     pseudo_validate::Bool = false, # if true, uses pseudo-validation, otherwise use zhaomeng's new technique
     save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
     LD_shrinkage::Bool=true, # if true, we will try to perform shrinkage to LD matrix following method in susie
+    target_fdrs = [0.01, 0.05, 0.1, 0.15, 0.2],
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -278,7 +279,7 @@ function ghostbasil_parallel(
     # save summary info
     open(joinpath(outdir, outname * "_summary.txt"), "w") do io
         # Q-value (i.e. threshold for knockoff filter)
-        for fdr in [0.01, 0.05, 0.1, 0.15, 0.2]
+        for fdr in target_fdrs
             q = mk_threshold(tau, kappa, m, fdr)
             println(io, "target_fdr_$(fdr),$q")
             println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≥ q, W))
