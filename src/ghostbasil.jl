@@ -177,7 +177,8 @@ function ghostbasil(
                 B  <- append(B, list(Bi))
             }
             A <- BlockBlockGroupGhostMatrix(B)
-            result <- ghostbasil(A, rt, delta.strong.size = 500, max.strong.size = nrow(A), n.threads=ncores, use.strong.rule=F)
+            result <- ghostbasil(A, rt, delta.strong.size = 500, 
+                max.strong.size = nrow(A), n.threads=ncores, use.strong.rule=F)
             betas <- as.matrix(result$betas)
             lambdas <- result$lmdas
             
@@ -190,7 +191,9 @@ function ghostbasil(
             # refit ghostbasil
             lambda.seq <- lambdas[lambdas > lambda]
             lambda.seq <- c(lambda.seq, lambda)
-            fit.basil<-ghostbasil(A, r=r,user.lambdas=lambda.seq, delta.strong.size = 500, max.strong.size = nrow(A), use.strong.rule=F)
+            fit.basil<-ghostbasil(A, r=r, user.lambdas=lambda.seq, n.threads=ncores, 
+                delta.strong.size = 500, max.strong.size = nrow(A), 
+                use.strong.rule=F)
             beta<-fit.basil$betas[,ncol(fit.basil$betas)]
             ll <- fit.basil$lmdas
             """
@@ -299,6 +302,12 @@ function ghostbasil(
         df[!, :kappa] = kappa_full
         df[!, :tau] = tau_full
         df[!, :pvals] = 2ccdf.(Normal(), abs.(df[!, :zscores])) # convert zscores to marginal p-values
+        for fdr in target_fdrs
+            q = mk_threshold(tau, kappa, m, fdr)
+            selected = zeros(Int, size(df, 1))
+            selected[findall(x -> x ≥ q, W)] .= 1
+            df[!, "selected_fdr$fdr"] = selected
+        end
         CSV.write(joinpath(outdir, outname * ".txt"), df)
     end
 

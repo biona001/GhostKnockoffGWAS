@@ -185,8 +185,9 @@ function ghostbasil_parallel(
                     # refit ghostbasil
                     lambda.seq <- lambdas[lambdas > lambda]
                     lambda.seq <- c(lambda.seq, lambda)
-                    fit.basil<-ghostbasil(Bi, r=r,user.lambdas=lambda.seq, 
-                        delta.strong.size=500, max.strong.size = nrow(Bi), use.strong.rule=F)
+                    fit.basil<-ghostbasil(Bi, r=r, user.lambdas=lambda.seq, 
+                        delta.strong.size=500, n.threads=ncores, 
+                        max.strong.size = nrow(Bi), use.strong.rule=F)
                     beta_i <- fit.basil$betas[,ncol(fit.basil$betas)]
                     R2 <- fit.basil$rsqs
                     """
@@ -273,6 +274,12 @@ function ghostbasil_parallel(
         df[!, :kappa] = kappa_full
         df[!, :tau] = tau_full
         df[!, :pvals] = zscore2pval(df[!, :zscores])
+        for fdr in target_fdrs
+            q = mk_threshold(tau, kappa, m, fdr)
+            selected = zeros(Int, size(df, 1))
+            selected[findall(x -> x ≥ q, W)] .= 1
+            df[!, "selected_fdr$fdr"] = selected
+        end
         CSV.write(joinpath(outdir, outname * ".txt"), df)
     end
 
