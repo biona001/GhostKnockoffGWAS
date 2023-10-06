@@ -36,6 +36,7 @@ function graphical_group_S(
     liftOver_chain_dir::String = "",
     method::Symbol = :maxent,
     group_def::String="hc",
+    linkage::Symbol=:average,
     rk::Number=Inf, # minimum rank of Σ before truncating the remaining eigvals to `min_maf`
     verbose=true
     )
@@ -59,10 +60,10 @@ function graphical_group_S(
     
     def_group_time = @elapsed begin
         if remove_imputed_variants
-            groups, group_reps = define_groups_typed(Sigma, group_def)
+            groups, group_reps = define_groups_typed(Sigma, group_def, linkage)
         else
             typed_idx = filter!(!isnothing, indexin(typed_snp_pos, Sigma_info[!, "pos_hg19"])) |> Vector{Int}
-            groups, group_reps = define_groups_imputed(Sigma, typed_idx, group_def)
+            groups, group_reps = define_groups_imputed(Sigma, typed_idx, group_def, linkage)
         end
     end
 
@@ -171,11 +172,12 @@ as representatives within groups.
     but potentially choosing non-typed variants as representatives when
     the typed variant pool is depleted
 """
-function define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector, group_def::String="hc")
+function define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector, 
+    group_def::String="hc", linkage::Symbol=:average)
     # define groups and reps on typed variants
     Sigma_typed = Symmetric(@view(Sigma[typed_idx, typed_idx]))
     groups_typed = group_def == "hc" ? 
-        hc_partition_groups(Sigma_typed, cutoff=0.5, linkage=:average) : 
+        hc_partition_groups(Sigma_typed, cutoff=0.5, linkage=linkage) : 
         id_partition_groups(Sigma_typed, rss_target=0.5)        
 
     # initialize group membership for all variants
@@ -206,16 +208,17 @@ function define_groups_imputed(Sigma::AbstractMatrix, typed_idx::AbstractVector,
 end
 
 """
-    define_groups_typed(Sigma::AbstractMatrix, group_def::String="hc")
+    define_groups_typed(Sigma::AbstractMatrix, group_def::String="hc", linkage::Symbol=:average)
 
 Defines group membership and representatives, assuming `Sigma` is the correlation 
 matrix for typed variants. By default we use average linkage hierarchical clustering 
 to define groups and search for representatives within groups such that they explain
 50% of variation across groups. 
 """
-function define_groups_typed(Sigma::AbstractMatrix, group_def::String="hc")
+function define_groups_typed(Sigma::AbstractMatrix, group_def::String="hc", 
+    linkage::Symbol=:average)
     groups = group_def == "hc" ? 
-        hc_partition_groups(Symmetric(Sigma), cutoff=0.5, linkage=:average) : 
+        hc_partition_groups(Symmetric(Sigma), cutoff=0.5, linkage=linkage) : 
         id_partition_groups(Symmetric(Sigma), rss_target=0.5)        
     group_reps = choose_group_reps(Symmetric(Sigma), groups, threshold=0.5)
     return groups, group_reps
@@ -230,10 +233,11 @@ start_pos = parse(Int, ARGS[5])
 end_pos = parse(Int, ARGS[6])
 method = Symbol(ARGS[7]) # maxent, mvr, or sdp
 group_def = ARGS[8] # "hc" or "id"
-remove_imputed_variants = parse(Bool, ARGS[9])
-min_maf = parse(Float64, ARGS[10])
-liftOver_chain_dir = ARGS[11]
-outdir = ARGS[12]
+linkage = Symbol(ARGS[9]) # :average or :complete (only used when group_def = "hc")
+remove_imputed_variants = parse(Bool, ARGS[10])
+min_maf = parse(Float64, ARGS[11])
+liftOver_chain_dir = ARGS[12]
+outdir = ARGS[13]
 
 # testing one region
 # population = "EUR"
@@ -258,6 +262,6 @@ typed_snp_pos = typed_df[!, 4]
 
 graphical_group_S(bm_file, ht_file, chr, start_pos, 
     end_pos, outdir, method=method, group_def=group_def, 
-    liftOver_chain_dir=liftOver_chain_dir, 
+    linkage=linkage, liftOver_chain_dir=liftOver_chain_dir, 
     remove_imputed_variants=remove_imputed_variants,
     typed_snp_pos=typed_snp_pos)
