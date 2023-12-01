@@ -1,6 +1,7 @@
 module GhostKnockoffGWAS
 
 using Knockoffs
+using Ghostbasil
 using JLD2
 using HDF5
 using CSV
@@ -9,7 +10,6 @@ using LinearAlgebra
 using Random
 using Distributions
 using DelimitedFiles
-using RCall
 using Optim
 
 export ghostbasil, 
@@ -21,14 +21,8 @@ export ghostbasil,
     pval2zscore,
     pval
 
-include("ghostbasil.jl")
+# include("ghostbasil.jl")
 include("ghostbasil_parallel.jl")
 include("utilities.jl")
-
-function __init__()
-    # import R packages (todo: should we write C++ wrapper?)
-    R"library(ghostbasil)"
-    R"library(liftOver)"
-end
 
 end # module GhostKnockoffGWAS
