@@ -66,8 +66,8 @@ function ghostbasil_parallel(
             endswith(f, ".h5") || continue
             fname = f[4:end-3]
 
+            # read knockoff results in current region
             t1 += @elapsed begin
-                # read knockoff results
                 result = JLD2.load(joinpath(knockoff_dir, "chr$c", f))
                 Sigma_info = CSV.read(joinpath(knockoff_dir, "chr$(c)", "Info_$fname.csv"), DataFrame)
                 # map reference LD panel to GWAS Z-scores by position
@@ -102,7 +102,7 @@ function ghostbasil_parallel(
 
             # generate knockoffs for z scores
             t2 += @elapsed begin
-                # use original Sigma and D (S matrix for rep+nonrep variables) for pseudo-validation
+                # use original Sigma and D (S matrix for rep+nonrep variables)
                 Si = result["D"][LD_keep_idx, LD_keep_idx]
                 Σi = result["Sigma"][LD_keep_idx, LD_keep_idx]
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
