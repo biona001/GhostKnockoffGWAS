@@ -5,7 +5,7 @@ on:
   schedule:
     - cron: '0 2 * * *'  # Daily at 2 AM UTC (8 PM CST)
   push:
-    branches: [master]
+    branches: [main]
     tags: ["*"]
   pull_request:
 jobs:
@@ -77,7 +77,9 @@ jobs:
       - run: | # add unregistered packages first
           julia --project=docs -e '
             using Pkg
-            pkg"add https://github.com/biona001/GhostKnockoffGWAS.jl"'
+            Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
+            Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
+            Pkg.add(url="https://github.com/biona001/GhostKnockoffGWAS")'
       - run: |
           julia --project=docs -e '
             using Pkg
