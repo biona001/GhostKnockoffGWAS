@@ -3,12 +3,24 @@ function julia_main()::Cint
     try
         # read args
         zfile, knockoff_dir, Neffect, hg_build, outfile, outdir, m, seed = 
-            parse_args()
+            parse_commandline()
+
+        println("Running GhostKnockoffGWAS analysis with the following options:")
+        println("zfile = $zfile")
+        println("knockoff_dir = $knockoff_dir")
+        println("N (effective sample size) = $Neffect")
+        println("hg_build = $hg_build")
+        println("outfile = $outfile")
+        println("m (number of knockoffs for stability) = $m")
+        println("seed = $seed")
 
         # run ghost knockoff analysis
-        run_ghostbasil_parallel(
-            zfile, knockoff_dir, Neffect, hg_build, outfile, outdir, m, seed
-        )
+        z, chr, pos, effect_allele, non_effect_allele = read_zscores(zfile)
+        ghostbasil_parallel(knockoff_dir, z, chr, pos, effect_allele, 
+            non_effect_allele, Neffect, hg_build, outdir, outname=outfile, 
+            m=m, seed=seed)
+
+        println("Done! Result saved to $(joinpath(outdir, outname))")
     catch
         Base.invokelatest(Base.display_error, Base.catch_stack())
         return 1
@@ -16,7 +28,7 @@ function julia_main()::Cint
     return 0
 end
 
-function parse_args()
+function parse_commandline()
     s = ArgParseSettings()
     @add_arg_table s begin
         "zfile"
@@ -40,7 +52,7 @@ function parse_args()
             required = true
             arg_type = Int
         "out"
-            help = "Output file name"
+            help = "Output file prefix (without extensions)"
             required = true
             arg_type = String
         "--genome-build"
@@ -70,24 +82,4 @@ function parse_args()
     seed = parsed_args["seed"]
 
     return zfile, knockoff_dir, Neffect, hg_build, outfile, outdir, m, seed
-end
-
-function run_ghostbasil_parallel(
-    zfile, knockoff_dir, Neffect, hg_build, outfile, outdir, m, seed
-    )
-
-    println("Running GhostKnockoffGWAS analysis with the following options:")
-    println("zfile = $zfile")
-    println("knockoff_dir = $knockoff_dir")
-    println("N (effective sample size) = $Neffect")
-    println("hg_build = $hg_build")
-    println("outfile = $outfile")
-    println("m (number of knockoffs for stability) = $m")
-    println("seed = $seed")
-
-    z, chr, pos, effect_allele, non_effect_allele = read_zscores(filepath)
-    ghostbasil_parallel(knockoff_dir, z, chr, pos, effect_allele, 
-        non_effect_allele, N, hg_build, outdir, outname=outfile, m=m, seed=seed)
-    
-    println("Done! Result saved to $(joinpath(outdir, outname))")
 end
