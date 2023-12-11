@@ -24,7 +24,39 @@ Most users are expected to follow this workflow. For advanced users, see [Develo
 
 To see required inputs (and optional inputs), invoke
 ```shell
-./GhostKnockoffGWAS --help
+$ ./GhostKnockoffGWAS --help
+
+usage: <PROGRAM> [--genome-build GENOME-BUILD] [--m M] [--seed SEED]
+                 [-h] zfile knockoff_dir Neffect out
+
+positional arguments:
+  zfile                 Tab or comma separated summary Z-score file.
+                        The first row must be a header line that
+                        contains CHR/POS/REF/ALT fields, as well as
+                        something that indicates Z-score information.
+                        CHR must be integer valued (e.g. chr21 is not
+                        correct). If a column with `Z` is available,
+                        it will be used as Z scores. Otherwise, we
+                        need both `pvalue` and `beta` to be available,
+                        or both `OR` (odds ratio) and `SE` (standard
+                        error) to be available. In these cases, we
+                        will convert them to Z scores.
+  knockoff_dir          Path to the directory storing pre-processed
+                        knockoff files
+  Neffect               Effective sample size for original data (type:
+                        Int64)
+  out                   Output file prefix (without extensions)
+
+optional arguments:
+  --genome-build GENOME-BUILD
+                        Specifies the human genome build for the
+                        summary file. Must be 19 (hg19) or 38 (hg38).
+                        (type: Int64, default: 38)
+  --m M                 Number of knockoffs to generate (type: Int64,
+                        default: 5)
+  --seed SEED           Sets the random seed (type: Int64, default:
+                        2023)
+  -h, --help            show this help message and exit
 ```
 
 Example run:

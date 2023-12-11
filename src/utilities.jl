@@ -150,7 +150,7 @@ function read_zscores(filepath::String)
         pos = info[!, "POS"] |> Vector{Int}
         effect_allele = info[!, "ALT"] |> Vector{String}
         non_effect_allele = info[!, "REF"] |> Vector{String}
-        return chr, pos, effect_allele, non_effect_allele
+        chr, pos, effect_allele, non_effect_allele
     catch
         error("Z score file does not contain CHR/POS/REF/ALT.")
     end

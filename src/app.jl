@@ -6,11 +6,11 @@ function julia_main()::Cint
             parse_commandline()
 
         println("Running GhostKnockoffGWAS analysis with the following options:")
-        println("zfile = $zfile")
-        println("knockoff_dir = $knockoff_dir")
+        println("zfile = $(abspath(zfile))")
+        println("knockoff_dir = $(abspath(knockoff_dir))")
         println("N (effective sample size) = $Neffect")
         println("hg_build = $hg_build")
-        println("outfile = $outfile")
+        println("outfile = $(abspath(outfile))")
         println("m (number of knockoffs for stability) = $m")
         println("seed = $seed")
 

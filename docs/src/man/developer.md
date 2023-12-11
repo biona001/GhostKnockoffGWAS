@@ -23,6 +23,10 @@ Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
 Pkg.add(url="https://github.com/biona001/GhostKnockoffGWAS")
 ```
 
+!!! warning
+
+    This package currently only works on Julia 1.8.x and 1.9.x. If you need it to work on a different Julia version, let us know by filing an issue on Github. 
+
 ### Julia API
 
 ```@autodocs
