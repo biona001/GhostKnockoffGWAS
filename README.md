@@ -22,7 +22,6 @@ Pkg.add(url="https://github.com/biona001/GhostKnockoffGWAS")
 
 ## Compiling the binaries
 
-
 1. `ml gcc/7.1`
 2. Make sure `GhostKnockoffGWAS` is installed
 3. `dev` the package via
@@ -34,5 +33,5 @@ Pkg.add(url="https://github.com/biona001/GhostKnockoffGWAS")
 using PackageCompiler, GhostKnockoffGWAS
 src = normpath(pathof(GhostKnockoffGWAS), "../..")
 des = normpath(pathof(GhostKnockoffGWAS), "../../app_linux_x86")
-@time create_app(src, des, include_lazy_artifacts=true) # takes 1-2h
+@time create_app(src, des, include_lazy_artifacts=true, force=true) # takes 1-2h
 ```

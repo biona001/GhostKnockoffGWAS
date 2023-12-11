@@ -141,3 +141,36 @@ function count_matchable_snps(
     end
     return nsnps
 end
+
+function read_zscores(filepath::String)
+    info = CSV.read(filepath, DataFrame)
+    # reach chr,pos, and ref/alt alleles
+    chr, pos, effect_allele, non_effect_allele = try
+        chr = info[!, "CHR"] |> Vector{Int}
+        pos = info[!, "POS"] |> Vector{Int}
+        effect_allele = info[!, "ALT"] |> Vector{String}
+        non_effect_allele = info[!, "REF"] |> Vector{String}
+        return chr, pos, effect_allele, non_effect_allele
+    catch
+        error("Z score file does not contain CHR/POS/REF/ALT.")
+    end
+
+    # read Z scores
+    columnnames = names(info)
+    if "Z" in columnnames
+        z = info[!, "Z"] |> Vector{Float64}
+    elseif "pvalue" in columnnames && "beta" in columnnames
+        pvals = info[!, "pvalue"]
+        betas = info[!, "beta"]
+        z = pval2zscore(pvals, betas) |> Vector{Float64}
+    elseif "or" in columnnames && "se" in columnnames
+        odds_ratio = info[!, "or"]
+        se = info[!, "se"]
+        z = log.(odds_ratio) ./ se |> Vector{Float64}
+    else
+        error("Did not find Z scores! Column name = $names")
+    end
+    # remove NaN/Inf
+    idx = findall(x -> !isnan(x) && !isinf(x), z)
+    return z[idx], chr[idx], pos[idx], effect_allele[idx], non_effect_allele[idx]
+end

@@ -11,6 +11,7 @@ using Random
 using Distributions
 using DelimitedFiles
 using Optim
+using ArgParse
 
 export ghostbasil, 
     ghostbasil_parallel,
@@ -24,5 +25,6 @@ export ghostbasil,
 # include("ghostbasil.jl")
 include("ghostbasil_parallel.jl")
 include("utilities.jl")
+include("app.jl")
 
 end # module GhostKnockoffGWAS

@@ -4,6 +4,7 @@ authors = ["Benjamin Chu <benchu99@hotmail.com>"]
 version = "0.1.0"
 
 [deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
@@ -19,7 +20,6 @@ ghostbasil_jll = "caeec347-1c5e-53ac-8e86-7f5e1a690164"
 
 [compat]
 julia = "1"
-ghostbasil_jll = "0.0.7"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

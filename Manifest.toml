@@ -2,7 +2,7 @@
 
 julia_version = "1.9.1"
 manifest_format = "2.0"
-project_hash = "972bf346eb590694ff40805442b8309f26a9d0ce"
+project_hash = "538e26e3f49acdf41cb2e0c8c984b0b2b47f69b0"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -23,6 +23,12 @@ weakdeps = ["StaticArrays"]
 
     [deps.Adapt.extensions]
     AdaptStaticArraysExt = "StaticArrays"
+
+[[deps.ArgParse]]
+deps = ["Logging", "TextWrap"]
+git-tree-sha1 = "3102bce13da501c9104df33549f511cd25264d7d"
+uuid = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+version = "1.1.4"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -418,7 +424,7 @@ version = "0.3.11"
 
 [[deps.Ghostbasil]]
 deps = ["CxxWrap", "ghostbasil_jll"]
-git-tree-sha1 = "409acbb88270999ce2feb8d4155b0ae66087ca7b"
+git-tree-sha1 = "d6324a2b7e367dd1dfb92e59f8fefa448ec87110"
 repo-rev = "main"
 repo-url = "https://github.com/biona001/Ghostbasil.jl"
 uuid = "42a9b20f-2d23-465a-b7ed-975dbff4a4d6"
@@ -530,6 +536,12 @@ deps = ["BlockDiagonals", "CSV", "Clustering", "CovarianceEstimation", "DataFram
 git-tree-sha1 = "bedba256e51c9c0b6f330268252243545ee8c16a"
 uuid = "878bf26d-0c49-448a-9df5-b057c815d613"
 version = "1.0.2"
+
+[[deps.LLVMOpenMP_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "f689897ccbe049adb19a065c495e75f372ecd42b"
+uuid = "1d63c593-3942-5779-bab2-d838dc0a180e"
+version = "15.0.4+0"
 
 [[deps.LaTeXStrings]]
 git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
@@ -1077,6 +1089,11 @@ version = "1.10.0"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[deps.TextWrap]]
+git-tree-sha1 = "9250ef9b01b66667380cf3275b3f7488d0e25faf"
+uuid = "b718987f-49a8-5099-9789-dcd902bef87d"
+version = "1.0.1"
+
 [[deps.ThreadingUtilities]]
 deps = ["ManualMemory"]
 git-tree-sha1 = "c97f60dd4f2331e1a495527f80d242501d2f9865"
@@ -1148,12 +1165,12 @@ uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
 version = "1.5.5+0"
 
 [[deps.ghostbasil_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "libcxxwrap_julia_jll"]
-git-tree-sha1 = "ecf8127fd291d27598278b4b63b631c87b0ba3d3"
+deps = ["Artifacts", "JLLWrappers", "LLVMOpenMP_jll", "Libdl", "Pkg", "libcxxwrap_julia_jll"]
+git-tree-sha1 = "ededaa9278aa74d362ad3f1cc3f91dd3cabcd68f"
 repo-rev = "main"
 repo-url = "https://github.com/biona001/ghostbasil_jll.jl"
 uuid = "caeec347-1c5e-53ac-8e86-7f5e1a690164"
-version = "0.0.6+0"
+version = "0.0.7+0"
 
 [[deps.glmnet_jll]]
 deps = ["Libdl", "Pkg"]
