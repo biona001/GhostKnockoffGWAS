@@ -10,7 +10,6 @@ function ghostbasil_parallel(
     outdir::String;        # output directory (must exist)
     m::Int=5,
     outname::String="result",
-    ncores = 1,
     seed::Int = 2023,
     target_chrs=1:22,
     A_scaling_factor = 0.01,
@@ -23,7 +22,7 @@ function ghostbasil_parallel(
     any(isnan, z) && error("Z score contains NaN!")
     any(isinf, z) && error("Z score contains Inf!")
     isdir(outdir) || error("outdir $outdir does not exist!")
-    N > 0 || error("Effective sample size N should be >0")
+    N > 0 || error("Sample size N should be >0")
     hg_build == 19 || hg_build == 38 || error("Human genome build must be 19 or 38")
     length(z) == length(chr) == length(pos) == 
         length(effect_allele) == length(non_effect_allele) ||
@@ -54,7 +53,7 @@ function ghostbasil_parallel(
         ref=String[], alt=String[], pos_hg19=Int[], pos_hg38=Int[])
 
     # assemble knockoff results across regions
-    nregions, nsnps = 0, 0
+    nregions, nsnps, nknockoff_snps = 0, 0, 0
     for c in target_chrs
         files = readdir(joinpath(knockoff_dir, "chr$c"))
         chr_idx = findall(x -> x == c, chr)
@@ -70,6 +69,7 @@ function ghostbasil_parallel(
             t1 += @elapsed begin
                 result = JLD2.load(joinpath(knockoff_dir, "chr$c", f))
                 Sigma_info = CSV.read(joinpath(knockoff_dir, "chr$(c)", "Info_$fname.csv"), DataFrame)
+                nknockoff_snps += size(Sigma_info, 1)
                 # map reference LD panel to GWAS Z-scores by position
                 LD_pos = Sigma_info[!, "pos_hg$(hg_build)"]
                 shared_snps = intersect(LD_pos, GWAS_pos)
@@ -150,7 +150,8 @@ function ghostbasil_parallel(
                 Si_scaled = Si + A_scaling_factor*I
                 r = Zscores_store ./ sqrt(N)
                 beta_i = block_group_ghostbasil(Ci, Si_scaled, r, lambda_path, 
-                    m=m, delta_strong_size = 500, use_strong_rule=false)
+                    m=m, delta_strong_size = 500, use_strong_rule=false) |> 
+                    Vector{Float64}
             end
 
             # undo shuffling of Z and Zko
@@ -212,11 +213,14 @@ function ghostbasil_parallel(
         df[!, :kappa] = kappa_full
         df[!, :tau] = tau_full
         df[!, :pvals] = zscore2pval(df[!, :zscores])
+        qs, num_selected = Float64[], Int[]
         for fdr in target_fdrs
-            q = mk_threshold(tau, kappa, m, fdr)
+            q = mk_threshold(tau, kappa, m, fdr) #todo: this step is slow?
             selected = zeros(Int, size(df, 1))
             selected[findall(x -> x ≥ q, W)] .= 1
             df[!, "selected_fdr$fdr"] = selected
+            push!(qs, q)
+            push!(num_selected, count(isone, selected))
         end
         CSV.write(joinpath(outdir, outname * ".txt"), df)
     end
@@ -224,10 +228,9 @@ function ghostbasil_parallel(
     # save summary info
     open(joinpath(outdir, outname * "_summary.txt"), "w") do io
         # Q-value (i.e. threshold for knockoff filter)
-        for fdr in target_fdrs
-            q = mk_threshold(tau, kappa, m, fdr)
+        for (q, s, fdr) in zip(qs, num_selected, target_fdrs)
             println(io, "target_fdr_$(fdr),$q")
-            println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≥ q, W))
+            println(io, "target_fdr_$(fdr)_num_selected,$s")
         end
         println(io, "m,$m")
         println(io, "nregions,$nregions")

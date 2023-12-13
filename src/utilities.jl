@@ -95,7 +95,7 @@ function count_matchable_snps(
     hg_build::Int,
     target_chrs=1:22,
     )
-    nregions, nsnps = 0, 0
+    nregions, nsnps, nknockoff_snps = 0, 0, 0
     for c in target_chrs
         files = readdir(joinpath(knockoff_dir, "chr$c"))
         chr_idx = findall(x -> x == c, chr)
@@ -108,8 +108,10 @@ function count_matchable_snps(
             fname = f[4:end-3]
 
             # read knockoff results
-            result = JLD2.load(joinpath(knockoff_dir, "chr$c", f))
-            Sigma_info = CSV.read(joinpath(knockoff_dir, "chr$(c)", "Info_$fname.csv"), DataFrame)
+            Sigma_info = CSV.read(
+                joinpath(knockoff_dir, "chr$(c)", "Info_$fname.csv"), DataFrame
+            )
+            nknockoff_snps += size(Sigma_info, 1)
             # map reference LD panel to GWAS Z-scores by position
             LD_pos = Sigma_info[!, "pos_hg$(hg_build)"]
             shared_snps = intersect(LD_pos, GWAS_pos)
@@ -139,38 +141,33 @@ function count_matchable_snps(
         end
         println("count_matchable_snps processed chr $c, cumulative SNPs = $nsnps")
     end
+    if nsnps / nknockoff_snps < 0.05
+        error("Less than 5% of SNPs in the pre-computed knockoff LD panel " * 
+              "can be successfully mapped to target Z scores. Please check " *
+              "if the human genome build of the target study is $hg_build")
+    end
     return nsnps
 end
 
 function read_zscores(filepath::String)
-    info = CSV.read(filepath, DataFrame)
-    # reach chr,pos, and ref/alt alleles
-    chr, pos, effect_allele, non_effect_allele = try
+    # read chr, pos, ref/alt alleles, and Z scores
+    chr, pos, effect_allele, non_effect_allele, z = try
+        info = CSV.read(filepath, DataFrame)
         chr = info[!, "CHR"] |> Vector{Int}
         pos = info[!, "POS"] |> Vector{Int}
         effect_allele = info[!, "ALT"] |> Vector{String}
         non_effect_allele = info[!, "REF"] |> Vector{String}
-        chr, pos, effect_allele, non_effect_allele
+        z = info[!, "Z"] |> Vector{Float64}
+        chr, pos, effect_allele, non_effect_allele, z
     catch
-        error("Z score file does not contain CHR/POS/REF/ALT.")
+        error(
+            "Error reading Z score file $filepath. Does the file contain " *
+            "CHR, POS, REF, ALT, and Z as headers?"
+        )
     end
 
-    # read Z scores
-    columnnames = names(info)
-    if "Z" in columnnames
-        z = info[!, "Z"] |> Vector{Float64}
-    elseif "pvalue" in columnnames && "beta" in columnnames
-        pvals = info[!, "pvalue"]
-        betas = info[!, "beta"]
-        z = pval2zscore(pvals, betas) |> Vector{Float64}
-    elseif "or" in columnnames && "se" in columnnames
-        odds_ratio = info[!, "or"]
-        se = info[!, "se"]
-        z = log.(odds_ratio) ./ se |> Vector{Float64}
-    else
-        error("Did not find Z scores! Column name = $names")
-    end
     # remove NaN/Inf
     idx = findall(x -> !isnan(x) && !isinf(x), z)
+
     return z[idx], chr[idx], pos[idx], effect_allele[idx], non_effect_allele[idx]
 end
