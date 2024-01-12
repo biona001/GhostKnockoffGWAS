@@ -33,7 +33,7 @@ function ghostbasil_parallel(
     lambdamax = maximum(abs, z) / sqrt(N)
     lambdamin = 0.0001lambdamax
     lambda_path = exp.(range(log(lambdamin), log(lambdamax), length=100)) |> reverse!
-    nsnps = count_matchable_snps(knockoff_dir, z, chr, pos, effect_allele, 
+    nsnps, tregions = count_matchable_snps(knockoff_dir, z, chr, pos, effect_allele, 
         non_effect_allele, hg_build, target_chrs) # ~400 seconds on typed SNPs
     lambda = kappa * maximum(abs, randn((m+1)*nsnps)) / sqrt(N)
     lambda_path = lambda_path[findall(x -> x > lambda, lambda_path)]
@@ -164,13 +164,12 @@ function ghostbasil_parallel(
             append!(beta, beta_i)
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions: chr $c, nz beta = $(count(!iszero, beta_i)), nsnps = $(length(shared_snps))")
+            println("region $nregions / $tregions: chr $c, nz beta = $(count(!iszero, beta_i)), nsnps = $(length(shared_snps))")
             flush(stdout)
         end
     end
 
     # some checks
-    nregions == 1703 || @warn("Number of successfully solved region is $nregions, expected 1703")
     println("Matched $nsnps SNPs with Z-scores to the reference panel")
     length(Zscores) == length(groups) || 
         error("Number of Zscores should match groups")

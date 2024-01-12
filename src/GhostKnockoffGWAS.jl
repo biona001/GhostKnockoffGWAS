@@ -20,7 +20,8 @@ export ghostbasil,
     zscore,
     zscore2pval,
     pval2zscore,
-    pval
+    pval,
+    read_zscores
 
 # include("ghostbasil.jl")
 include("ghostbasil_parallel.jl")

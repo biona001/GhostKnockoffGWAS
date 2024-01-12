@@ -125,7 +125,7 @@ function count_matchable_snps(
               "can be successfully mapped to target Z scores. Please check " *
               "if the human genome build of the target study is $hg_build")
     end
-    return nsnps
+    return nsnps, nregions
 end
 
 """
