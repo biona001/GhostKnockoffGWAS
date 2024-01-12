@@ -5,7 +5,8 @@ function julia_main()::Cint
         zfile, knockoff_dir, N, hg_build, outfile, outdir, seed = 
             parse_commandline()
 
-        println("Running GhostKnockoffGWAS with the following options:")
+        println("\n\nWelcome to GhostKnockoffGWAS analysis!")
+        println("You have specified the following options:")
         println("zfile           = ", abspath(zfile))
         println("knockoff_dir    = ", abspath(knockoff_dir))
         println("N (sample size) = ", N)
@@ -13,6 +14,7 @@ function julia_main()::Cint
         println("outdir          = ", outdir)
         println("outfile         = ", joinpath(outdir, outfile))
         println("seed            = ", seed)
+        println("\n")
 
         # read Z scores
         t1 = @elapsed begin
@@ -45,11 +47,14 @@ function parse_commandline()
                    ".gz compressed. The first row must be a header line that " *
                    "contains at least CHR, POS, REF, ALT, and Z (other columns " * 
                    "will be ignored). Each row should be a SNP. CHR is the " *
-                   "chromosome column and must be integer valued (e.g. chr22 " *
-                   "is NOT valid). POS is the position of the SNP (aligned " * 
-                   "to HG19 or HG38). REF and ALT are the reference and alternate " *
-                   "alleles, which will be treated as the non-effective and " * 
-                   "effect alleles, respectively. Finally Z is the Z-score column"
+                   "chromosome column and must be integer valued (e.g. chr22, " *
+                   ", sex chromosomes, and missing values are NOT valid). POS is " * 
+                   "the SNP (aligned to HG19 or HG38) and cannot be missing. REF " *
+                   "the position of and ALT are the reference and alternate " * 
+                   "alleles, which will be treated as the non-effective and effect " * 
+                   "alleles, respectively, and also cannot be missing. Finally, Z " * 
+                   "is the Z-score column. Missing Z scores can be specified as " * 
+                   "NaN or as an empty cell."
             required = true
             arg_type = String
         "--knockoff-dir"

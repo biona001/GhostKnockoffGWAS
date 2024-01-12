@@ -44,6 +44,7 @@ function find_matching_indices(a::AbstractVector, b::AbstractVector)
     return c
 end
 
+# eq 24 of https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010299
 function find_optimal_shrinkage(Σ::AbstractMatrix, z::AbstractVector)
     opt = optimize(
         γ -> neg_mvn_logl_under_null(Σ, z, γ), 
@@ -52,36 +53,15 @@ function find_optimal_shrinkage(Σ::AbstractMatrix, z::AbstractVector)
     )
     return opt.minimizer
 end
-
-# function neg_mvn_logl_under_null_naive(Σ::AbstractMatrix, z::AbstractVector)
-#     return 0.5logdet(Symmetric(Σ)) + dot(z, inv(Symmetric(Σ)), z)
-# end
-# function neg_mvn_logl_under_null_naive(Σ::AbstractMatrix, z::AbstractVector, γ::Number)
-#     return mvn_logl_under_null_naive((1-γ)*Σ + γ*I, z)
-# end
-# @time neg_mvn_logl_under_null_naive(Σ, zscore_tmp)
-
 function neg_mvn_logl_under_null(Σ::AbstractMatrix, z::AbstractVector, γ::Number)
     return neg_mvn_logl_under_null((1-γ)*Σ + γ*I, z)
 end
 function neg_mvn_logl_under_null(Σ::AbstractMatrix, z::AbstractVector)
     L = cholesky(Symmetric(Σ))
     u = zeros(length(z))
-    ldiv!(u, UpperTriangular(L.factors)', z)
+    ldiv!(u, UpperTriangular(L.factors)', z) # non-allocating ldiv!(u, L.L, z)
     return 0.5logdet(L) + dot(u, u)
 end
-# @time neg_mvn_logl_under_null(Σ, zscore_tmp)
-# @time neg_mvn_logl_under_null(Σ, zscore_tmp, 1.0)
-# @time neg_mvn_logl_under_null(Σ, zscore_tmp, 0.5)
-# @time neg_mvn_logl_under_null(Σ, zscore_tmp, 0.1)
-# @time neg_mvn_logl_under_null(Σ, zscore_tmp, 0.0)
-# γ = find_optimal_shrinkage(Σ, zscore_tmp)
-
-
-# function mvn_logl_under_null(L::Cholesky, z::AbstractVector, u=zeros(length(z)))
-#     ldiv!(u, UpperTriangular(L.factors)', z)
-#     return -0.5logdet(L) - dot(u, u)
-# end
 
 # counts number of Z scores that can be matched to LD panel
 # ~400 seconds is running on typed SNPs only
@@ -124,10 +104,9 @@ function count_matchable_snps(
                 alt_match_nea = Sigma_info[LD_idx, "alt"] == GWAS_nea[GWAS_idx]
                 ref_match_nea = Sigma_info[LD_idx, "ref"] == GWAS_nea[GWAS_idx]
                 alt_match_ea = Sigma_info[LD_idx, "alt"] == GWAS_ea[GWAS_idx]
-                if ref_match_ea && alt_match_nea 
+                if ref_match_nea && alt_match_ea
                     continue
-                elseif ref_match_nea && alt_match_ea
-                    # push!(remove_idx, i)
+                elseif ref_match_ea && alt_match_nea
                     zscores[GWAS_idx] *= -1
                 else # SNP cannot get matched to LD panel
                     push!(remove_idx, i)
@@ -141,33 +120,88 @@ function count_matchable_snps(
         end
         println("count_matchable_snps processed chr $c, cumulative SNPs = $nsnps")
     end
-    if nsnps / nknockoff_snps < 0.05
-        error("Less than 5% of SNPs in the pre-computed knockoff LD panel " * 
+    if nsnps / nknockoff_snps < 0.01
+        error("Less than 1% of SNPs in the pre-computed knockoff LD panel " * 
               "can be successfully mapped to target Z scores. Please check " *
               "if the human genome build of the target study is $hg_build")
     end
     return nsnps
 end
 
+"""
+    read_zscores(filepath::String)
+
+Helper function to read a Z-score file. First row must be a header column with 
+CHR, POS, REF, ALT, and Z. All other columns will be ignored. 
+
+# todo: detect duplicate SNPs
+"""
 function read_zscores(filepath::String)
-    # read chr, pos, ref/alt alleles, and Z scores
-    chr, pos, effect_allele, non_effect_allele, z = try
-        info = CSV.read(filepath, DataFrame)
-        chr = info[!, "CHR"] |> Vector{Int}
-        pos = info[!, "POS"] |> Vector{Int}
-        effect_allele = info[!, "ALT"] |> Vector{String}
-        non_effect_allele = info[!, "REF"] |> Vector{String}
-        z = info[!, "Z"] |> Vector{Float64}
-        chr, pos, effect_allele, non_effect_allele, z
-    catch
-        error(
-            "Error reading Z score file $filepath. Does the file contain " *
-            "CHR, POS, REF, ALT, and Z as headers?"
-        )
+    # create CSV.File object (this reads the file lazily)
+    csv_file = CSV.File(filepath)
+
+    # check the 5 required header is present
+    if !issubset([:CHR, :POS, :REF, :ALT, :Z], propertynames(csv_file))
+        error("Error reading Z score file $filepath. Does the file contain " *
+            "CHR, POS, REF, ALT, and Z as headers?")
     end
 
-    # remove NaN/Inf
-    idx = findall(x -> !isnan(x) && !isinf(x), z)
+    # read chr, pos, ref/alt alleles, and Z scores
+    chr = csv_file.CHR
+    pos = csv_file.POS
+    effect_allele = csv_file.ALT
+    non_effect_allele = csv_file.REF
+    z = csv_file.Z
 
-    return z[idx], chr[idx], pos[idx], effect_allele[idx], non_effect_allele[idx]
+    # chr must be integer valued
+    if eltype(chr) <: AbstractString
+        try
+            chr = parse.(Int, chr)
+        catch e
+            println(
+                "Error parsing CHR field of Z score file $filepath. " * 
+                "Note that CHR field must be integer valued (e.g. chr22 " *
+                "and sex chromosomes are NOT valid!)"
+            )
+            rethrow(e)
+        end
+    end
+
+    # Z must be Float64 valued
+    if eltype(z) <: AbstractString
+        try
+            z = parse.(Float64, chr)
+        catch e
+            println(
+                "Error parsing z-scores of Z score file $filepath. " * 
+                "Note that Z scores should be floating point valued. Missing " * 
+                "Z scores can be specified as NaN or as an empty cell."
+            )
+            rethrow(e)
+        end
+    end
+
+    # detect duplicate SNPs
+    check_all_snps_are_unique(chr, pos, effect_allele, non_effect_allele)
+
+    # find missing/NaN/Inf
+    chr_idx = findall(x -> !ismissing(x) && !isnothing(x) && !isnan(x) && !isinf(x), chr)
+    pos_idx = findall(x -> !ismissing(x) && !isnothing(x) && !isnan(x) && !isinf(x), pos)
+    ref_idx = findall(x -> !ismissing(x) && !isnothing(x), non_effect_allele)
+    alt_idx = findall(x -> !ismissing(x) && !isnothing(x), effect_allele)
+    z_idx = findall(x -> !ismissing(x) && !isnothing(x) && !isnan(x) && !isinf(x), z)
+    idx = intersect(chr_idx, pos_idx, ref_idx, alt_idx, z_idx)
+
+    # filter Z/CHR/POS/REF/ALT for valid values
+    z = z[idx] |> Vector{Float64}
+    chr = chr[idx] |> Vector{Int}
+    pos = pos[idx] |> Vector{Int}
+    effect_allele = effect_allele[idx] |> Vector{String}
+    non_effect_allele = non_effect_allele[idx] |> Vector{String}
+
+    return z, chr, pos, effect_allele, non_effect_allele
+end
+
+function check_all_snps_are_unique(chr, pos, effect_allele, non_effect_allele)
+    return nothing # todo
 end

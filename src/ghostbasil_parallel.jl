@@ -16,7 +16,7 @@ function ghostbasil_parallel(
     kappa::Number=0.6,     # for tuning lambda
     save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
     LD_shrinkage::Bool=true, # if true, we will try to perform shrinkage to LD matrix following method in susie
-    target_fdrs = [0.01, 0.05, 0.1, 0.15, 0.2],
+    target_fdrs = 0.01:0.01:0.2,
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -82,9 +82,9 @@ function ghostbasil_parallel(
                     alt_match_nea = Sigma_info[LD_idx, "alt"] == GWAS_nea[GWAS_idx]
                     ref_match_nea = Sigma_info[LD_idx, "ref"] == GWAS_nea[GWAS_idx]
                     alt_match_ea = Sigma_info[LD_idx, "alt"] == GWAS_ea[GWAS_idx]
-                    if ref_match_ea && alt_match_nea 
+                    if ref_match_nea && alt_match_ea
                         continue
-                    elseif ref_match_nea && alt_match_ea
+                    elseif ref_match_ea && alt_match_nea
                         zscores[GWAS_idx] *= -1
                     else # SNP cannot get matched to LD panel
                         push!(remove_idx, i)

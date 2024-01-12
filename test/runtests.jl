@@ -3,6 +3,8 @@ using GhostKnockoffGWAS
 using Ghostbasil
 using LinearAlgebra
 using DelimitedFiles
+using CSV
+using DataFrames
 
 @testset "utilities" begin
     # convert between z score and p-value
@@ -77,4 +79,65 @@ end
         -0.0016095272344540995, 0.0020146776266541312, -0.001666736964454875, 
         0.0004269118551173737, 0.00010746291189108347]
     )
+end
+
+@testset "read_zscores" begin
+    # no missing data
+    filepath = tempname()
+    data = """
+    CHR\tPOS\tREF\tALT\tZ
+    1\t758351\tA\tG\t1.05551882016081
+    1\t779885\tC\tT\t2.12197306477
+    1\t779987\tA\tG\t1.95791489337
+    1\t782105\tC\tA\t1.91243829548
+    """
+    CSV.write(filepath, CSV.File(IOBuffer(data)))
+    z, chr, pos, effect_allele, non_effect_allele = read_zscores(filepath)
+    @test all(z .≈ [1.05551882016081, 2.12197306477, 1.95791489337, 1.91243829548])
+    @test all(chr .== 1)
+    @test all(pos .== [758351, 779885, 779987, 782105])
+    @test all(effect_allele .== ["G", "T", "G", "A"])
+    @test all(non_effect_allele .== ["A", "C", "A", "C"])
+    rm(filepath, force=true)
+
+    # throws error with chrX
+    data = """
+    CHR\tPOS\tREF\tALT\tZ
+    1\t758351\tA\tG\t1.05551882016081
+    2\t779885\tC\tT\t2.12197306477
+    3\t779987\tA\tG\t1.95791489337
+    X\t782105\tC\tA\t1.91243829548
+    """
+    CSV.write(filepath, CSV.File(IOBuffer(data)))
+    @test_throws ArgumentError read_zscores(filepath)
+
+    # missing Z scores
+    data = """
+    CHR\tPOS\tREF\tALT\tZ
+    1\t758351\tA\tG\t1.05551882016081
+    1\t779885\tC\tT\tNaN
+    1\t779987\tA\tG\t1.95791489337
+    1\t782105\tC\tA\t
+    """
+    CSV.write(filepath, CSV.File(IOBuffer(data)))
+    z, chr, pos, effect_allele, non_effect_allele = read_zscores(filepath)
+    @test all(z .≈ [1.05551882016081, 1.95791489337])
+    @test all(chr .== 1)
+    @test all(pos .== [758351, 779987])
+    @test all(effect_allele .== ["G", "G"])
+    @test all(non_effect_allele .== ["A", "A"])
+
+    # repeated SNPs
+    # data = """
+    # CHR\tPOS\tREF\tALT\tZ
+    # 1\t758351\tA\tG\t1.05551882016081
+    # 1\t758351\tA\tG\t1.05551882016081
+    # 1\t779885\tC\tT\t2.12197306477
+    # 1\t779885\tT\tC\t2.12197306477
+    # """
+    # CSV.write(filepath, CSV.File(IOBuffer(data)))
+    # read_zscores(filepath)
+
+    # cleanup
+    rm(filepath)
 end
