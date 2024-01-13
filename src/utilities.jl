@@ -205,3 +205,168 @@ end
 function check_all_snps_are_unique(chr, pos, effect_allele, non_effect_allele)
     return nothing # todo
 end
+
+"""
+    sample_mvn_efficient(C::AbstractMatrix{T}, D::AbstractMatrix{T}, m::Int)
+
+Efficiently samples from `N(0, A)` where
+```math
+\\begin{aligned}
+A &= \\begin{pmatrix}
+    C & C-D & \\cdots & C-D\\\\
+    C-D & C & \\cdots & C-D\\\\
+    \\vdots & & \\ddots & \\vdots\\\\
+    C-D & C-D & & C
+\\end{pmatrix}
+\\end{aligned}
+```
+Note there are `m` blocks per row/col
+
+# Source
+https://github.com/biona001/Knockoffs.jl/blob/master/src/ghost.jl#L60
+"""
+function sample_mvn_efficient(C::AbstractMatrix{T}, D::AbstractMatrix{T}, m::Int) where T
+    p = size(C, 1)
+    L = cholesky(Symmetric(C - (m-1)/m * D))
+    e1 = randn(p)
+    e2 = Vector{T}[]
+    d = MvNormal(Symmetric(D))
+    for i in 1:m
+        push!(e2, rand(d))
+    end
+    e2_avg = 1/m * sum(e2)
+    Zko = T[]
+    for i in 1:m
+        append!(Zko, L.L*e1 + e2[i] - e2_avg)
+    end
+    return Zko
+end
+
+"""
+    ghost_knockoffs(Zscores, D, Σinv; [m=1])
+
+Generate Ghost knockoffs given a list of z-scores (GWAS summary statistic). 
+
+# Inputs
++ `Zscores`: List of z-score statistics
++ `D`: Matrix obtained from solving the knockoff problem satisfying 
+    `(m+1)/m*Σ - D ⪰ 0`
++ `Σinv`: Inverse of the covariance matrix
+
+# optional inputs
++ `m`: Number of knockoffs
+
+# Reference
+He, Z., Liu, L., Belloy, M. E., Le Guen, Y., Sossin, A., Liu, X., ... & Ionita-Laza, I. (2021). 
+Summary statistics knockoff inference empowers identification of putative causal variants in 
+genome-wide association studies. 
+
+# Source
+https://github.com/biona001/Knockoffs.jl/blob/master/src/ghost.jl#L32
+"""
+function ghost_knockoffs(Zscores::AbstractVector{T}, D::AbstractMatrix{T}, 
+    Σinv::AbstractMatrix{T}; m::Int = 1) where T
+    p = size(D, 1)
+    length(Zscores) == size(Σinv, 1) == size(Σinv, 2) == p || 
+        error("Dimension mismatch")
+    DΣinv = D * Σinv
+    C = 2D - DΣinv * D
+    v = sample_mvn_efficient(C, D, m) # Jiaqi's trick
+    P = repeat(I - DΣinv, m)
+    return P*Zscores + v
+end
+
+"""
+    MK_statistics(T0::Vector, Tk::Vector{Vector}; filter_method)
+
+Computes the multiple knockoff statistics kappa, tau, and W. 
+
+# Inputs
++ `T0`: p-vector of importance score for original variables
++ `Tk`: Vector storing T1, ..., Tm, where Ti is importance scores for 
+    the `i`th knockoff copy
++ `filter_method`: Either `Statistics.median` (default) or max (original 
+    function used in 2019 Gimenez and Zou)
+
+# output
++ `κ`: Index of the most significant feature (`κ[i] = 0` if original feature most 
+    important, otherwise `κ[i] = k` if the `k`th knockoff is most important)
++ `τ`: `τ[i]` stores the most significant statistic among original and knockoff
+    variables minus `filter_method()` applied to the remaining statistics. 
++ `W`: coefficient difference statistic `W[i] = abs(T0[i]) - abs(Tk[i])`
+
+# Source
+https://github.com/biona001/Knockoffs.jl/blob/master/src/threshold.jl#L96
+"""
+function MK_statistics(
+    T0::Vector{T}, 
+    Tk::Vector{Vector{T}};
+    filter_method::Function = Statistics.median
+    ) where T
+    p, m = length(T0), length(Tk)
+    all(p .== length.(Tk)) || error("Length of T0 should equal all vectors in Tk")
+    κ = zeros(Int, p) # index of largest importance score
+    τ = zeros(p)      # difference between largest importance score and median of remaining
+    W = zeros(p)      # importance score of each feature
+    storage = zeros(m + 1)
+    for i in 1:p
+        storage[1] = abs(T0[i])
+        for k in 1:m
+            if abs(Tk[k][i]) > abs(T0[i])
+                κ[i] = k
+            end
+            storage[k+1] = abs(Tk[k][i])
+        end
+        W[i] = (storage[1] - filter_method(@view(storage[2:end]))) * (κ[i] == 0)
+        sort!(storage, rev=true)
+        τ[i] = storage[1] - filter_method(@view(storage[2:end]))
+    end
+    return κ, τ, W
+end
+
+"""
+    mk_threshold(τ::Vector{T}, κ::Vector{Int}, m::Int, q::Number)
+
+Chooses the multiple knockoff threshold `τ̂ > 0` by setting
+τ̂ = min{ t > 0 : (1/m + 1/m * {#j: κ[j] ≥ 1 and W[j] ≥ t}) / {#j: κ[j] == 0 and W[j] ≥ τ̂} ≤ q }.
+
+# Inputs
++ `τ`: τ[i] stores the feature importance score for the ith feature, i.e. the value
+    T0 - median(T1,...,Tm). Note in Gimenez and Zou, the max function is used 
+    instead of median
++ `κ`: κ[i] stores which of m knockoffs has largest importance score. When original 
+    variable has largest score, κ[i] == 0.
++ `m`: Number of knockoffs per variable generated
++ `q`: target FDR (between 0 and 1)
++ `rej_bounds`: Number of values of top τ to consider (default = 10000)
+
+# Reference: 
++ Equations 8 and 9 in supplement of "Identification of putative causal loci in 
+    wholegenome sequencing data via knockoff statistics" by He et al. 
++ Algorithm 1 of "Improving the Stability of the Knockoff Procedure: Multiple 
+    Simultaneous Knockoffs and Entropy Maximization" by Gimenez and Zou.
+
+# Source
+https://github.com/biona001/Knockoffs.jl/blob/master/src/threshold.jl#L55
+"""
+function mk_threshold(τ::Vector{T}, κ::Vector{Int}, m::Int, q::Number,
+    method=:knockoff_plus, rej_bounds::Int=10000
+    ) where T <: AbstractFloat
+    0 ≤ q ≤ 1 || error("Target FDR should be between 0 and 1 but got $q")
+    method == :knockoff_plus || error("Multiple knockoffs needs to use :knockoff_plus filtering method")
+    length(τ) == length(κ) || error("Length of τ and κ should be the same")
+    p = length(τ) # number of features
+    τ̂ = typemax(T)
+    offset = 1 / m
+    for (i, t) in enumerate(sort(τ, rev=true))
+        numer_counter, demon_counter = 0, 0
+        for i in 1:p
+            κ[i] ≥ 1 && τ[i] ≥ t && (numer_counter += 1)
+            κ[i] == 0 && τ[i] ≥ t && (demon_counter += 1)
+        end
+        ratio = (offset + offset * numer_counter) / max(1, demon_counter)
+        ratio ≤ q && 0 < t < τ̂ && (τ̂ = t)
+        i > rej_bounds && break
+    end
+    return τ̂
+end

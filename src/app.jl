@@ -41,7 +41,7 @@ end
 
 function parse_commandline()
     s = ArgParseSettings()
-    @add_arg_table s begin
+    @add_arg_table! s begin
         "--zfile"
             help = "Tab or comma separated summary Z-score file, which can be " * 
                    ".gz compressed. The first row must be a header line that " *

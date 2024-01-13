@@ -1,6 +1,5 @@
 module GhostKnockoffGWAS
 
-using Knockoffs
 using Ghostbasil
 using JLD2
 using HDF5
@@ -12,6 +11,7 @@ using Distributions
 using DelimitedFiles
 using Optim
 using ArgParse
+using Statistics
 
 export ghostbasil, 
     ghostbasil_parallel,

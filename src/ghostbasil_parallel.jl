@@ -114,7 +114,7 @@ function ghostbasil_parallel(
                 end
                 # sample ghost knockoffs knockoffs
                 Random.seed!(seed)
-                t22 += @elapsed Zko_train = Knockoffs.sample_mvn_efficient(Σi, Si, m + 1)
+                t22 += @elapsed Zko_train = sample_mvn_efficient(Σi, Si, m + 1)
                 t23 += @elapsed Σi_inv = inv(Symmetric(Σi))
                 t24 += @elapsed Zko = ghost_knockoffs(zscore_tmp, Si, Σi_inv, m=m)
             end
@@ -196,7 +196,7 @@ function ghostbasil_parallel(
                 push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
             end
         end
-        kappa, tau, W = Knockoffs.MK_statistics(T_group0, T_groupk)
+        kappa, tau, W = MK_statistics(T_group0, T_groupk)
         
         # save analysis result
         df[!, :group] = groups[original_idx]
@@ -214,7 +214,7 @@ function ghostbasil_parallel(
         df[!, :pvals] = zscore2pval(df[!, :zscores])
         qs, num_selected = Float64[], Int[]
         for fdr in target_fdrs
-            q = mk_threshold(tau, kappa, m, fdr) #todo: this step is slow?
+            q = mk_threshold(tau, kappa, m, fdr)
             selected = zeros(Int, size(df, 1))
             selected[findall(x -> x ≥ q, W)] .= 1
             df[!, "selected_fdr$fdr"] = selected
