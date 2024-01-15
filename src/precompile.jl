@@ -1,0 +1,2 @@
+using GhostKnockoffGWAS
+GhostKnockoffGWAS.parse_commandline(false)

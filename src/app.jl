@@ -3,7 +3,7 @@ function julia_main()::Cint
     try
         # read command line arguments
         zfile, knockoff_dir, N, hg_build, outfile, outdir, seed = 
-            parse_commandline()
+            parse_commandline(true)
 
         println("\n\nWelcome to GhostKnockoffGWAS analysis!")
         println("You have specified the following options:")
@@ -39,7 +39,7 @@ function julia_main()::Cint
     return 0
 end
 
-function parse_commandline()
+function parse_commandline(parseargs::Bool)
     s = ArgParseSettings()
     @add_arg_table! s begin
         "--zfile"
@@ -79,8 +79,22 @@ function parse_commandline()
             arg_type = Int
             default = 2023
     end
-    parsed_args = parse_args(s)
 
+    # This is for code pre-compilation, enabling fast printing of "help statement".
+    # It runs the parser once when the module is loaded
+    # so that Julia can compile everything including functions that are defined in
+    # other modules. Of course, we need to make sure that the arguments are valid or
+    # the module will fail to load
+    if !parseargs
+        _useless = parse_args(
+            ["--zfile","testdir","--knockoff-dir","testdir2",
+            "--N","1","--genome-build","38","--out","testdir3","--seed","2024"], s
+        )
+        _useless = parse_args(["--help"], s)
+        return nothing
+    end
+
+    parsed_args = parse_args(s)
     zfile = parsed_args["zfile"]
     knockoff_dir = parsed_args["knockoff-dir"]
     N = parsed_args["N"]
