@@ -45,22 +45,18 @@ function find_matching_indices(a::AbstractVector, b::AbstractVector)
 end
 
 # eq 24 of https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010299
+function neg_mvn_logl_under_null(evals, evecs, z::AbstractVector, γ::Number)
+    z_scaled = evecs' * z
+    evals_scaled = (1-γ) .* evals .+ γ
+    return sum(log.(evals_scaled)) + dot(z_scaled, Diagonal(1 ./ evals_scaled), z_scaled)
+end
 function find_optimal_shrinkage(Σ::AbstractMatrix, z::AbstractVector)
+    evals, evecs = eigen(Symmetric(Σ))
     opt = optimize(
-        γ -> neg_mvn_logl_under_null(Σ, z, γ), 
-        0, 1.0, Brent(), show_trace=false, 
-        iterations = 50,
+        γ -> neg_mvn_logl_under_null(evals, evecs, z, γ), 
+        0, 1.0, Brent()
     )
     return opt.minimizer
-end
-function neg_mvn_logl_under_null(Σ::AbstractMatrix, z::AbstractVector, γ::Number)
-    return neg_mvn_logl_under_null((1-γ)*Σ + γ*I, z)
-end
-function neg_mvn_logl_under_null(Σ::AbstractMatrix, z::AbstractVector)
-    L = cholesky(Symmetric(Σ))
-    u = zeros(length(z))
-    ldiv!(u, UpperTriangular(L.factors)', z) # non-allocating ldiv!(u, L.L, z)
-    return 0.5logdet(L) + dot(u, u)
 end
 
 # counts number of Z scores that can be matched to LD panel

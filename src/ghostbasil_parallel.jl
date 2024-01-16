@@ -106,12 +106,15 @@ function ghostbasil_parallel(
                 Si = result["D"][LD_keep_idx, LD_keep_idx]
                 Σi = result["Sigma"][LD_keep_idx, LD_keep_idx]
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
+
+                # shrinkage for consistency (todo: only use reps for better speed)
                 t21 += @elapsed if LD_shrinkage
                     γ = find_optimal_shrinkage(Σi, zscore_tmp)
                     γ_mean += γ
                     Σi = (1 - γ)*Σi + γ*I
                     Si = (1 - γ)*Si + (m+1)/m*γ*I
                 end
+
                 # sample ghost knockoffs knockoffs
                 Random.seed!(seed)
                 t22 += @elapsed Zko_train = sample_mvn_efficient(Σi, Si, m + 1)
