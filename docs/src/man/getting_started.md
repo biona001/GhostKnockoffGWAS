@@ -12,7 +12,7 @@ The main working assumption is that we do not have access to individual level ge
 
 ## Typical Workflow
 
-Most users are expected to follow this workflow. For advanced users, see [Developer documentation](https://biona001.github.io/GhostKnockoffGWAS/dev/man/developer).
+Most users are expected to follow this workflow. Those familiar with the Julia programming language can use GhostKnockoffGWAS as a regular julia package, see [usage within Julia](https://biona001.github.io/GhostKnockoffGWAS/dev/man/julia).
 
 1. Download the [binary executable file]() (XXX GB)
 2. Download the [pre-computed knockoff statistics](https://drive.google.com/file/d/1_ajlxFWE2MCSgBXDgDbeZh9Lq721WANA/view) (8.2GB)
@@ -22,38 +22,33 @@ Most users are expected to follow this workflow. For advanced users, see [Develo
 
 ## Running the executable
 
-To see required inputs (and optional inputs), invoke
 ```shell
-$ ./GhostKnockoffGWAS --help
+usage: <PROGRAM> --zfile ZFILE --knockoff-dir KNOCKOFF-DIR --N N
+                 --genome-build GENOME-BUILD --out OUT [--seed SEED]
+                 [-h]
 
-usage: <PROGRAM> [--genome-build GENOME-BUILD] [--m M] [--seed SEED]
-                 [-h] zfile knockoff_dir Neffect out
-
-positional arguments:
-  zfile                 Tab or comma separated summary Z-score file.
-                        The first row must be a header line that
-                        contains CHR/POS/REF/ALT fields, as well as
-                        something that indicates Z-score information.
-                        CHR must be integer valued (e.g. chr21 is not
-                        correct). If a column with `Z` is available,
-                        it will be used as Z scores. Otherwise, we
-                        need both `pvalue` and `beta` to be available,
-                        or both `OR` (odds ratio) and `SE` (standard
-                        error) to be available. In these cases, we
-                        will convert them to Z scores.
-  knockoff_dir          Path to the directory storing pre-processed
+  --zfile ZFILE         Tab or comma separated summary Z-score file,
+                        which can be .gz compressed. The first row
+                        must be a header line that contains at least
+                        CHR, POS, REF, ALT, and Z (other columns will
+                        be ignored). Each row should be a SNP. CHR is
+                        the chromosome column and must be integer
+                        valued (e.g. chr22 is NOT valid). POS is the
+                        position of the SNP (aligned to HG19 or HG38).
+                        REF and ALT are the reference and alternate
+                        alleles, which will be treated as the
+                        non-effective and effect alleles,
+                        respectively. Finally Z is the Z-score column
+  --knockoff-dir KNOCKOFF-DIR
+                        Path to the directory storing pre-processed
                         knockoff files
-  Neffect               Effective sample size for original data (type:
+  --N N                 Sample size for target (original) study (type:
                         Int64)
-  out                   Output file prefix (without extensions)
-
-optional arguments:
   --genome-build GENOME-BUILD
                         Specifies the human genome build for the
-                        summary file. Must be 19 (hg19) or 38 (hg38).
-                        (type: Int64, default: 38)
-  --m M                 Number of knockoffs to generate (type: Int64,
-                        default: 5)
+                        target (original) study. Must be 19 (hg19) or
+                        38 (hg38). (type: Int64)
+  --out OUT             Output file prefix (without extensions)
   --seed SEED           Sets the random seed (type: Int64, default:
                         2023)
   -h, --help            show this help message and exit
@@ -62,20 +57,18 @@ optional arguments:
 Example run:
 ```shell
 ./GhostKnockoffGWAS \
-    ../../data/AD_Zscores_Meta_modified.txt \
-    ../../data/EUR \
-    506200 \
-    ../../data/test_alzheimers_meta
+    --zfile ../../data/AD_Zscores_Meta_modified.txt \
+    --knockoff-dir ../../data/EUR \
+    --N 506200 \
+    --genome-build 38 \
+    --out ../../data/test_alzheimers_meta
 ```
 
-## Acceptable Z-scores format
+## Acceptable Z-scores file format
 
 The Z score file should satisfy the following requirements:
-1. It is a comma- or tab-separated file
-2. The first row should be a header line
-3. The header line should include `CHR`, `POS`, `REF`, `ALT`. The `ALT` allele will be treated as the effect allele and `REF` be treated as non-effect allele. The position of each variant must be from HG19 or HG38.
-4. Z scores can be given in 3 ways
-    1. If a column with the header `Z` exist, then it will be used as Z scores.
-    2. If `pvalue` and `beta` (effect size) columns both exist, we will transform them into Z scores
-    3. If `OR` (odds ratio) and `SE` (standard error) columns exist, they will be transformed into Z scores
+1. It is a comma- or tab-separated file (.gz compressed is acceptable)
+2. The first row should be a header line, and every row after the first will be treated as a different SNP. 
+3. The header line should include `CHR`, `POS`, `REF`, `ALT`, and `Z`. The `ALT` allele will be treated as the effect allele and `REF` be treated as non-effect allele. The POS (position) field of each variant must be from HG19 or HG38, which must be specified by the `--genome-build` argument. CHR/POS/REF/ALT fields cannot have missing values. Missing Z scores can be specified as `NaN` or as an empty cell.
 
+If you have p-values, effect sizes, odds ratios...etc but not Z scores, you can convert them into Z score, for example by following the **Notes on computing Z-scores** of [this blog post](https://huwenboshi.github.io/data%20management/2017/11/23/tips-for-formatting-gwas-summary-stats.html). 

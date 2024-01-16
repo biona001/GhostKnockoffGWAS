@@ -11,6 +11,8 @@ makedocs(
         "Home" => "index.md",
         "Getting started" => "man/getting_started.md",
         "Examples" => "man/examples.md",
+        "Usage within Julia" => "man/julia.md",
+        "Video tutorials" => "man/video.md",
         "FAQ" => "man/FAQ.md",
         "Developer documentation" => "man/developer.md",
     ]
