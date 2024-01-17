@@ -17,6 +17,8 @@ function ghostbasil_parallel(
     save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
     LD_shrinkage::Bool=false, # if true, we will try to perform shrinkage to LD and S matrix following method in susie. If false, we will still compute the shrinkage level but it will not be used to adjust the LD matrices
     target_fdrs = 0.01:0.01:0.2,
+    verbose::Bool=true,
+    skip_shrinkage_check::Bool=false # if true, we will output result even if LD shrinkage level is high
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -169,15 +171,38 @@ function ghostbasil_parallel(
             append!(beta, beta_i)
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions / $tregions: chr $c, nz beta = $(count(!iszero, beta_i)), nsnps = $(length(shared_snps)), shrinkage = $γ")
-            flush(stdout)
+            if verbose
+                println("region $nregions / $tregions: chr $c, nz beta = " *
+                        "$(count(!iszero, beta_i)), nsnps = $(length(shared_snps))" * 
+                        ", shrinkage = $(round(γ, digits=4))")
+                flush(stdout)
+            end
         end
     end
 
     # some checks
-    println("Matched $nsnps SNPs with Z-scores to the reference panel")
+    verbose && println("Matched $nsnps SNPs with Z-scores to the reference panel")
     length(Zscores) == length(groups) || 
         error("Number of Zscores should match groups")
+    γ_mean /= nregions
+    if γ_mean ∈ [0.1, 0.25]
+        verbose && @warn(
+            "Mean LD shrinkage is $γ_mean, which is a bit high. " * 
+            "This suggests the LD panel supplied in \"$knockoff_dir\" does not " *
+            "well capture the correlation structure of the original study " * 
+            "genotypes. Consider using a different LD panel."
+        )
+    elseif γ_mean > 0.25
+        skip_shrinkage_check || error(
+            "Mean LD shrinkage is $γ_mean, which is too high. " *
+            "This suggests the LD panel supplied in \"$knockoff_dir\" does not " *
+            "correctly capture the correlation structure of the original study " * 
+            "genotypes. Consider using a different LD panel. To bypass this " * 
+            "error, use the option skip_shrinkage_check."
+        )
+    else
+        verbose && println("Mean LD shrinkage = $γ_mean.")
+    end
 
     if save_intermdiate_result
         writedlm(joinpath(outdir, outname * "_groups.txt"), groups)
@@ -231,7 +256,6 @@ function ghostbasil_parallel(
 
     # save summary info
     open(joinpath(outdir, outname * "_summary.txt"), "w") do io
-        # Q-value (i.e. threshold for knockoff filter)
         for (q, s, fdr) in zip(qs, num_selected, target_fdrs)
             println(io, "target_fdr_$(fdr),$q")
             println(io, "target_fdr_$(fdr)_num_selected,$s")
@@ -240,7 +264,7 @@ function ghostbasil_parallel(
         println(io, "nregions,$nregions")
         println(io, "nsnps,$nsnps")
         println(io, "lasso_lambda,$lambda")
-        println(io, "mean_LD_shrinkage,$(γ_mean / nregions)")
+        println(io, "mean_LD_shrinkage,$γ_mean")
         println(io, "import_time,$t1")
         println(io, "sample_knockoff_time,$t2")
         println(io, "ghostbasil_time,$t3")

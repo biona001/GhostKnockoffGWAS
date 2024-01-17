@@ -2,8 +2,8 @@
 function julia_main()::Cint
     try
         # read command line arguments
-        zfile, knockoff_dir, N, hg_build, outfile, outdir, seed = 
-            parse_commandline(true)
+        zfile, knockoff_dir, N, hg_build, outfile, outdir, seed, verbose,
+            skip_shrinkage_check = parse_commandline(true)
 
         println("\n\nWelcome to GhostKnockoffGWAS analysis!")
         println("You have specified the following options:")
@@ -14,6 +14,7 @@ function julia_main()::Cint
         println("outdir          = ", outdir)
         println("outfile         = ", joinpath(outdir, outfile))
         println("seed            = ", seed)
+        println("verbose         = ", verbose)
         println("\n")
 
         # read Z scores
@@ -25,13 +26,16 @@ function julia_main()::Cint
         t2 = @elapsed begin
             ghostbasil_parallel(knockoff_dir, z, chr, pos, effect_allele, 
                 non_effect_allele, N, hg_build, outdir, outname=outfile, 
-                seed=seed)
+                seed=seed, verbose=verbose, 
+                skip_shrinkage_check=skip_shrinkage_check)
         end
 
-        println("Done! Result saved to $(joinpath(outdir, outfile)). ")
-        println("Overall runtime = $(t1 + t2) seconds, with ")
-        println("   $t1 seconds spent on reading the Z score file")
-        println("   $t2 seconds spent on doing the analysis")
+        if verbose
+            println("Done! Result saved to $(joinpath(outdir, outfile)). ")
+            println("Overall runtime = $(t1 + t2) seconds, with ")
+            println("   $t1 seconds spent on reading the Z score file")
+            println("   $t2 seconds spent on doing the analysis")
+        end
     catch
         Base.invokelatest(Base.display_error, Base.catch_stack())
         return 1
@@ -78,6 +82,16 @@ function parse_commandline(parseargs::Bool)
             help = "Sets the random seed"
             arg_type = Int
             default = 2023
+        "--verbose"
+            help = "Whether to print intermediate messages"
+            arg_type = Bool
+            default = true
+        "--skip_shrinkage_check"
+            help = "Whether to allow Knockoff analysis to proceed even with " * 
+                   "large (>0.25) LD shrinkages. Only use this option if you " *
+                   "know what you are doing. "
+            arg_type = Bool
+            default = true
     end
 
     # This is for code pre-compilation, enabling fast printing of "help statement".
@@ -88,7 +102,8 @@ function parse_commandline(parseargs::Bool)
     if !parseargs
         _useless = parse_args(
             ["--zfile","testdir","--knockoff-dir","testdir2",
-            "--N","1","--genome-build","38","--out","testdir3","--seed","2024"], s
+            "--N","1","--genome-build","38","--out","testdir3","--seed","2024",
+            "--verbose","true"], s
         )
         _useless = parse_args(["--help"], s)
         return nothing
@@ -103,6 +118,8 @@ function parse_commandline(parseargs::Bool)
     outfile = basename(out)
     outdir = abspath(dirname(out))
     seed = parsed_args["seed"]
+    verbose = parsed_args["verbose"]
+    skip_shrinkage_check = parsed_args["skip_shrinkage_check"]
 
-    return zfile, knockoff_dir, N, hg_build, outfile, outdir, seed
+    return zfile, knockoff_dir, N, hg_build, outfile, outdir, seed, verbose, skip_shrinkage_check
 end
