@@ -15,7 +15,7 @@ function ghostbasil_parallel(
     A_scaling_factor = 0.01,
     kappa::Number=0.6,     # for tuning lambda
     save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
-    LD_shrinkage::Bool=true, # if true, we will try to perform shrinkage to LD matrix following method in susie
+    LD_shrinkage::Bool=false, # if true, we will try to perform shrinkage to LD and S matrix following method in susie. If false, we will still compute the shrinkage level but it will not be used to adjust the LD matrices
     target_fdrs = 0.01:0.01:0.2,
     )
     # check for errors
@@ -108,11 +108,13 @@ function ghostbasil_parallel(
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
 
                 # shrinkage for consistency (todo: only use reps for better speed)
-                t21 += @elapsed if LD_shrinkage
+                t21 += @elapsed begin
                     γ = find_optimal_shrinkage(Σi, zscore_tmp)
                     γ_mean += γ
-                    Σi = (1 - γ)*Σi + γ*I
-                    Si = (1 - γ)*Si + (m+1)/m*γ*I
+                    if LD_shrinkage
+                        Σi = (1 - γ)*Σi + γ*I
+                        Si = (1 - γ)*Si + (m+1)/m*γ*I
+                    end
                 end
 
                 # sample ghost knockoffs knockoffs
@@ -167,7 +169,7 @@ function ghostbasil_parallel(
             append!(beta, beta_i)
             nsnps += length(shared_snps)
             nregions += 1
-            println("region $nregions / $tregions: chr $c, nz beta = $(count(!iszero, beta_i)), nsnps = $(length(shared_snps))")
+            println("region $nregions / $tregions: chr $c, nz beta = $(count(!iszero, beta_i)), nsnps = $(length(shared_snps)), shrinkage = $γ")
             flush(stdout)
         end
     end
