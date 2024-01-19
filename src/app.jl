@@ -24,7 +24,7 @@ function julia_main()::Cint
 
         # run ghost knockoff analysis
         t2 = @elapsed begin
-            ghostbasil_parallel(knockoff_dir, z, chr, pos, effect_allele, 
+            ghostknockoffgwas(knockoff_dir, z, chr, pos, effect_allele, 
                 non_effect_allele, N, hg_build, outdir, outname=outfile, 
                 seed=seed, verbose=verbose, 
                 skip_shrinkage_check=skip_shrinkage_check)

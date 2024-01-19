@@ -1,4 +1,4 @@
-function ghostbasil(
+function ghostknockoffgwas(
     knockoff_dir::String,  # Directory that stores knockoff results (i.e. output from part 1)
     z::Vector{Float64},    # Z scores
     chr::Vector{Int},      # chromosome of each Z score

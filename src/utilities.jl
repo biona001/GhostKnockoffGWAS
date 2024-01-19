@@ -127,10 +127,21 @@ end
 """
     read_zscores(filepath::String)
 
-Helper function to read a Z-score file. First row must be a header column with 
-CHR, POS, REF, ALT, and Z. All other columns will be ignored. 
+Helper function to read a Z-score file at `filepath`. This function is mainly 
+intended for Julia users running `GhostKnockoffGWAS` in the REPL.
 
-# todo: detect duplicate SNPs
+# Input
++ `filepath`: Full file path to the Z-score file. First row must be a header
+    column with `CHR`, `POS`, `REF`, `ALT`, and `Z`. All other columns will be
+    ignored.
+
+# Output
++ `z`: The Z scores stored in the `Z` column of `filepath`
++ `chr`: The chromosome number stored in `CHR` column of `filepath`. Only integer
+    values are allowed.
++ `pos`: The position number stored in `POS` column of `filepath`.
++ `effect_allele`: The allele stored in `ALT` column of `filepath`.
++ `non_effect_allele`: The allele stored in `REF` column of `filepath`.
 """
 function read_zscores(filepath::String)
     # create CSV.File object (this reads the file lazily)

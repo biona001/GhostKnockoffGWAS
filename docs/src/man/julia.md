@@ -25,7 +25,6 @@ using GhostKnockoffGWAS
 knockoff_dir = "/home/groups/sabatti/.julia/dev/GhostKnockoffGWAS/data/EUR"
 zfile = "/home/groups/sabatti/.julia/dev/GhostKnockoffGWAS/data/AD_Zscores_Meta_modified.txt"
 outdir = "/home/groups/sabatti/.julia/dev/GhostKnockoffGWAS/data"
-outfile = "test_alzheimers_meta"
 
 # specify sample size and human genome build
 N = 506200
@@ -35,15 +34,13 @@ hg_build = 38
 z, chr, pos, effect_allele, non_effect_allele = GhostKnockoffGWAS.read_zscores(zfile)
 
 # run analysis
-@time ghostbasil_parallel(knockoff_dir, z, chr, pos, effect_allele, 
-    non_effect_allele, N, hg_build, outdir, outname=outfile, 
-    seed=2023)
+@time ghostknockoffgwas(knockoff_dir, z, chr, pos, effect_allele, 
+    non_effect_allele, N, hg_build, outdir, outname="test_alzheimers_meta")
 ```
-
 
 ## Function API
 
-```@autodocs
-Modules = [GhostKnockoffGWAS]
-Order   = [:function, :type]
+```@docs
+ghostknockoffgwas
+read_zscores
 ```

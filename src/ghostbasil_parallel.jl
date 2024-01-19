@@ -1,24 +1,80 @@
-function ghostbasil_parallel(
-    knockoff_dir::String,  # Directory that stores knockoff results (i.e. output from part 1)
-    z::Vector{Float64},    # Z scores
-    chr::Vector{Int},      # chromosome of each Z score
-    pos::Vector{Int},      # position of each Z score (specify hg build with hg_build)
-    effect_allele::Vector{String},       # effect allele of Z score
-    non_effect_allele::Vector{String},   # non-effect allele of Z score
-    N::Int,                # effective sample size
-    hg_build::Int,         # human genome build, must be 19 or 38
-    outdir::String;        # output directory (must exist)
-    m::Int=5,
+"""
+    ghostknockoffgwas(knockoff_dir::String, z::Vector{Float64}, chr::Vector{Int}, 
+        effect_allele::Vector{String}, non_effect_allele::Vector{String}, N::Int,
+        hg_build::Int, outdir::String; [outname="result"], [seed=2023], 
+        [target_chrs=1:22], [A_scaling_factor = 0.01], [kappa=0.6], 
+        [LD_shrinkage=false], [target_fdrs=0.01:0.01:0.2], [verbose=true], 
+        [skip_shrinkage_check=false])
+
+Runs the main `GhostKnockoffGWAS` pipeline on the Z scores in `z` using 
+pre-computed knockoff data in `knockoff_dir`. 
+
+# Inputs
++ `knockoff_dir`: Directory that stores pre-computed knockoff results
++ `z`: Vector of Z scores
++ `chr`: Chromosome of each Z score (cannot be X/Y/M chromosomes)
++ `pos`: Position of each Z score (specify hg build with `hg_build`)
++ `effect_allele`: Effect allele of Z score (i.e. ALT)
++ `non_effect_allele`: Non-effect allele of Z score (i.e. REF)
++ `N`: sample size of original study
++ `hg_build`: Human genome build (must be 19 or 38)
++ `outdir`: output directory, which must exist. We will output 2 files, one 
+    containing the full analysis results, as well as a summary file. 
+
+# Optional inputs
++ `seed`: Random seed for reproducibility (default = `2023`)
++ `target_chrs`: Target chromosomes to analyze. For example, one can specify
+    `target_chrs = 22` to only analyze 1 chromosome, or `target_chrs = [1, 2]`
+    to only analyze 2 chromosomes (default = `1:22`).
++ `A_scaling_factor`: The scaling factor for `A = [X X̃]'*[X X̃]` for improving
+    numerical stability. Scaling proceeds by adding `A_scaling_factor*I` to `A`
+    (default = 0.01). 
++ `kappa`: A constant between 0 and 1 for tuning Lasso's lambda path. Larger
+    value forces earlier exit in Lasso lambda path, resulting in stronger 
+    shrinkage. See the "lasso-min" method of "Controlled Variable Selection from
+    Summary Statistics Only? A Solution via GhostKnockoffs and Penalized 
+    Regression" by Chen et al (default `0.6`).
++ `LD_shrinkage`: Whether to perform shrinkage to LD and S matrices following
+    method in SuSiE paper (i.e. eq 24 of "Fine-mapping from summary data with 
+    the “Sum of Single Effects” model" by Zou et al). If `false``, we will still
+    compute the shrinkage level, but it will not be used to adjust the LD
+    matrices (default `false`). 
++ `target_fdrs`: Default target FDR levels (default = 0.01:0.01:0.2)
++ `verbose`: Whether to print progress and informative intermediate results (
+    default = `true`)
++ `skip_shrinkage_check`: Forces a result output even if there is a high
+    estimated LD shrinkage by SuSiE's method (default = `false`)
+
+# Output
+By default we output 2 files into `outdir`
++ A knockoff statistics file where each SNP occupies a row and the columns include 
+    various SNP attributes include rsid, AF, chr, pos, zscores...etc. The 
+    columns `selected_fdr_FDR` indicates whether the variant was ultimately
+    selected under the false discovery rate threshold of `FDR`.
++ A summary statistics file. The first dozens of rows print, for each false 
+    discovery rate threshold `FDR`, the knockoff threshold `τ̂` and the number of
+    groups that pass this threshold. The next couple of lines print some 
+    parameters used in the knockoff analysis, as well as some timing results. 
+"""
+function ghostknockoffgwas(
+    knockoff_dir::String,
+    z::Vector{Float64},
+    chr::Vector{Int},
+    pos::Vector{Int},
+    effect_allele::Vector{String}, 
+    non_effect_allele::Vector{String}, 
+    N::Int, 
+    hg_build::Int,
+    outdir::String;
     outname::String="result",
     seed::Int = 2023,
     target_chrs=1:22,
     A_scaling_factor = 0.01,
-    kappa::Number=0.6,     # for tuning lambda
-    save_intermdiate_result::Bool=false, # if true, will save beta, group, Zscore, and SNP summary stats, and not run knockoff filter
-    LD_shrinkage::Bool=false, # if true, we will try to perform shrinkage to LD and S matrix following method in susie. If false, we will still compute the shrinkage level but it will not be used to adjust the LD matrices
+    kappa::Number=0.6,
+    LD_shrinkage::Bool=false,
     target_fdrs = 0.01:0.01:0.2,
     verbose::Bool=true,
-    skip_shrinkage_check::Bool=false # if true, we will output result even if LD shrinkage level is high
+    skip_shrinkage_check::Bool=false
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -29,6 +85,9 @@ function ghostbasil_parallel(
     length(z) == length(chr) == length(pos) == 
         length(effect_allele) == length(non_effect_allele) ||
         error("Length of z, chr, pos, effect_allele, and non_effect_allele should be the same")
+
+    # number of simultaneous knockoffs (this is used in computation of `knockoff_dir` and should NOT be changed)
+    m = 5
 
     # find lambda value for lasso
     Random.seed!(seed)
@@ -204,14 +263,7 @@ function ghostbasil_parallel(
         verbose && println("Mean LD shrinkage = $γ_mean.")
     end
 
-    if save_intermdiate_result
-        writedlm(joinpath(outdir, outname * "_groups.txt"), groups)
-        writedlm(joinpath(outdir, outname * "_betas.txt"), beta)
-        writedlm(joinpath(outdir, outname * "_Zscores.txt"), Zscores)
-        CSV.write(joinpath(outdir, outname * "_stats.csv"), df)
-    end
-
-    # knockoff filter immediately
+    # knockoff filter
     t4 = @elapsed begin
         original_idx = findall(x -> endswith(x, "_0"), groups)
         T0 = beta[original_idx]

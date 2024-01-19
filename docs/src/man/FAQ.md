@@ -7,9 +7,18 @@ Here is a collection of common questions & answers. If you have a question not l
 
 See the **Notes on computing Z-scores** section of [this blog post](https://huwenboshi.github.io/data%20management/2017/11/23/tips-for-formatting-gwas-summary-stats.html)
 
+
+## Is the result is trustworthy?
+
+Knockoff's FDR control requires that the correlation matrices used in the analysis approximates the LD structure for the original GWAS study. Their consistency is measured by the `mean_LD_shrinkage` parameter in the summary output. This value lies between 0 and 1. Values close to 0 indicates good performance. Larger values (e.g. >0.1) indicates deviation. Very larger values (e.g. >0.25) will cause the program to hault and users should download a different set of precomputed knockoff data instead. See equation 24 of [the SuSiE paper](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010299) for details. 
+
 ## Expected run time? 
 
 On roughly 0.6 million Z-scores, our software completed a GhostKnockoff analysis in roughly 15 minutes on a single 2.3GHz CPU. If your analysis is taking much longer than this, please see Q&A on [software unexpectedly slow](https://biona001.github.io/GhostKnockoffGWAS/dev/man/FAQ/#Software-unexpectedly-slow?).
+
+## Memory requirement?
+
+Our software requires ~9.1GB of RAM on an Alzheimer's Diseases anslysis with ~0.6 million SNPs. 
 
 ## Software unexpectedly slow?
 
@@ -18,10 +27,6 @@ Because the knockoff pipeline requires reading the pre-computed knockoff statist
 To check whether I/O is the bottleneck, one can check the CPU usage while `GhostKnockoffGWAS` is running. For example, one can examine CPU usage via the `top` or `htop` command. CPU usage should almost always be at 99% or above.  
 
 For undiagnosed performance issues, please file a new issue. 
-
-## Memory requirement?
-
-Our software requires ~9.1GB of RAM on an Alzheimer's Diseases anslysis with ~0.6 million SNPs. 
 
 ## Sex chromosome support?
 
