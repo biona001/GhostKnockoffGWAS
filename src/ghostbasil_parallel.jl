@@ -227,8 +227,8 @@ function ghostbasil_parallel(
             end
         end
         kappa, tau, W = MK_statistics(T_group0, T_groupk)
-        
-        # save analysis result
+
+        # append analysis result
         df[!, :group] = groups[original_idx]
         df[!, :zscores] = Zscores[original_idx]
         df[!, :lasso_beta] = beta[original_idx]
@@ -251,6 +251,11 @@ function ghostbasil_parallel(
             push!(qs, q)
             push!(num_selected, count(isone, selected))
         end
+
+        # sort by chr and pos
+        sort!(df, [:chr, :pos_hg19])
+
+        # write to output
         CSV.write(joinpath(outdir, outname * ".txt"), df)
     end
 
@@ -270,10 +275,10 @@ function ghostbasil_parallel(
         println(io, "ghostbasil_time,$t3")
         println(io, "knockoff_filter_time,$t4")
         println(io, "total_time,", time() - start_t)
-        println(io, "sample_knockoff_time_t21=$t21")
-        println(io, "sample_knockoff_time_t22=$t22")
-        println(io, "sample_knockoff_time_t23=$t23")
-        println(io, "sample_knockoff_time_t24=$t24")
+        println(io, "sample_knockoff_time_t21,$t21")
+        println(io, "sample_knockoff_time_t22,$t22")
+        println(io, "sample_knockoff_time_t23,$t23")
+        println(io, "sample_knockoff_time_t24,$t24")
     end
 
     return nothing
