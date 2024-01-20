@@ -11,8 +11,8 @@ using DataFrames
     p = 0.00695184371278
     beta = -0.010602
     z = 2.6991423324213346
-    @test zscore(p, beta) ≈ 2.6991423324213346
-    @test pval(z) ≈ 0.00695184371278
+    @test GhostKnockoffGWAS.zscore(p, beta) ≈ 2.6991423324213346
+    @test GhostKnockoffGWAS.pval(z) ≈ 0.00695184371278
 
     # find_matching_indices
     a = [1, 2, 3, 2, 6]

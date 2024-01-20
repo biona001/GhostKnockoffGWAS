@@ -97,7 +97,7 @@ function ghostknockoffgwas(
     nsnps, tregions = count_matchable_snps(knockoff_dir, z, chr, pos, effect_allele, 
         non_effect_allele, hg_build, target_chrs) # ~400 seconds on typed SNPs
     lambda = kappa * maximum(abs, randn((m+1)*nsnps)) / sqrt(N)
-    lambda_path = lambda_path[findall(x -> x > lambda, lambda_path)]
+    lambda_path = vcat(lambda_path[findall(x -> x > lambda, lambda_path)], lambda)
 
     # intermediate vectors
     beta = Float64[]                       # full beta vector over all regions
