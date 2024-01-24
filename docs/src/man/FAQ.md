@@ -10,7 +10,7 @@ See the **Notes on computing Z-scores** section of [this blog post](https://huwe
 
 ## Is the result is trustworthy?
 
-Knockoff's FDR control requires that the correlation matrices used in the analysis approximates the LD structure for the original GWAS study. Their consistency is measured by the `mean_LD_shrinkage` parameter in the summary output. This value lies between 0 and 1. Values close to 0 indicates good performance. Larger values (e.g. >0.1) indicates deviation. Very larger values (e.g. >0.25) will cause the program to hault and users should download a different set of precomputed knockoff data instead. See equation 24 of [the SuSiE paper](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010299) for details. 
+Knockoff's FDR guarantees requires that the correlation matrices used in the analysis approximates the LD structure for the original GWAS study. Their consistency is measured by the `mean_LD_shrinkage` parameter in the summary output. This value lies between 0 and 1. Values close to 0 indicates good performance. Larger values (e.g. >0.1) indicates deviation. Very larger values (e.g. >0.25) will cause the program to hault and users should download a different set of precomputed knockoff data instead. See equation 24 of [the SuSiE paper](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010299) for details. 
 
 ## Expected run time? 
 

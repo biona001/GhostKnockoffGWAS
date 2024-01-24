@@ -3,12 +3,9 @@
 
 This tutorial is for generating *Ghost Knockoffs* for analyzing summary statistics from a genome-wide association studies (GWAS). The methodology is described in the following papers
 
-> He Z, Liu L, Belloy ME, Le Guen Y, Sossin A, Liu X, Qi X, Ma S, Gyawali PK, Wyss-Coray T, Tang H. GhostKnockoff inference empowers identification of putative causal variants in genome-wide association studies. Nature Communications. 2022 Nov 23;13(1):7209.
+> He Z, Chu BB, Yang J, Gu J, Chen Z, Liu L, Morrison T, Bellow M, Qi X, Hejazi N, Mathur M, Le Guen Y, Tang H, Hastie T, Ionita-laza, I, Sabatti C, Cande0s C. "In silico identification of putative causal genetic variants", bioRxiv 2024. 
 
-The main working assumption is that we do not have access to individual level genotype or phenotype data. Rather, for each SNP, we have
-
-1. Z-scores $Z_j$ with respect to some phenotype from a GWAS, and
-2. Access to LD (linkage disequilibrium) matrix
+The main working assumption is that we do not have access to individual level genotype or phenotype data. Rather, for each SNP, we have its Z-scores with respect to some phenotype from a GWAS, and access to LD (linkage disequilibrium) data. The user is expected supply the Z-scores, while we supply the LD data in addition to some pre-computed knockoff data.
 
 ## Q: When should I use GhostKnockoffGWAS?
 
@@ -20,13 +17,16 @@ If instead you have individual level genotypes, you should run a GWAS using stan
 
 Most users are expected to follow this workflow. Those familiar with the Julia programming language can use GhostKnockoffGWAS as a regular julia package, see [usage within Julia](https://biona001.github.io/GhostKnockoffGWAS/dev/man/julia).
 
-1. Download the [binary executable file]() (XXX GB)
-2. Download the [pre-computed knockoff statistics](https://drive.google.com/file/d/1_ajlxFWE2MCSgBXDgDbeZh9Lq721WANA/view) (8.2GB)
-3. Unzip both datasets
+1. Go to [Download Page](https://biona001.github.io/GhostKnockoffGWAS/dev/man/download) and download (1) the binary executable file and (2) the pre-processed knockoff data.
+3. Unzip them
 4. Prepare your input Z score file into accepted format, see [Acceptable Z-scores](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format) below. 
 5. Run the executable, see [running the executable](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Running-the-executable)
 
+For a detailed example, see [Detailed Example](https://biona001.github.io/GhostKnockoffGWAS/dev/man/examples/)
+
 ## Running the executable
+
+See [Detailed Examples](https://biona001.github.io/GhostKnockoffGWAS/dev/man/examples) for a analysis example. To see a list of available arguments, execute `GhostKnockoffGWAS --help`. Its output is:
 
 ```shell
 usage: <PROGRAM> --zfile ZFILE --knockoff-dir KNOCKOFF-DIR --N N
@@ -72,17 +72,6 @@ optional arguments:
                         doing.  (type: Bool, default: true)
   -h, --help            show this help message and exit
 ```
-
-Example run:
-```shell
-./GhostKnockoffGWAS \
-    --zfile ../../data/AD_Zscores_Meta_modified.txt \
-    --knockoff-dir ../../data/EUR \
-    --N 506200 \
-    --genome-build 38 \
-    --out ../../data/test_alzheimers_meta
-```
-
 
 ## Acceptable Z-scores file format
 
