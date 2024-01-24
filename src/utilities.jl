@@ -124,6 +124,21 @@ function count_matchable_snps(
     return nsnps, nregions
 end
 
+function count_total_snps(
+    knockoff_dir::String, # Directory that stores knockoff results
+    target_chrs=1:22,
+    ) 
+    nsnps = 0
+    for c in target_chrs
+        files = readdir(joinpath(knockoff_dir, "chr$c"))
+        for f in files
+            startswith(f, "Info") || continue
+            nsnps += countlines(joinpath(knockoff_dir, "chr$c", f)) - 1
+        end
+    end
+    return nsnps
+end
+
 """
     read_zscores(filepath::String)
 
