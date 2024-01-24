@@ -1,13 +1,155 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Examples · GhostKnockoffGWAS</title><meta name="title" content="Examples · GhostKnockoffGWAS"/><meta property="og:title" content="Examples · GhostKnockoffGWAS"/><meta property="twitter:title" content="Examples · GhostKnockoffGWAS"/><meta name="description" content="Documentation for GhostKnockoffGWAS."/><meta property="og:description" content="Documentation for GhostKnockoffGWAS."/><meta property="twitter:description" content="Documentation for GhostKnockoffGWAS."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">GhostKnockoffGWAS</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../getting_started/">Getting started</a></li><li class="is-active"><a class="tocitem" href>Examples</a><ul class="internal"><li><a class="tocitem" href="#Step-1:-Download-Knockoff-files-and-binary-executable"><span>Step 1: Download Knockoff files and binary executable</span></a></li><li><a class="tocitem" href="#Step-2:-Prepare-a-valid-Z-score-file"><span>Step 2: Prepare a valid Z score file</span></a></li><li><a class="tocitem" href="#Step-3:-Running-the-analysis"><span>Step 3: Running the analysis</span></a></li><li><a class="tocitem" href="#Step-4:-Interpreting-the-result"><span>Step 4: Interpreting the result</span></a></li></ul></li><li><a class="tocitem" href="../video/">Video tutorials</a></li><li><a class="tocitem" href="../FAQ/">FAQ</a></li><li><a class="tocitem" href="../julia/">Usage within Julia</a></li><li><a class="tocitem" href="../developer/">Developer documentation</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/biona001/GhostKnockoffGWAS" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/biona001/GhostKnockoffGWAS/blob/main/docs/src/man/examples.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Detailed-Example"><a class="docs-heading-anchor" href="#Detailed-Example">Detailed Example</a><a id="Detailed-Example-1"></a><a class="docs-heading-anchor-permalink" href="#Detailed-Example" title="Permalink"></a></h1><p>This page collect examples of running the ghost knockoff pipeline. We will cover topics such as installation, examining input data, running the software, and visualizing the output. </p><h2 id="Step-1:-Download-Knockoff-files-and-binary-executable"><a class="docs-heading-anchor" href="#Step-1:-Download-Knockoff-files-and-binary-executable">Step 1: Download Knockoff files and binary executable</a><a id="Step-1:-Download-Knockoff-files-and-binary-executable-1"></a><a class="docs-heading-anchor-permalink" href="#Step-1:-Download-Knockoff-files-and-binary-executable" title="Permalink"></a></h2><ol><li>Download the <a href>binary executable file</a> (XXX GB)</li><li>Download the [pre-computed knockoff statistics]</li></ol><p>The structure of the binary executable folder looks like:</p><p>We recommend adding <code>GhostKnockoffGWAS</code> to <code>PATH</code> for easier access.</p><pre><code class="language-julia hljs"></code></pre><h2 id="Step-2:-Prepare-a-valid-Z-score-file"><a class="docs-heading-anchor" href="#Step-2:-Prepare-a-valid-Z-score-file">Step 2: Prepare a valid Z score file</a><a id="Step-2:-Prepare-a-valid-Z-score-file-1"></a><a class="docs-heading-anchor-permalink" href="#Step-2:-Prepare-a-valid-Z-score-file" title="Permalink"></a></h2><p>Here is an example of a valid Z-score file</p><pre><code class="nohighlight hljs">$ head AD_Zscores_Meta_modified.txt
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Examples · GhostKnockoffGWAS</title><meta name="title" content="Examples · GhostKnockoffGWAS"/><meta property="og:title" content="Examples · GhostKnockoffGWAS"/><meta property="twitter:title" content="Examples · GhostKnockoffGWAS"/><meta name="description" content="Documentation for GhostKnockoffGWAS."/><meta property="og:description" content="Documentation for GhostKnockoffGWAS."/><meta property="twitter:description" content="Documentation for GhostKnockoffGWAS."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">GhostKnockoffGWAS</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../getting_started/">Getting started</a></li><li><a class="tocitem" href="../download/">Downloads</a></li><li class="is-active"><a class="tocitem" href>Examples</a><ul class="internal"><li><a class="tocitem" href="#Step-0:-Download-example-data"><span>Step 0: Download example data</span></a></li><li><a class="tocitem" href="#Step-1:-Download-Knockoff-files-and-binary-executable"><span>Step 1: Download Knockoff files and binary executable</span></a></li><li><a class="tocitem" href="#Step-2:-Prepare-a-valid-Z-score-file"><span>Step 2: Prepare a valid Z score file</span></a></li><li><a class="tocitem" href="#Step-3:-Running-the-analysis"><span>Step 3: Running the analysis</span></a></li><li><a class="tocitem" href="#Step-4:-Interpreting-the-result"><span>Step 4: Interpreting the result</span></a></li></ul></li><li><a class="tocitem" href="../video/">Video tutorials</a></li><li><a class="tocitem" href="../FAQ/">FAQ</a></li><li><a class="tocitem" href="../julia/">Usage within Julia</a></li><li><a class="tocitem" href="../developer/">Developer documentation</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/biona001/GhostKnockoffGWAS" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/biona001/GhostKnockoffGWAS/blob/main/docs/src/man/examples.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Detailed-Example"><a class="docs-heading-anchor" href="#Detailed-Example">Detailed Example</a><a id="Detailed-Example-1"></a><a class="docs-heading-anchor-permalink" href="#Detailed-Example" title="Permalink"></a></h1><p>This page collect examples of running the ghost knockoff pipeline. We will cover topics such as installation, examining input data, running the software, and interpreting the output. </p><h2 id="Step-0:-Download-example-data"><a class="docs-heading-anchor" href="#Step-0:-Download-example-data">Step 0: Download example data</a><a id="Step-0:-Download-example-data-1"></a><a class="docs-heading-anchor-permalink" href="#Step-0:-Download-example-data" title="Permalink"></a></h2><p>If you would like to follow along with this tutorial, feel free to download <a href>example_zfile.txt</a> (4MB) which contains ~200k Z scores from chromosome 17. The first few rows of this file is shown below</p><pre><code class="nohighlight hljs">$ head example_zfile.txt
 
 CHR	POS	REF	ALT	Z
-1	758351	A	G	1.05551882016081
-1	779885	C	T	2.12197306477
-1	779987	A	G	1.95791489337
-1	782105	C	A	1.91243829548
-1	782207	G	A	0.619646889027784
-1	785001	G	T	2.29540369149
-1	785910	G	C	2.31560217481
-1	788511	G	C	-2.46818530405
-1	791414	C	G	2.35908619469</code></pre><ul><li>The first row is a header row which includes <code>CHR</code>, <code>POS</code>, <code>REF</code>, <code>ALT</code>, <code>Z</code>. Other columns will be ignored. </li><li>Each row is a different SNP and each column is separated by a tab (i.e. <code>\t</code> character) or a comma</li></ul><h2 id="Step-3:-Running-the-analysis"><a class="docs-heading-anchor" href="#Step-3:-Running-the-analysis">Step 3: Running the analysis</a><a id="Step-3:-Running-the-analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-Running-the-analysis" title="Permalink"></a></h2><pre><code class="language-julia hljs"></code></pre><h2 id="Step-4:-Interpreting-the-result"><a class="docs-heading-anchor" href="#Step-4:-Interpreting-the-result">Step 4: Interpreting the result</a><a id="Step-4:-Interpreting-the-result-1"></a><a class="docs-heading-anchor-permalink" href="#Step-4:-Interpreting-the-result" title="Permalink"></a></h2><pre><code class="language-julia hljs"></code></pre><pre><code class="language-julia hljs"></code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting started</a><a class="docs-footer-nextpage" href="../video/">Video tutorials »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Monday 22 January 2024 02:34">Monday 22 January 2024</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+17	150509	T	TA	1.08773561923134
+17	151035	T	C	0.703898767202681
+17	151041	G	A	1.10771707088118
+17	151872	T	C	-0.299877259561085
+17	152087	C	T	-0.371627135786605
+17	152104	G	A	-0.28387322965385
+17	152248	G	A	0.901618600934489
+17	152427	G	A	1.10987516000804
+17	152771	A	G	0.708492545266136</code></pre><p>In this example data, </p><ul><li>The <code>POS</code> field corresponds to hg38 positions. GhostKnockoffGWAS requires the position to be either hg19 or hg38.</li><li>The sample size used for generating this data is <code>506200</code>. Thus one should specify <code>--N 506200</code>.</li></ul><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>See <a href="https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format">acceptable Z score format</a> for detailed requirements on this file.</p></div></div><h2 id="Step-1:-Download-Knockoff-files-and-binary-executable"><a class="docs-heading-anchor" href="#Step-1:-Download-Knockoff-files-and-binary-executable">Step 1: Download Knockoff files and binary executable</a><a id="Step-1:-Download-Knockoff-files-and-binary-executable-1"></a><a class="docs-heading-anchor-permalink" href="#Step-1:-Download-Knockoff-files-and-binary-executable" title="Permalink"></a></h2><p>Proceed to the <a href>Downloads page</a> and download (1) the software as well as (2) a pre-processed knockoff dataset suitable for your analysis. After unzipping, the executable will be located inside <code>bin/GhostKnockoffGWAS</code>. We recommend adding the folder containing the <code>GhostKnockoffGWAS</code> executable to <code>PATH</code> for easier access.</p><h2 id="Step-2:-Prepare-a-valid-Z-score-file"><a class="docs-heading-anchor" href="#Step-2:-Prepare-a-valid-Z-score-file">Step 2: Prepare a valid Z score file</a><a id="Step-2:-Prepare-a-valid-Z-score-file-1"></a><a class="docs-heading-anchor-permalink" href="#Step-2:-Prepare-a-valid-Z-score-file" title="Permalink"></a></h2><p>One needs a <a href="https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format">valid Z score file</a> as input. Here is an example:</p><pre><code class="nohighlight hljs">$ head example_zfile.txt
+
+CHR	POS	REF	ALT	Z
+17	150509	T	TA	1.08773561923134
+17	151035	T	C	0.703898767202681
+17	151041	G	A	1.10771707088118
+17	151872	T	C	-0.299877259561085
+17	152087	C	T	-0.371627135786605
+17	152104	G	A	-0.28387322965385
+17	152248	G	A	0.901618600934489
+17	152427	G	A	1.10987516000804
+17	152771	A	G	0.708492545266136</code></pre><ul><li>The first row is a header row which includes <code>CHR</code>, <code>POS</code>, <code>REF</code>, <code>ALT</code>, <code>Z</code>. Other columns will be ignored. </li><li>Each row is a different SNP and each column is separated by a tab (i.e. <code>\t</code> character) or a comma</li></ul><h2 id="Step-3:-Running-the-analysis"><a class="docs-heading-anchor" href="#Step-3:-Running-the-analysis">Step 3: Running the analysis</a><a id="Step-3:-Running-the-analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-Running-the-analysis" title="Permalink"></a></h2><p>To see a list of available arguments, execute <code>GhostKnockoffGWAS --help</code>. </p><p>To run the example analysis, one can do</p><pre><code class="language-shell hljs">$ GhostKnockoffGWAS \
+    --zfile example_zfile.txt \
+    --knockoff-dir EUR \
+    --N 506200 \
+    --genome-build 38 \
+    --out example_output</code></pre><p>Here is the expected output:</p><pre><code class="nohighlight hljs">Welcome to GhostKnockoffGWAS analysis!
+You have specified the following options:
+zfile           = /scratch/users/bbchu/GhostKnockoffGWAS/data/example_zfile.txt
+knockoff_dir    = /scratch/users/bbchu/GhostKnockoffGWAS/data/EUR
+N (sample size) = 506200
+hg_build        = 38
+outdir          = /scratch/users/bbchu/GhostKnockoffGWAS/data/
+outfile         = /scratch/users/bbchu/GhostKnockoffGWAS/data/example_output
+seed            = 2023
+verbose         = true
+
+
+count_matchable_snps processed chr 17, cumulative SNPs = 21136
+region 1 / 47: chr 17, nz beta = 10, nsnps = 425, shrinkage = 0.0043
+region 2 / 47: chr 17, nz beta = 18, nsnps = 319, shrinkage = 0.0326
+region 3 / 47: chr 17, nz beta = 1, nsnps = 232, shrinkage = 0.0135
+region 4 / 47: chr 17, nz beta = 10, nsnps = 303, shrinkage = 0.0
+region 5 / 47: chr 17, nz beta = 7, nsnps = 401, shrinkage = 0.0331
+region 6 / 47: chr 17, nz beta = 3, nsnps = 285, shrinkage = 0.0235
+region 7 / 47: chr 17, nz beta = 14, nsnps = 453, shrinkage = 0.0855
+region 8 / 47: chr 17, nz beta = 12, nsnps = 385, shrinkage = 0.0256
+region 9 / 47: chr 17, nz beta = 15, nsnps = 584, shrinkage = 0.0077
+region 10 / 47: chr 17, nz beta = 8, nsnps = 490, shrinkage = 0.0234
+region 11 / 47: chr 17, nz beta = 17, nsnps = 320, shrinkage = 0.0215
+region 12 / 47: chr 17, nz beta = 8, nsnps = 424, shrinkage = 0.0102
+region 13 / 47: chr 17, nz beta = 12, nsnps = 492, shrinkage = 0.0151
+region 14 / 47: chr 17, nz beta = 14, nsnps = 438, shrinkage = 0.0275
+region 15 / 47: chr 17, nz beta = 12, nsnps = 522, shrinkage = 0.0042
+region 16 / 47: chr 17, nz beta = 17, nsnps = 450, shrinkage = 0.0224
+region 17 / 47: chr 17, nz beta = 10, nsnps = 386, shrinkage = 0.0038
+region 18 / 47: chr 17, nz beta = 6, nsnps = 327, shrinkage = 0.0098
+region 19 / 47: chr 17, nz beta = 12, nsnps = 333, shrinkage = 0.008
+region 20 / 47: chr 17, nz beta = 15, nsnps = 257, shrinkage = 0.0101
+region 21 / 47: chr 17, nz beta = 15, nsnps = 773, shrinkage = 0.3052
+region 22 / 47: chr 17, nz beta = 21, nsnps = 364, shrinkage = 0.0269
+region 23 / 47: chr 17, nz beta = 21, nsnps = 332, shrinkage = 0.0147
+region 24 / 47: chr 17, nz beta = 31, nsnps = 656, shrinkage = 0.0211
+region 25 / 47: chr 17, nz beta = 2, nsnps = 123, shrinkage = 0.0101
+region 26 / 47: chr 17, nz beta = 3, nsnps = 177, shrinkage = 0.0109
+region 27 / 47: chr 17, nz beta = 7, nsnps = 375, shrinkage = 0.0122
+region 28 / 47: chr 17, nz beta = 13, nsnps = 472, shrinkage = 0.0437
+region 29 / 47: chr 17, nz beta = 17, nsnps = 538, shrinkage = 0.0318
+region 30 / 47: chr 17, nz beta = 12, nsnps = 555, shrinkage = 0.0184
+region 31 / 47: chr 17, nz beta = 10, nsnps = 642, shrinkage = 0.0048
+region 32 / 47: chr 17, nz beta = 4, nsnps = 286, shrinkage = 0.0123
+region 33 / 47: chr 17, nz beta = 13, nsnps = 403, shrinkage = 0.0249
+region 34 / 47: chr 17, nz beta = 5, nsnps = 278, shrinkage = 0.0082
+region 35 / 47: chr 17, nz beta = 11, nsnps = 483, shrinkage = 0.0276
+region 36 / 47: chr 17, nz beta = 35, nsnps = 800, shrinkage = 0.0181
+region 37 / 47: chr 17, nz beta = 7, nsnps = 358, shrinkage = 0.0054
+region 38 / 47: chr 17, nz beta = 32, nsnps = 1278, shrinkage = 0.004
+region 39 / 47: chr 17, nz beta = 14, nsnps = 453, shrinkage = 0.0105
+region 40 / 47: chr 17, nz beta = 10, nsnps = 341, shrinkage = 0.005
+region 41 / 47: chr 17, nz beta = 14, nsnps = 731, shrinkage = 0.0104
+region 42 / 47: chr 17, nz beta = 15, nsnps = 545, shrinkage = 0.0463
+region 43 / 47: chr 17, nz beta = 7, nsnps = 575, shrinkage = 0.0093
+region 44 / 47: chr 17, nz beta = 4, nsnps = 385, shrinkage = 0.0141
+region 45 / 47: chr 17, nz beta = 9, nsnps = 354, shrinkage = 0.0083
+region 46 / 47: chr 17, nz beta = 12, nsnps = 615, shrinkage = 0.0108
+region 47 / 47: chr 17, nz beta = 7, nsnps = 418, shrinkage = 0.0251
+Matched 21136 SNPs with Z-scores to the reference panel
+Mean LD shrinkage = 0.02387362024098241.
+Done! Result saved to /scratch/users/bbchu/GhostKnockoffGWAS/data/example_output. 
+Overall runtime = 34.12649257 seconds, with 
+   1.456621308 seconds spent on reading the Z score file
+   32.669871262 seconds spent on doing the analysis</code></pre><p><strong>Explanation for intermediate outputs</strong>:</p><ul><li><code>GhostKnockoffGWAS</code> first prints the user-specified parameters in the analysis. Verify that they are correct.</li><li>Next we print the output of <code>count_matchable_snps</code>. It is essentially matching user supplied Z scores to the pre-computed knockoff data and counting how many SNPs can be matched. This information will be used to quantify the level shrinkage in Lasso regression. </li><li>Then for each region, it will try to analyze the genome in quasi-independent regions, e.g. </li></ul><pre><code class="nohighlight hljs">region 1 / 47: chr 17, nz beta = 10, nsnps = 425, shrinkage = 0.0043
+region 2 / 47: chr 17, nz beta = 18, nsnps = 319, shrinkage = 0.0326
+region 3 / 47: chr 17, nz beta = 1, nsnps = 232, shrinkage = 0.0135
+...</code></pre><p>Here there are 47 regions in chromosome 17. For each region it prints the number of non-zero beta estimated in that region, the number of Z-scores that are present in that region, and finally the level of shrinkage. The shrinkage level is a number between 0 and 1. It quantifies how well the correlation matrices used in the analysis approximates the LD structure for the original GWAS study under the null (<span>$z = 0$</span>), see <a href="https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010299">SuSiE paper</a> equation 24 for details.</p><ul><li>Finally, the program concludes by printing the number of Z scores successfully matched, the output path, as well as a rough estimate of runtime. In this simple example, the analysis finished in roughly half a minute. </li></ul><h2 id="Step-4:-Interpreting-the-result"><a class="docs-heading-anchor" href="#Step-4:-Interpreting-the-result">Step 4: Interpreting the result</a><a id="Step-4:-Interpreting-the-result-1"></a><a class="docs-heading-anchor-permalink" href="#Step-4:-Interpreting-the-result" title="Permalink"></a></h2><p>If you are following along, <code>GhostKnockoffGWAS</code> should have produced 2 outputs</p><ol><li><code>example_output_summary.txt</code></li><li><code>example_output.txt</code></li></ol><h3 id="example_output_summary.txt"><a class="docs-heading-anchor" href="#example_output_summary.txt"><code>example_output_summary.txt</code></a><a id="example_output_summary.txt-1"></a><a class="docs-heading-anchor-permalink" href="#example_output_summary.txt" title="Permalink"></a></h3><p>This file contains broad summary of the analysis, as shown below</p><pre><code class="nohighlight hljs">target_fdr_0.01,Inf
+target_fdr_0.01_num_selected,0
+target_fdr_0.02,Inf
+target_fdr_0.02_num_selected,0
+target_fdr_0.03,Inf
+target_fdr_0.03_num_selected,0
+target_fdr_0.04,Inf
+target_fdr_0.04_num_selected,0
+target_fdr_0.05,Inf
+target_fdr_0.05_num_selected,0
+target_fdr_0.06,Inf
+target_fdr_0.06_num_selected,0
+target_fdr_0.07,Inf
+target_fdr_0.07_num_selected,0
+target_fdr_0.08,Inf
+target_fdr_0.08_num_selected,0
+target_fdr_0.09,Inf
+target_fdr_0.09_num_selected,0
+target_fdr_0.1,0.0038835278195177795
+target_fdr_0.1_num_selected,4
+target_fdr_0.11,0.0037439278466356142
+target_fdr_0.11_num_selected,6
+target_fdr_0.12,0.0037439278466356142
+target_fdr_0.12_num_selected,6
+target_fdr_0.13,0.0037439278466356142
+target_fdr_0.13_num_selected,6
+target_fdr_0.14,0.0031012282968098537
+target_fdr_0.14_num_selected,6
+target_fdr_0.15,0.0031012282968098537
+target_fdr_0.15_num_selected,6
+target_fdr_0.16,0.0031012282968098537
+target_fdr_0.16_num_selected,6
+target_fdr_0.17,0.002768189835339677
+target_fdr_0.17_num_selected,6
+target_fdr_0.18,0.002768189835339677
+target_fdr_0.18_num_selected,6
+target_fdr_0.19,0.002768189835339677
+target_fdr_0.19_num_selected,6
+target_fdr_0.2,0.0022878815488677467
+target_fdr_0.2_num_selected,7
+m,5
+nregions,47
+nsnps,21136
+lasso_lambda,0.0035656428122281454
+mean_LD_shrinkage,0.02387362024098241
+import_time,2.9585762090000007
+sample_knockoff_time,8.064913196999997
+ghostbasil_time,0.461628368
+knockoff_filter_time,2.326016636
+total_time,25.699404001235962
+sample_knockoff_time_t21,2.9308446070000005
+sample_knockoff_time_t22,1.398813931
+sample_knockoff_time_t23,0.9110162740000001
+sample_knockoff_time_t24,2.6240137139999993</code></pre><ul><li>The first ~40 rows indicate the number of unique discoveries given by <code>GhostKnockoffGWAS</code>, for different target FDR levels. For example, when target <span>$\text{FDR} = 0.1$</span>, there are 4 unique discoveries and the knockoff threshold is <span>$\hat{\tau} = 0.00388$</span>. According to the knockoff procedure, these discoveries are conditionally independent, although one can apply a post-processing step to further count the number of independent discoveries. </li><li>The next few rows contain parameters used in the analysis, as well as timing results. </li><li><em>The most important parameter</em> corresponds to the value of <code>mean_LD_shrinkage</code>, here it is <span>$0.023873$</span>. As discussed above, this value quantifies how well the correlation matrices used in the analysis approximates the LD structure for the original GWAS study. A value close to 0 is good, while larger values indicate deviation. <code>GhostKnokcoffGWAS</code> automatically terminates when this value exceeds a certain threshold.</li></ul><h3 id="example_output.txt"><a class="docs-heading-anchor" href="#example_output.txt"><code>example_output.txt</code></a><a id="example_output.txt-1"></a><a class="docs-heading-anchor-permalink" href="#example_output.txt" title="Permalink"></a></h3><p>This is a comma-separated file that contains the full knockoff analysis output. The first 5 rows are shown:</p><pre><code class="nohighlight hljs">$ head -5 example_output.txt
+rsid,AF,chr,ref,alt,pos_hg19,pos_hg38,group,zscores,lasso_beta,W,kappa,tau,pvals,selected_fdr0.01,selected_fdr0.02,selected_fdr0.03,selected_fdr0.04,selected_fdr0.05,selected_fdr0.06,selected_fdr0.07,selected_fdr0.08,selected_fdr0.09,selected_fdr0.1,selected_fdr0.11,selected_fdr0.12,selected_fdr0.13,selected_fdr0.14,selected_fdr0.15,selected_fdr0.16,selected_fdr0.17,selected_fdr0.18,selected_fdr0.19,selected_fdr0.2
+rs2294076,0.74445,17,A,G,6157,156366,chr17_start56_end1172398_group1_0,0.398036369392557,0.0,0.0,0.0,0.0,0.6906033770337676,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+rs2396789,0.90858,17,T,C,8547,158756,chr17_start56_end1172398_group1_0,0.405389455204145,0.0,0.0,0.0,0.0,0.6851912607868653,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+rs36068254,0.76068,17,A,G,10583,160792,chr17_start56_end1172398_group2_0,0.454143632070033,0.0,0.0,0.0,0.0,0.6497254507764232,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+rs6565705,0.7967,17,G,A,13905,164114,chr17_start56_end1172398_group1_0,0.654603172923188,0.0,0.0,0.0,0.0,0.5127232807057284,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</code></pre><p>The first row is a header row. Each proceeding row corresponds to a SNP that was used in the analysis. </p><ul><li><code>selected_fdr*</code> columns: these inform whether the variable is selected. Its values are 0 (indicating the SNP does not belong to a group that has been selected) or 1 (this SNP has been selected, along with those in the same group ).</li><li><code>group</code> column: defines group membership. Note that in GhostKnockoffGWAS, false discovery rate (FDR) is guaranteed at the group level, that is, the expected number of falsely discovered groups is less than the target FDR level.</li><li><code>AF</code> column: stands for alternate-allele-frequency. </li><li><code>lasso_beta</code>: This is the Lasso&#39;s estimated effect size for each SNP conditional on the knockoffs. </li><li><code>W, kappa, tau</code>: these are knockoff statistics computed from the analysis, please refer to our paper for more detail. </li><li>Other columns such as <code>rsid,chr,ref</code>...etc should be self-explanatory.</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../download/">« Downloads</a><a class="docs-footer-nextpage" href="../video/">Video tutorials »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Wednesday 24 January 2024 21:28">Wednesday 24 January 2024</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
