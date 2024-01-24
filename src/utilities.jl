@@ -69,7 +69,7 @@ function count_matchable_snps(
     effect_allele::Vector{String},       # effect allele of Z score
     non_effect_allele::Vector{String},   # non-effect allele of Z score
     hg_build::Int,
-    target_chrs=1:22,
+    target_chrs=sort!(unique(chr)),
     )
     nregions, nsnps, nknockoff_snps = 0, 0, 0
     for c in target_chrs

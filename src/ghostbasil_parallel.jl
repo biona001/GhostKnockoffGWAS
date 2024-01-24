@@ -25,7 +25,7 @@ pre-computed knockoff data in `knockoff_dir`.
 + `seed`: Random seed for reproducibility (default = `2023`)
 + `target_chrs`: Target chromosomes to analyze. For example, one can specify
     `target_chrs = 22` to only analyze 1 chromosome, or `target_chrs = [1, 2]`
-    to only analyze 2 chromosomes (default = `1:22`).
+    to only analyze 2 chromosomes (default = `sort!(unique(chr))`).
 + `A_scaling_factor`: The scaling factor for `A = [X X̃]'*[X X̃]` for improving
     numerical stability. Scaling proceeds by adding `A_scaling_factor*I` to `A`
     (default = 0.01). 
@@ -68,13 +68,14 @@ function ghostknockoffgwas(
     outdir::String;
     outname::String="result",
     seed::Int = 2023,
-    target_chrs=1:22,
+    target_chrs=sort!(unique(chr)),
     A_scaling_factor = 0.01,
     kappa::Number=0.6,
     LD_shrinkage::Bool=false,
     target_fdrs = 0.01:0.01:0.2,
     verbose::Bool=true,
-    skip_shrinkage_check::Bool=false
+    skip_shrinkage_check::Bool=false,
+    random_shuffle::Bool = false
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -203,11 +204,13 @@ function ghostknockoffgwas(
                 error("Number of Zscores should match groups")
 
             # randomly permute order of Z and Zko to avoid ordering bias
-            p = length(zscore_tmp)
-            perms = [collect(1:m+1) for _ in 1:p]
-            for i in eachindex(zscore_tmp)
-                shuffle!(perms[i])
-                @views permute!(Zscores_store[i:p:end], perms[i])
+            if random_shuffle
+                p = length(zscore_tmp)
+                perms = [collect(1:m+1) for _ in 1:p]
+                for i in eachindex(zscore_tmp)
+                    shuffle!(perms[i])
+                    @views permute!(Zscores_store[i:p:end], perms[i])
+                end
             end
 
             # run GhostBasil
@@ -221,9 +224,11 @@ function ghostknockoffgwas(
             end
 
             # undo shuffling of Z and Zko
-            for i in eachindex(zscore_tmp)
-                @views invpermute!(beta_i[i:p:end], perms[i])
-                @views invpermute!(Zscores_store[i:p:end], perms[i])
+            if random_shuffle
+                for i in eachindex(zscore_tmp)
+                    @views invpermute!(beta_i[i:p:end], perms[i])
+                    @views invpermute!(Zscores_store[i:p:end], perms[i])
+                end
             end
 
             # update counters
@@ -231,7 +236,7 @@ function ghostknockoffgwas(
             nsnps += length(shared_snps)
             nregions += 1
             if verbose
-                println("region $nregions / $tregions: chr $c, nz beta = " *
+                println("region $nregions / $tregions (f = $f): chr $c, nz beta = " *
                         "$(count(!iszero, beta_i)), nsnps = $(length(shared_snps))" * 
                         ", shrinkage = $(round(γ, digits=4))")
                 flush(stdout)
