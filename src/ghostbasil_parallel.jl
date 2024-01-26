@@ -105,7 +105,6 @@ function ghostknockoffgwas(
     groups = String[]                      # group membership vector over all SNPs (original + knockoffs)
     groups_original = Int[]                # integer group membership vector for original SNPs
     Zscores = Float64[]                    # Z scores (original + knockoffs) for SNPs that can be matched to LD panel
-    Zscores_ko_train = Float64[]           # needed for pseudo-validation in ghostbasil
     Zscores_store = Float64[]
     t1, t2, t3 = 0.0, 0.0, 0.0             # some timers
     t21, t22, t23, t24 = 0.0, 0.0, 0.0, 0.0# some timers
@@ -158,6 +157,11 @@ function ghostknockoffgwas(
                 GWAS_keep_idx = indexin(shared_snps, GWAS_pos)
                 append!(df, Sigma_info[LD_keep_idx, :])
                 if length(LD_keep_idx) == 0 || length(GWAS_keep_idx) == 0 
+                    nregions += 1
+                    if verbose
+                        println("region $nregions / $tregions (f = $f) matched 0 SNPs!")
+                        flush(stdout)
+                    end
                     continue
                 end
             end
@@ -188,19 +192,16 @@ function ghostknockoffgwas(
 
             # save mapped Zscores and some other variables
             empty!(Zscores_store)
-            empty!(Zscores_ko_train)
             append!(Zscores_store, zscore_tmp) # append original Z scores 
             append!(Zscores_store, Zko)        # append knockoffs
             append!(Zscores, Zscores_store)
-            append!(Zscores_ko_train, Zko_train)
             current_groups = result["groups"][LD_keep_idx]
             grp = ["chr$(c)_$(fname)_group$(g)_0" for g in current_groups] # the last _0 implies this is original variable
             append!(groups, grp)
             for k in 1:m
                 append!(groups, ["chr$(c)_$(fname)_group$(g)_$k" for g in current_groups])
             end
-            length(Zscores_store) == (m+1) * length(current_groups) == 
-                length(Zscores_ko_train) || 
+            length(Zscores_store) == (m+1) * length(current_groups) || 
                 error("Number of Zscores should match groups")
 
             # randomly permute order of Z and Zko to avoid ordering bias
