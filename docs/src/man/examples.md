@@ -3,40 +3,13 @@
 
 This page collect examples of running the ghost knockoff pipeline. We will cover topics such as installation, examining input data, running the software, and interpreting the output. 
 
-## Step 0: Download example data
-
-If you would like to follow along with this tutorial, feel free to download [example_zfile.txt]() (4MB) which contains ~200k Z scores from chromosome 17. The first few rows of this file is shown below
-
-```
-$ head example_zfile.txt
-
-CHR	POS	REF	ALT	Z
-17	150509	T	TA	1.08773561923134
-17	151035	T	C	0.703898767202681
-17	151041	G	A	1.10771707088118
-17	151872	T	C	-0.299877259561085
-17	152087	C	T	-0.371627135786605
-17	152104	G	A	-0.28387322965385
-17	152248	G	A	0.901618600934489
-17	152427	G	A	1.10987516000804
-17	152771	A	G	0.708492545266136
-```
-
-In this example data, 
-+ The `POS` field corresponds to hg38 positions. GhostKnockoffGWAS requires the position to be either hg19 or hg38.
-+ The sample size used for generating this data is `506200`. Thus one should specify `--N 506200`.
-
-!!! note 
-
-    See [acceptable Z score format](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format) for detailed requirements on this file.
-
-## Step 1: Download Knockoff files and binary executable
+## Step 1: Download pre-processed LD files and binary executable
 
 Proceed to the [Downloads page]() and download (1) the software as well as (2) a pre-processed knockoff dataset suitable for your analysis. After unzipping, the executable will be located inside `bin/GhostKnockoffGWAS`. We recommend adding the folder containing the `GhostKnockoffGWAS` executable to `PATH` for easier access.
 
 ## Step 2: Prepare a valid Z score file
 
-One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format) as input. Here is an example:
+One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format) as input. If you would like to follow along with this tutorial, feel free to download this test data [example_zfile.txt]() (4MB). The first few rows look like
 
 ```
 $ head example_zfile.txt
@@ -55,6 +28,12 @@ CHR	POS	REF	ALT	Z
 + The first row is a header row which includes `CHR`, `POS`, `REF`, `ALT`, `Z`. Other columns will be ignored. 
 + Each row is a different SNP and each column is separated by a tab (i.e. `\t` character) or a comma
 
+In this example
+
++ The `POS` field corresponds to hg38 positions. GhostKnockoffGWAS requires the position to be either hg19 or hg38.
++ The sample size used for generating this data is `506200`. Thus one should specify `--N 506200`.
+
+
 ## Step 3: Running the analysis
 
 To see a list of available arguments, execute `GhostKnockoffGWAS --help`. 
@@ -64,7 +43,7 @@ To run the example analysis, one can do
 ```shell
 $ GhostKnockoffGWAS \
     --zfile example_zfile.txt \
-    --knockoff-dir EUR \
+    --LD-files EUR \
     --N 506200 \
     --genome-build 38 \
     --out example_output
@@ -75,7 +54,7 @@ Here is the expected output:
 Welcome to GhostKnockoffGWAS analysis!
 You have specified the following options:
 zfile           = /scratch/users/bbchu/GhostKnockoffGWAS/data/example_zfile.txt
-knockoff_dir    = /scratch/users/bbchu/GhostKnockoffGWAS/data/EUR
+LD_files        = /scratch/users/bbchu/GhostKnockoffGWAS/data/EUR
 N (sample size) = 506200
 hg_build        = 38
 outdir          = /scratch/users/bbchu/GhostKnockoffGWAS/data/

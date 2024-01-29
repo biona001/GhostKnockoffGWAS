@@ -3,7 +3,7 @@
 
 This is for advanced users who wish to build customized knockoff analysis pipelines. Currently, customization is not easy, but it is possible in principle at 2 levels: 
 
-1. Constructing knockoff statistics for custom LD panels, including
+1. Processing LD panels
     + Specifying which LD panel to use
     + Defining quasi-independent regions and groups
     + Solving the knockoff (convex) optimization problem
@@ -16,9 +16,9 @@ This is for advanced users who wish to build customized knockoff analysis pipeli
 
 A full example is provided in 3 separate jupyter notebooks: [part 0](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part0.ipynb), [part 1](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part1.ipynb), and [part 2](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part2.ipynb). If you need assistance on any of these steps, feel free to reach out to us. 
 
-## 1. Constructing knockoff statistics for custom LD panels
+## 1. Processing LD panels
 
-This section gives a high-level overview up to part 1 of the GhostKnockoff pipeline (computation of knockoff statistics). 
+This section gives a high-level overview up to part 1 of the GhostKnockoff pipeline (processing of LD files to be used as input to `GhostKnockoffGWAS`). 
 
 + Processing of LD panels (including downloading and importing the data matrices) is carried out by [EasyLD.jl](https://github.com/biona001/EasyLD.jl). This package should make it easy to import a region of the LD matrix into memory in Julia. 
 + To partition the extremely large LD matrix into manageable pieces, we directly adopted the output of [ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/) for which `AFR` (african), `ASN` (east Asians), and `EUR` (european) results are already available (position coordinates are given in HG19). For the EUR panel, the autosomes are partitioned into 1703 "quasi-independent" regions, see Figure S2 of [this paper](https://arxiv.org/abs/2310.15069) for summaries. 
@@ -99,25 +99,3 @@ with the understanding that $B_i$ is the covariance matrix for $(Z, \tilde{Z}_1,
 \end{aligned}
 ```
 where $C_i = \Sigma_i - S_i$. In Julia, this functionality is supported via the [Ghostbasil.jl](https://github.com/biona001/ghostbasil.jl) package. 
-
-## Compiling the binaries
-
-1. Make sure `gcc` is available. We recommend version 7.1, but [avoid using GCC 11+](https://github.com/JuliaPackaging/Yggdrasil/blob/0d38df8bc8ad10cff5fba1c19a5932a84286fcd2/CONTRIBUTING.md#compatibility-tips).
-2. Make sure `GhostKnockoffGWAS` is installed within Julia. 
-3. `dev` the package via
-```julia
-]dev GhostKnockoffGWAS
-```
-4. compile using [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl)
-```julia
-using PackageCompiler, GhostKnockoffGWAS
-src = normpath(pathof(GhostKnockoffGWAS), "../..")
-des = normpath(pathof(GhostKnockoffGWAS), "../../app_linux_x86")
-precompile_script = normpath(pathof(GhostKnockoffGWAS), "../precompile.jl")
-@time create_app(src, des, 
-    include_lazy_artifacts=true, 
-    force=true, 
-    precompile_execution_file=precompile_script
-)
-```
-The last step takes 1-2 hours. 

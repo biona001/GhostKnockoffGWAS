@@ -32,9 +32,15 @@ For undiagnosed performance issues, please file a new issue.
 
 We currently do not support X/Y/M chromosome analysis.
 
-## Non-European knockoff statistics?
+## When will non-European LD files be available?
 
-We will release more pre-computed knockoff statistics for download, once we tested and verified the methodology against suitable datasets. Most likely, the first non-EUR release will be on African and East Asian populations. 
+We will release more pre-processed LD files for download, once we tested and verified the methodology against suitable datasets. Most likely, the first non-EUR release will be on African and East Asian populations. 
+
+## Admixed samples?
+
+If your study subjects are somewhat admixed, one can try `GhostKnockoffGWAS` with the most suitable LD files, then check how much deviation there are by examining the `LD_shrinkage` parameter in the output of `GhostKnockoffGWAS`, see [Is-the-result-is-trustworthy?](https://biona001.github.io/GhostKnockoffGWAS/dev/man/FAQ/#Is-the-result-is-trustworthy?).
+
+If your study subjects are extremely admixed, then it is unlikely that GhostKnockoffGWAS will return good results. The main difficulty in enabling analysis for admixed cohorts lies in pre-computing good LD files for admixed subjects. Computing required quantities on the fly is too computationally intensive. 
 
 ## How do I specify my own groups?
 

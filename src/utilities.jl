@@ -62,7 +62,7 @@ end
 # counts number of Z scores that can be matched to LD panel
 # ~400 seconds is running on typed SNPs only
 function count_matchable_snps(
-    knockoff_dir::String,  # Directory that stores knockoff results (i.e. output from part 1)
+    LD_files::String,  # Directory that stores LD/knockoff files (i.e. output from part 1)
     z::Vector{Float64},    # Z scores
     chr::Vector{Int},      # chromosome of each Z score
     pos::Vector{Int},      # position of each Z score (specify hg build with hg_build)
@@ -73,7 +73,7 @@ function count_matchable_snps(
     )
     nregions, nsnps, nknockoff_snps = 0, 0, 0
     for c in target_chrs
-        files = readdir(joinpath(knockoff_dir, "chr$c"))
+        files = readdir(joinpath(LD_files, "chr$c"))
         chr_idx = findall(x -> x == c, chr)
         GWAS_pos = pos[chr_idx]
         GWAS_ea = effect_allele[chr_idx]
@@ -83,9 +83,9 @@ function count_matchable_snps(
             endswith(f, ".h5") || continue
             fname = f[4:end-3]
 
-            # read knockoff results
+            # read LD/knockoff files
             Sigma_info = CSV.read(
-                joinpath(knockoff_dir, "chr$(c)", "Info_$fname.csv"), DataFrame
+                joinpath(LD_files, "chr$(c)", "Info_$fname.csv"), DataFrame
             )
             nknockoff_snps += size(Sigma_info, 1)
             # map reference LD panel to GWAS Z-scores by position
@@ -125,15 +125,15 @@ function count_matchable_snps(
 end
 
 function count_total_snps(
-    knockoff_dir::String, # Directory that stores knockoff results
+    LD_files::String, # Directory that stores LD/knockoff files
     target_chrs=1:22,
     ) 
     nsnps = 0
     for c in target_chrs
-        files = readdir(joinpath(knockoff_dir, "chr$c"))
+        files = readdir(joinpath(LD_files, "chr$c"))
         for f in files
             startswith(f, "Info") || continue
-            nsnps += countlines(joinpath(knockoff_dir, "chr$c", f)) - 1
+            nsnps += countlines(joinpath(LD_files, "chr$c", f)) - 1
         end
     end
     return nsnps

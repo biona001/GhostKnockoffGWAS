@@ -2,19 +2,21 @@
 function julia_main()::Cint
     try
         # read command line arguments
-        zfile, knockoff_dir, N, hg_build, outfile, outdir, seed, verbose,
-            skip_shrinkage_check = parse_commandline(true)
+        zfile, LD_files, N, hg_build, outfile, outdir, seed, verbose,
+            random_shuffle, skip_shrinkage_check = parse_commandline(true)
 
         println("\n\nWelcome to GhostKnockoffGWAS analysis!")
         println("You have specified the following options:")
         println("zfile           = ", abspath(zfile))
-        println("knockoff_dir    = ", abspath(knockoff_dir))
+        println("LD_files        = ", abspath(LD_files))
         println("N (sample size) = ", N)
         println("hg_build        = ", hg_build)
         println("outdir          = ", outdir)
         println("outfile         = ", joinpath(outdir, outfile))
         println("seed            = ", seed)
         println("verbose         = ", verbose)
+        println("random_shuffle  = ", random_shuffle)
+        println("skip_shrinkage_check = ", skip_shrinkage_check)
         println("\n")
 
         # read Z scores
@@ -24,10 +26,11 @@ function julia_main()::Cint
 
         # run ghost knockoff analysis
         t2 = @elapsed begin
-            ghostknockoffgwas(knockoff_dir, z, chr, pos, effect_allele, 
+            ghostknockoffgwas(LD_files, z, chr, pos, effect_allele, 
                 non_effect_allele, N, hg_build, outdir, outname=outfile, 
                 seed=seed, verbose=verbose, 
-                skip_shrinkage_check=skip_shrinkage_check)
+                skip_shrinkage_check=skip_shrinkage_check,
+                random_shuffle=random_shuffle)
         end
 
         if verbose
@@ -61,8 +64,8 @@ function parse_commandline(parseargs::Bool)
                    "NaN or as an empty cell."
             required = true
             arg_type = String
-        "--knockoff-dir"
-            help = "Path to the directory storing pre-processed knockoff files"
+        "--LD-files"
+            help = "Path to the directory storing pre-processed LD and knockoff files"
             required = true
             arg_type = String
         "--N"
@@ -86,6 +89,11 @@ function parse_commandline(parseargs::Bool)
             help = "Whether to print intermediate messages"
             arg_type = Bool
             default = true
+        "--random-shuffle"
+            help = "Whether to randomly permute the order of Z-scores and " * 
+                   "their knockoffs to adjust for potential ordering bias."
+            arg_type = Bool
+            default = true
         "--skip_shrinkage_check"
             help = "Whether to allow Knockoff analysis to proceed even with " * 
                    "large (>0.25) LD shrinkages. Only use this option if you " *
@@ -101,7 +109,7 @@ function parse_commandline(parseargs::Bool)
     # the module will fail to load
     if !parseargs
         _useless = parse_args(
-            ["--zfile","testdir","--knockoff-dir","testdir2",
+            ["--zfile","testdir","--LD-files","testdir2",
             "--N","1","--genome-build","38","--out","testdir3","--seed","2024",
             "--verbose","true"], s
         )
@@ -111,7 +119,7 @@ function parse_commandline(parseargs::Bool)
 
     parsed_args = parse_args(s)
     zfile = parsed_args["zfile"]
-    knockoff_dir = parsed_args["knockoff-dir"]
+    LD_files = parsed_args["LD-files"]
     N = parsed_args["N"]
     hg_build = parsed_args["genome-build"]
     out = parsed_args["out"]
@@ -119,7 +127,9 @@ function parse_commandline(parseargs::Bool)
     outdir = abspath(dirname(out))
     seed = parsed_args["seed"]
     verbose = parsed_args["verbose"]
+    random_shuffle = parsed_args["random-shuffle"]
     skip_shrinkage_check = parsed_args["skip_shrinkage_check"]
 
-    return zfile, knockoff_dir, N, hg_build, outfile, outdir, seed, verbose, skip_shrinkage_check
+    return zfile, LD_files, N, hg_build, outfile, outdir, seed, verbose, 
+        random_shuffle, skip_shrinkage_check
 end

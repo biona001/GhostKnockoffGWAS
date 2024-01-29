@@ -1,5 +1,5 @@
 """
-    ghostknockoffgwas(knockoff_dir::String, z::Vector{Float64}, chr::Vector{Int}, 
+    ghostknockoffgwas(LD_files::String, z::Vector{Float64}, chr::Vector{Int}, 
         effect_allele::Vector{String}, non_effect_allele::Vector{String}, N::Int,
         hg_build::Int, outdir::String; [outname="result"], [seed=2023], 
         [target_chrs=1:22], [A_scaling_factor = 0.01], [kappa=0.6], 
@@ -7,10 +7,10 @@
         [skip_shrinkage_check=false])
 
 Runs the main `GhostKnockoffGWAS` pipeline on the Z scores in `z` using 
-pre-computed knockoff data in `knockoff_dir`. 
+pre-computed knockoff data in `LD_files`. 
 
 # Inputs
-+ `knockoff_dir`: Directory that stores pre-computed knockoff results
++ `LD_files`: Directory that stores pre-computed knockoff results
 + `z`: Vector of Z scores
 + `chr`: Chromosome of each Z score (cannot be X/Y/M chromosomes)
 + `pos`: Position of each Z score (specify hg build with `hg_build`)
@@ -57,7 +57,7 @@ By default we output 2 files into `outdir`
     parameters used in the knockoff analysis, as well as some timing results. 
 """
 function ghostknockoffgwas(
-    knockoff_dir::String,
+    LD_files::String,
     z::Vector{Float64},
     chr::Vector{Int},
     pos::Vector{Int},
@@ -75,7 +75,7 @@ function ghostknockoffgwas(
     target_fdrs = 0.01:0.01:0.2,
     verbose::Bool=true,
     skip_shrinkage_check::Bool=false,
-    random_shuffle::Bool = false
+    random_shuffle::Bool = true
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")
@@ -87,7 +87,7 @@ function ghostknockoffgwas(
         length(effect_allele) == length(non_effect_allele) ||
         error("Length of z, chr, pos, effect_allele, and non_effect_allele should be the same")
 
-    # number of simultaneous knockoffs (this is used in computation of `knockoff_dir` and should NOT be changed)
+    # number of simultaneous knockoffs (this is used in computation of `LD_files` and should NOT be changed)
     m = 5
 
     # find lambda value for lasso
@@ -95,7 +95,7 @@ function ghostknockoffgwas(
     lambdamax = maximum(abs, z) / sqrt(N)
     lambdamin = 0.0001lambdamax
     lambda_path = exp.(range(log(lambdamin), log(lambdamax), length=100)) |> reverse!
-    nsnps, tregions = count_matchable_snps(knockoff_dir, z, chr, pos, effect_allele, 
+    nsnps, tregions = count_matchable_snps(LD_files, z, chr, pos, effect_allele, 
         non_effect_allele, hg_build, target_chrs) # ~400 seconds on typed SNPs
     lambda = kappa * maximum(abs, randn((m+1)*nsnps)) / sqrt(N)
     lambda_path = vcat(lambda_path[findall(x -> x > lambda, lambda_path)], lambda)
@@ -116,7 +116,7 @@ function ghostknockoffgwas(
     # assemble knockoff results across regions
     nregions, nsnps, nknockoff_snps = 0, 0, 0
     for c in target_chrs
-        files = readdir(joinpath(knockoff_dir, "chr$c"))
+        files = readdir(joinpath(LD_files, "chr$c"))
         chr_idx = findall(x -> x == c, chr)
         GWAS_pos = pos[chr_idx]
         GWAS_ea = effect_allele[chr_idx]
@@ -128,8 +128,8 @@ function ghostknockoffgwas(
 
             # read knockoff results in current region
             t1 += @elapsed begin
-                result = JLD2.load(joinpath(knockoff_dir, "chr$c", f))
-                Sigma_info = CSV.read(joinpath(knockoff_dir, "chr$(c)", "Info_$fname.csv"), DataFrame)
+                result = JLD2.load(joinpath(LD_files, "chr$c", f))
+                Sigma_info = CSV.read(joinpath(LD_files, "chr$(c)", "Info_$fname.csv"), DataFrame)
                 nknockoff_snps += size(Sigma_info, 1)
                 # map reference LD panel to GWAS Z-scores by position
                 LD_pos = Sigma_info[!, "pos_hg$(hg_build)"]
@@ -253,14 +253,14 @@ function ghostknockoffgwas(
     if γ_mean ∈ [0.1, 0.25]
         verbose && @warn(
             "Mean LD shrinkage is $γ_mean, which is a bit high. " * 
-            "This suggests the LD panel supplied in \"$knockoff_dir\" does not " *
+            "This suggests the LD panel supplied in \"$LD_files\" does not " *
             "well capture the correlation structure of the original study " * 
             "genotypes. Consider using a different LD panel."
         )
     elseif γ_mean > 0.25
         skip_shrinkage_check || error(
             "Mean LD shrinkage is $γ_mean, which is too high. " *
-            "This suggests the LD panel supplied in \"$knockoff_dir\" does not " *
+            "This suggests the LD panel supplied in \"$LD_files\" does not " *
             "correctly capture the correlation structure of the original study " * 
             "genotypes. Consider using a different LD panel. To bypass this " * 
             "error, use the option skip_shrinkage_check."

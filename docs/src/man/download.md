@@ -11,7 +11,7 @@ Here is the main downloads page. New software and pre-processed knockoff data wi
 
 After unzipping, the executable will be located inside `bin/GhostKnockoffGWAS`. We recommend adding the folder containing the `GhostKnockoffGWAS` executable to `PATH` for easier access.
 
-## Pre-processed knockoff data
+## Pre-processed LD files
 
 | Population              | Link        | Number of SNPs | Description   |
 | :---                    |    :----:   |      :---:     |   :---:     |
@@ -20,4 +20,4 @@ After unzipping, the executable will be located inside `bin/GhostKnockoffGWAS`. 
 | AFR (Africans)          | TBD        |       |
 | AMR (Admixed Americans) | TBD        |       |  |
 
-+ **Note 1**: This file contain pre-processed knockoff data generated from the typed SNPs of the EUR cohort from the Pan-UKB panel. The quasi-independent regions were obtained by directly adapting [the output of ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/EUR/)
++ **Note 1**: This file contain pre-processed LD files generated from the typed SNPs of the EUR cohort from the Pan-UKB panel. The quasi-independent regions were obtained by directly adapting [the output of ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/EUR/)
