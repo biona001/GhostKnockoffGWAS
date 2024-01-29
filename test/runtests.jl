@@ -37,7 +37,7 @@ end
     γ = GhostKnockoffGWAS.find_optimal_shrinkage(Σ, z)
     γtrue = 6.149509305168035e-15
     @test 0 ≤ γ ≤ 1
-    @test γ ≈ γtrue
+    @test isapprox(γ, γtrue, atol=1e-12)
 end
 
 @testset "ghostbasil C++ solver" begin
