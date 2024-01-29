@@ -24,6 +24,12 @@ jobs:
             Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
             Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
             Pkg.add(url="https://github.com/biona001/GhostKnockoffGWAS")'
+      - run: |
+          julia --project=docs -e '
+            using Pkg
+            Pkg.add("Documenter")
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.instantiate()'
       - name: Install dependencies
         run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Build and deploy
