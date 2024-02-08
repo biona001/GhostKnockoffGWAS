@@ -147,8 +147,21 @@ intended for Julia users running `GhostKnockoffGWAS` in the REPL.
 
 # Input
 + `filepath`: Full file path to the Z-score file. First row must be a header
-    column with `CHR`, `POS`, `REF`, `ALT`, and `Z`. All other columns will be
-    ignored.
+    column with `CHR`, `POS`, `REF`, `ALT`, and `Z`. If the file contains these 
+    information but has a different header name for them, use the optional input
+    arguments below. All other columns will be ignored.
+
+# Optional inputs
++ `chr_col`: An integer, specifying which column in `filepath` should be read as
+    CHR (by default we search for a header `CHR`)
++ `pos_col`: An integer, specifying which column in `filepath` should be read as 
+    POS (by default we search for a header `POS`)
++ `ref_col`: An integer, specifying which column in `filepath` should be read as 
+    REF (by default we search for a header `REF`)
++ `alt_col`: An integer, specifying which column in `filepath` should be read as
+    ALT (by default we search for a header `ALT`)
++ `z_col`: An integer, specifying which column in `filepath` should be read as Z
+    (by default we search for a header `Z`)
 
 # Output
 + `z`: The Z scores stored in the `Z` column of `filepath`
@@ -158,22 +171,43 @@ intended for Julia users running `GhostKnockoffGWAS` in the REPL.
 + `effect_allele`: The allele stored in `ALT` column of `filepath`.
 + `non_effect_allele`: The allele stored in `REF` column of `filepath`.
 """
-function read_zscores(filepath::String)
+function read_zscores(
+    filepath::String;
+    chr_col::Union{Nothing, Int}=nothing, 
+    pos_col::Union{Nothing, Int}=nothing, 
+    ref_col::Union{Nothing, Int}=nothing, 
+    alt_col::Union{Nothing, Int}=nothing, 
+    z_col::Union{Nothing, Int}=nothing
+    )
     # create CSV.File object (this reads the file lazily)
     csv_file = CSV.File(filepath)
 
-    # check the 5 required header is present
-    if !issubset([:CHR, :POS, :REF, :ALT, :Z], propertynames(csv_file))
-        error("Error reading Z score file $filepath. Does the file contain " *
-            "CHR, POS, REF, ALT, and Z as headers?")
-    end
-
     # read chr, pos, ref/alt alleles, and Z scores
-    chr = csv_file.CHR
-    pos = csv_file.POS
-    effect_allele = csv_file.ALT
-    non_effect_allele = csv_file.REF
-    z = csv_file.Z
+    chr = try
+        isnothing(chr_col) ? csv_file.CHR : [csv_file[i][chr_col] for i in eachindex(csv_file)]
+    catch
+        error("Error reading CHR from $filepath.")
+    end
+    pos = try
+        isnothing(pos_col) ? csv_file.POS : [csv_file[i][pos_col] for i in eachindex(csv_file)]
+    catch
+        error("Error reading POS from $filepath.")
+    end
+    non_effect_allele = try
+        isnothing(ref_col) ? csv_file.REF : [csv_file[i][ref_col] for i in eachindex(csv_file)]
+    catch
+        error("Error reading REF from $filepath.")
+    end
+    effect_allele = try
+        isnothing(alt_col) ? csv_file.ALT : [csv_file[i][alt_col] for i in eachindex(csv_file)]
+    catch
+        error("Error reading ALT from $filepath.")
+    end
+    z = try
+        isnothing(z_col) ? csv_file.Z : [csv_file[i][z_col] for i in eachindex(csv_file)]
+    catch
+        error("Error reading Z scores from $filepath.")
+    end
 
     # chr must be integer valued
     if eltype(chr) <: AbstractString
@@ -192,7 +226,15 @@ function read_zscores(filepath::String)
     # Z must be Float64 valued
     if eltype(z) <: AbstractString
         try
-            z = parse.(Float64, chr)
+            # try to parse some commonly used values for missing, even though 
+            # in the docs we don't allow it
+            replace!(z, ""=>"NaN")
+            replace!(z, "NA"=>"NaN")
+            replace!(z, "Na"=>"NaN")
+            replace!(z, "na"=>"NaN")
+            replace!(z, "missing"=>"NaN")
+            replace!(z, "Missing"=>"NaN")
+            z = parse.(Float64, z)
         catch e
             println(
                 "Error parsing z-scores of Z score file $filepath. " * 
@@ -204,7 +246,7 @@ function read_zscores(filepath::String)
     end
 
     # detect duplicate SNPs
-    check_all_snps_are_unique(chr, pos, effect_allele, non_effect_allele)
+    # check_all_snps_are_unique(chr, pos, effect_allele, non_effect_allele)
 
     # find missing/NaN/Inf
     chr_idx = findall(x -> !ismissing(x) && !isnothing(x) && !isnan(x) && !isinf(x), chr)

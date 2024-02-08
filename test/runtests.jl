@@ -122,6 +122,22 @@ end
     @test all(effect_allele .== ["G", "G"])
     @test all(non_effect_allele .== ["A", "A"])
 
+    # extra columns with possibly different names
+    data = """
+    rsid\tCHR\tPOS\tREF\tALT\tZ\tZreal
+    rs123\t1\t758351\tA\tG\t1.05\t111
+    rs234\t2\t779885\tC\tT\tNaN\t111
+    rs345\t3\t779987\tA\tG\t1.95\t111
+    rs456\t4\t782105\tC\tA\t\t111
+    """
+    CSV.write(filepath, CSV.File(IOBuffer(data)))
+    z, chr, pos, effect_allele, non_effect_allele = read_zscores(filepath, z_col=7)
+    @test all(z .≈ [111, 111, 111, 111])
+    @test all(chr .== [1, 2, 3, 4])
+    @test all(pos .== [758351, 779885, 779987, 782105])
+    @test all(effect_allele .== ["G", "T", "G", "A"])
+    @test all(non_effect_allele .== ["A", "C", "A", "C"])
+
     # repeated SNPs
     # data = """
     # CHR\tPOS\tREF\tALT\tZ
