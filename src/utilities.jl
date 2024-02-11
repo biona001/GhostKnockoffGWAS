@@ -414,23 +414,56 @@ Chooses the multiple knockoff threshold `τ̂ > 0` by setting
 https://github.com/biona001/Knockoffs.jl/blob/master/src/threshold.jl#L55
 """
 function mk_threshold(τ::Vector{T}, κ::Vector{Int}, m::Int, q::Number,
-    method=:knockoff_plus, rej_bounds::Int=10000
+    rej_bounds::Int=10000
     ) where T <: AbstractFloat
     0 ≤ q ≤ 1 || error("Target FDR should be between 0 and 1 but got $q")
-    method == :knockoff_plus || error("Multiple knockoffs needs to use :knockoff_plus filtering method")
     length(τ) == length(κ) || error("Length of τ and κ should be the same")
     p = length(τ) # number of features
     τ̂ = typemax(T)
     offset = 1 / m
     for (i, t) in enumerate(sort(τ, rev=true))
-        numer_counter, demon_counter = 0, 0
+        numer_counter, denom_counter = 0, 0
         for i in 1:p
             κ[i] ≥ 1 && τ[i] ≥ t && (numer_counter += 1)
-            κ[i] == 0 && τ[i] ≥ t && (demon_counter += 1)
+            κ[i] == 0 && τ[i] ≥ t && (denom_counter += 1)
         end
-        ratio = (offset + offset * numer_counter) / max(1, demon_counter)
+        ratio = (offset + offset * numer_counter) / max(1, denom_counter)
         ratio ≤ q && 0 < t < τ̂ && (τ̂ = t)
         i > rej_bounds && break
     end
     return τ̂
+end
+
+"""
+    get_knockoff_qvalue(κ, τ, m, [rej_bounds])
+
+Computes the knockoff q-value for each variable. The knockoff q-value is the 
+minimum target FDR for a given variable to be selected. For details, see eq 19 
+of https://www.nature.com/articles/s41467-022-34932-z
+"""
+function get_knockoff_qvalue(κ::Vector{Int}, τ::Vector{T}, m::Int, 
+    rej_bounds::Int=10000) where T
+    p = length(κ)
+    qvalues = ones(p)
+    offset = 1 / m
+    ratios = Tuple{T, T}[] # (ratio, τ) pairs
+    # compute rej_bounds ratios & corresponding τ values
+    for (i, t) in enumerate(sort(τ, rev=true)[1:rej_bounds])
+        numer_counter, denom_counter = 0, 0
+        for i in 1:p
+            κ[i] ≥ 1 && τ[i] ≥ t && (numer_counter += 1)
+            κ[i] == 0 && τ[i] ≥ t && (denom_counter += 1)
+        end
+        ratio = (offset + offset * numer_counter) / max(1, denom_counter)
+        push!(ratios, (ratio, t))
+    end
+    # find minimum q value based on current ratios
+    sort!(unique!(ratios))
+    for j in eachindex(qvalues)
+        if κ[j] == 0
+            idx = findfirst(ratio -> ratio[2] ≤ τ[j], ratios)
+            qvalues[j] = isnothing(idx) ? 1 : ratios[idx][1]
+        end
+    end
+    return qvalues
 end
