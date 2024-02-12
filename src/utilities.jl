@@ -439,31 +439,41 @@ end
 
 Computes the knockoff q-value for each variable. The knockoff q-value is the 
 minimum target FDR for a given variable to be selected. For details, see eq 19 
-of https://www.nature.com/articles/s41467-022-34932-z
+of https://www.nature.com/articles/s41467-022-34932-z and replace the 
+knockoff-filter by the within-group knockoff filter proposed in Alg2 of "A
+Powerful and Precise Feature-level Filter using Group Knockoffs" by Gu and He (2024).
+
+Note: Code is directly translated from Zihuai's R code here:
+https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/he_et_al/GKL_RunAnalysis_All.R#L36
 """
-function get_knockoff_qvalue(κ::Vector{Int}, τ::Vector{T}, m::Int, 
-    rej_bounds::Int=10000) where T
-    p = length(κ)
-    qvalues = ones(p)
+function get_knockoff_qvalue(κ::AbstractVector, τ::AbstractVector, m::Int;
+    groups::AbstractVector=collect(1:length(τ)), rej_bounds::Int=10000
+    )
+    b = sortperm(τ, rev=true)
+    c_0 = κ[b] .== 0
     offset = 1 / m
-    ratios = Tuple{T, T}[] # (ratio, τ) pairs
-    # compute rej_bounds ratios & corresponding τ values
-    for (i, t) in enumerate(sort(τ, rev=true)[1:rej_bounds])
-        numer_counter, denom_counter = 0, 0
-        for i in 1:p
-            κ[i] ≥ 1 && τ[i] ≥ t && (numer_counter += 1)
-            κ[i] == 0 && τ[i] ≥ t && (denom_counter += 1)
-        end
-        ratio = (offset + offset * numer_counter) / max(1, denom_counter)
-        push!(ratios, (ratio, t))
+    # calculate ratios for top rej_bound tau values
+    ratio = Float64[]
+    temp_0 = 0
+    for i in eachindex(b)
+        temp_0 = temp_0+c_0[i]
+        temp_1 = i-temp_0
+        G_factor = maximum(values(countmap(groups[b][1:i])))
+        temp_ratio = (offset*G_factor+offset*temp_1) / max(1,temp_0)
+        push!(ratio, temp_ratio)
+        i > rej_bound && break
     end
-    # find minimum q value based on current ratios
-    sort!(unique!(ratios))
-    for j in eachindex(qvalues)
-        if κ[j] == 0
-            idx = findfirst(ratio -> ratio[2] ≤ τ[j], ratios)
-            qvalues[j] = isnothing(idx) ? 1 : ratios[idx][1]
+    # calculate q values for top rej_bound values
+    qvalues = ones(length(τ))
+    if any(x -> x > 0, tau)
+        index_bound = maximum(findall(tau[b] .> 0))
+        for i in eachindex(b)
+            temp_index = i:min(length(b), rej_bound, index_bound)
+            length(temp_index) == 0 && continue
+            qvalues[b[i]] = minimum(ratio[temp_index])*c_0[i]+1-c_0[i]
+            i > rej_bound && break
         end
+        qvalues[qvalues .> 1] .= 1
     end
     return qvalues
 end
