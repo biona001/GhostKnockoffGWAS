@@ -452,26 +452,26 @@ function get_knockoff_qvalue(κ::AbstractVector, τ::AbstractVector, m::Int;
     b = sortperm(τ, rev=true)
     c_0 = κ[b] .== 0
     offset = 1 / m
-    # calculate ratios for top rej_bound tau values
+    # calculate ratios for top rej_bounds tau values
     ratio = Float64[]
     temp_0 = 0
     for i in eachindex(b)
-        temp_0 = temp_0+c_0[i]
-        temp_1 = i-temp_0
+        temp_0 = temp_0 + c_0[i]
+        temp_1 = i - temp_0
         G_factor = maximum(values(countmap(groups[b][1:i])))
-        temp_ratio = (offset*G_factor+offset*temp_1) / max(1,temp_0)
+        temp_ratio = (offset*G_factor+offset*temp_1) / max(1, temp_0)
         push!(ratio, temp_ratio)
-        i > rej_bound && break
+        i > rej_bounds && break
     end
-    # calculate q values for top rej_bound values
+    # calculate q values for top rej_bounds values
     qvalues = ones(length(τ))
-    if any(x -> x > 0, tau)
-        index_bound = maximum(findall(tau[b] .> 0))
+    if any(x -> x > 0, τ)
+        index_bound = maximum(findall(τ[b] .> 0))
         for i in eachindex(b)
-            temp_index = i:min(length(b), rej_bound, index_bound)
+            temp_index = i:min(length(b), rej_bounds, index_bound)
             length(temp_index) == 0 && continue
             qvalues[b[i]] = minimum(ratio[temp_index])*c_0[i]+1-c_0[i]
-            i > rej_bound && break
+            i > rej_bounds && break
         end
         qvalues[qvalues .> 1] .= 1
     end

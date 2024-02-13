@@ -12,6 +12,7 @@ using DelimitedFiles
 using Optim
 using ArgParse
 using Statistics
+using StatsBase
 
 export ghostknockoffgwas,
     # utilities

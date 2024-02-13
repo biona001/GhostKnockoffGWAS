@@ -152,3 +152,14 @@ end
     # cleanup
     rm(filepath)
 end
+
+@testset "qvalues" begin
+    m = 5
+    kappa = [0, 0, 1, 5, 2, 0, 2]
+    groups = [1, 1, 2, 3, 4, 1, 5]
+    tau = [0.1, 0.21, 0.01, 0.05, 0.02, 0.04, 0.2]
+    qvalues = GhostKnockoffGWAS.get_knockoff_qvalue(kappa, tau, m, groups=groups)
+
+    # true answer compared with Zihuai's code
+    @test all(qvalues .≈ [0.3, 0.2, 1.0, 1.0, 1.0, 0.33333333333333333, 1.0])
+end
