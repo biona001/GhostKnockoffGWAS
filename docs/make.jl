@@ -12,6 +12,7 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Getting started" => "man/getting_started.md",
+        "Documentation" => "man/documentation.md",
         "Downloads" => "man/download.md",
         "Acceptable Z-scores file" => "man/zfile.md",
         "Detailed Example" => "man/examples.md",

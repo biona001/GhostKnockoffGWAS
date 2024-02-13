@@ -29,17 +29,17 @@ pre-computed knockoff data in `LD_files`.
 + `A_scaling_factor`: The scaling factor for `A = [X X̃]'*[X X̃]` for improving
     numerical stability. Scaling proceeds by adding `A_scaling_factor*I` to `A`
     (default = 0.01). 
-+ `kappa`: A constant between 0 and 1 for tuning Lasso's lambda path. Larger
-    value forces earlier exit in Lasso lambda path, resulting in stronger 
++ `kappa_lasso`: A constant between 0 and 1 for tuning Lasso's lambda path. 
+    Larger value forces earlier exit in Lasso lambda path, resulting in stronger 
     shrinkage. See the "lasso-min" method of "Controlled Variable Selection from
     Summary Statistics Only? A Solution via GhostKnockoffs and Penalized 
     Regression" by Chen et al (default `0.6`).
 + `LD_shrinkage`: Whether to perform shrinkage to LD and S matrices following
     method in SuSiE paper (i.e. eq 24 of "Fine-mapping from summary data with 
-    the “Sum of Single Effects” model" by Zou et al). If `false``, we will still
+    the “Sum of Single Effects” model" by Zou et al). If `false`, we will still
     compute the shrinkage level, but it will not be used to adjust the LD
     matrices (default `false`). 
-+ `target_fdrs`: Default target FDR levels (default = 0.01:0.01:0.2)
++ `target_fdrs`: Default target FDR levels (default = [0.01, 0.05, 0.1, 0.2])
 + `verbose`: Whether to print progress and informative intermediate results (
     default = `true`)
 + `skip_shrinkage_check`: Forces a result output even if there is a high
@@ -70,7 +70,7 @@ function ghostknockoffgwas(
     seed::Int = 2023,
     target_chrs=sort!(unique(chr)),
     A_scaling_factor = 0.01,
-    kappa::Number=0.6,
+    kappa_lasso::Number=0.6,
     LD_shrinkage::Bool=false,
     target_fdrs = [0.01, 0.05, 0.1, 0.2],
     verbose::Bool=true,
@@ -97,7 +97,7 @@ function ghostknockoffgwas(
     lambda_path = exp.(range(log(lambdamin), log(lambdamax), length=100)) |> reverse!
     nsnps, tregions = count_matchable_snps(LD_files, z, chr, pos, effect_allele, 
         non_effect_allele, hg_build, target_chrs) # ~400 seconds on typed SNPs
-    lambda = kappa * maximum(abs, randn((m+1)*nsnps)) / sqrt(N)
+    lambda = kappa_lasso * maximum(abs, randn((m+1)*nsnps)) / sqrt(N)
     lambda_path = vcat(lambda_path[findall(x -> x > lambda, lambda_path)], lambda)
 
     # intermediate vectors

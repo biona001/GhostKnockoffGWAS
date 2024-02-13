@@ -133,7 +133,7 @@ function parse_commandline(parseargs::Bool)
                    "their knockoffs to adjust for potential ordering bias."
             arg_type = Bool
             default = true
-        "--skip_shrinkage_check"
+        "--skip-shrinkage-check"
             help = "Whether to allow Knockoff analysis to proceed even with " * 
                    "large (>0.25) LD shrinkages. Only use this option if you " *
                    "know what you are doing. "
@@ -173,7 +173,7 @@ function parse_commandline(parseargs::Bool)
     seed = parsed_args["seed"]
     verbose = parsed_args["verbose"]
     random_shuffle = parsed_args["random-shuffle"]
-    skip_shrinkage_check = parsed_args["skip_shrinkage_check"]
+    skip_shrinkage_check = parsed_args["skip-shrinkage-check"]
 
     return zfile, LD_files, N, hg_build, outfile, outdir, 
         chr_col, pos_col, ref_col, alt_col, z_col, seed, verbose, 
