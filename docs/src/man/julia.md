@@ -54,16 +54,15 @@ read_zscores
     ]dev GhostKnockoffGWAS
     ```
 4. compile using [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl)
-    ```julia
-    using PackageCompiler, GhostKnockoffGWAS
-    src = normpath(pathof(GhostKnockoffGWAS), "../..")
-    des = normpath(pathof(GhostKnockoffGWAS), "../../app_linux_x86")
-    precompile_script = normpath(pathof(GhostKnockoffGWAS), "../precompile.jl")
-    @time create_app(src, des, 
-        include_lazy_artifacts=true, 
-        force=true, 
-        precompile_execution_file=precompile_script
-    )
-    ```
-
+```julia
+using PackageCompiler, GhostKnockoffGWAS
+src = normpath(pathof(GhostKnockoffGWAS), "../..")
+des = normpath(pathof(GhostKnockoffGWAS), "../../app_linux_x86")
+precompile_script = normpath(pathof(GhostKnockoffGWAS), "../precompile.jl")
+@time create_app(src, des, 
+    include_lazy_artifacts=true, 
+    force=true, 
+    precompile_execution_file=precompile_script
+)
+```
 The last step takes 1-2 hours. 

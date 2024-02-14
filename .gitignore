@@ -6,4 +6,8 @@
 *.DS_Store
 
 binaries/
-data/
+data/EUR*
+data/test*
+data/AD*
+data/seed*
+data/*output*

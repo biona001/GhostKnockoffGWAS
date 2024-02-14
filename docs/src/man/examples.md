@@ -9,21 +9,18 @@ Proceed to the [Downloads page]() and download (1) the software as well as (2) a
 
 ## Step 2: Prepare a valid Z score file
 
-One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format) as input. If you would like to follow along with this tutorial, feel free to download this test data [example_zfile.txt]() (4MB). The first few rows look like
-
+One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format) as input. If you would like to follow along with this tutorial, feel free to download this test data [example_zfile.txt](https://github.com/biona001/GhostKnockoffGWAS/data/example_zfile.txt) (17MB). The first few rows is
 ```
-$ head example_zfile.txt
-
 CHR	POS	REF	ALT	Z
-17	150509	T	TA	1.08773561923134
-17	151035	T	C	0.703898767202681
-17	151041	G	A	1.10771707088118
-17	151872	T	C	-0.299877259561085
-17	152087	C	T	-0.371627135786605
-17	152104	G	A	-0.28387322965385
-17	152248	G	A	0.901618600934489
-17	152427	G	A	1.10987516000804
-17	152771	A	G	0.708492545266136
+7	27916	T	C	1.82946485242
+7	30580	C	T	0.877343668618
+7	30581	A	T	0.876791309991
+7	31273	G	C	-0.567289962351949
+7	31439	T	A	-0.907002943915131
+7	31627	A	C	0.577058407641
+7	32858	C	T	1.80586134742
+7	33482	T	G	0.47877317796
+7	34215	T	C	-0.711135940901
 ```
 + The first row is a header row which includes `CHR`, `POS`, `REF`, `ALT`, `Z`. Other columns will be ignored. 
 + Each row is a different SNP and each column is separated by a tab (i.e. `\t` character) or a comma
@@ -38,15 +35,10 @@ In this example
 
 To see a list of available arguments, execute `GhostKnockoffGWAS --help`. 
 
-To run the example analysis, one can do
+To run the example analysis, run the following in the terminal
 
 ```shell
-$ GhostKnockoffGWAS \
-    --zfile example_zfile.txt \
-    --LD-files EUR \
-    --N 506200 \
-    --genome-build 38 \
-    --out example_output
+GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
 ```
 
 Here is the expected output:
@@ -217,7 +209,7 @@ sample_knockoff_time_t23,1.103306673
 sample_knockoff_time_t24,2.3132567919999993
 ```
 
-+ The first 4 rows indicate the number of uniquely discovered groups given by `GhostKnockoffGWAS`, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 76 conditionally inependent discoveries. According to the knockoff procedure, these discoveries are conditionally independent, although one can apply a post-processing step to further count the number of independent discoveries. 
++ The first 4 rows indicate the number of unique (conditionally-independent) discoveries according to `GhostKnockoffGWAS`, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 76 conditionally inependent discoveries. According to the knockoff procedure, these discoveries are conditionally independent, although one can apply a post-processing step to further count the number of independent discoveries. 
 + The next few rows contain parameters used in the analysis, as well as timing results. 
 
 !!! tip
