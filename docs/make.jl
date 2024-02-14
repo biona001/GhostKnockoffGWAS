@@ -20,6 +20,7 @@ makedocs(
         "FAQ" => "man/FAQ.md",
         "Usage within Julia" => "man/julia.md",
         "Developer documentation" => "man/developer.md",
+        "Gallery" => "man/gallery.md",
     ],
 )
 
