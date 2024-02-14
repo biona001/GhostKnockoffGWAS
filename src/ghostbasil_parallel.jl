@@ -2,8 +2,9 @@
     ghostknockoffgwas(LD_files::String, z::Vector{Float64}, chr::Vector{Int}, 
         effect_allele::Vector{String}, non_effect_allele::Vector{String}, N::Int,
         hg_build::Int, outdir::String; [outname="result"], [seed=2023], 
-        [target_chrs=1:22], [A_scaling_factor = 0.01], [kappa=0.6], 
-        [LD_shrinkage=false], [target_fdrs=0.01:0.01:0.2], [verbose=true], 
+        [target_chrs=sort!(unique(chr))], [A_scaling_factor = 0.01], 
+        [kappa_lasso=0.6], [LD_shrinkage=false], 
+        [target_fdrs=[0.01, 0.05, 0.1, 0.2]], [verbose=true], 
         [skip_shrinkage_check=false])
 
 Runs the main `GhostKnockoffGWAS` pipeline on the Z scores in `z` using 
@@ -321,7 +322,7 @@ function ghostknockoffgwas(
     # save summary info
     open(joinpath(outdir, outname * "_summary.txt"), "w") do io
         for fdr in target_fdrs
-            println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≤ fdr, q_full))
+            println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≤ fdr, qvalues))
         end
         println(io, "m,$m")
         println(io, "nregions,$nregions")
