@@ -150,7 +150,7 @@ function parse_commandline(parseargs::Bool)
         _useless = parse_args(
             ["--zfile","testdir","--LD-files","testdir2",
             "--N","1","--genome-build","38","--out","testdir3",
-            "--CHR","1","--POS","2","--EA","3","--NEA","4","--Z","5",
+            "--CHR","1","--POS","2","--REF","3","--ALT","4","--Z","5",
             "--seed","2024","--verbose","true"], s
         )
         _useless = parse_args(["--help"], s)
