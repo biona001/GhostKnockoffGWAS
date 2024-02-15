@@ -1,8 +1,9 @@
-# usage: Rscript --vanilla manhattan.R arg1 arg2 arg3
+# usage: Rscript --vanilla manhattan.R arg1 arg2 arg3 arg4
 # arg1 = main output file from GhostKnockoffGWAS
 # arg2 = output directory
 # arg3 = output filename (without extensions) to be used for both plots, 
 #       e.g. phenotype name
+# arg4 = target FDR in percentage
 
 # This is R code modified from https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/he_et_al/GKL_Manhattan.R
 # It operates directly on the output of GhostKnockoffGWAS, and
@@ -23,15 +24,19 @@ args = commandArgs(TRUE)
 input_file = args[1]
 out_dir = args[2]
 out_filename = args[3]
+target_fdr = as.numeric(args[4])
+if (!file.exists(input_file)){stop(paste0("input file ", input_file, " does not exist"))}
+if (!dir.exists(out_dir)){stop(paste0("output directory ", out_dir, " does not exist"))}
 
 # CMPlot output plots in current directory, so we cd to the output dir, make plots, then cd back
 original_dir = getwd()
 setwd(out_dir)
 
 # for testing
-# input_file = "/scratch/users/bbchu/GhostKnockoffGWAS/data/example_zfiles/chr7_example_output.txt"
-# out_dir = "/scratch/users/bbchu/GhostKnockoffGWAS/data/example_plots"
-# out_filename = "chr7"
+# input_file = "/scratch/users/bbchu/GhostKnockoffGWAS/data/example_output.txt"
+# out_dir = "/scratch/users/bbchu/GhostKnockoffGWAS/data"
+# out_filename = "example_plot"
+# target_fdr = 0.1
 
 #############################################################################
 ############ FIRST, CREATE MANHATTAN PLOT FOR MARGINAL ANALYSIS #############
@@ -157,7 +162,7 @@ CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="-log10(p
         highlight=signal_topp$SNP, highlight.cex=1, 
         highlight.col=signal_topp$col, highlight.text.col=signal_topp$text_col, highlight.text=signal_topp$text,
         signal.col=c("cornflowerblue"),signal.cex=c(1),
-        file="jpg",file.name=memo.text,dpi=300,file.output=TRUE,verbose=TRUE,width=20,height=6)
+        file="jpg",file.name=memo.text,dpi=300,file.output=TRUE,verbose=TRUE,width=14,height=6)
 
 
 
@@ -182,7 +187,7 @@ x1 <- x1[match(unique(x1$SNP),x1$SNP),]
 x1<-x1[match(unique(x1$SNP),x1$SNP),]
 
 ############ selected variants
-x1_sug <- x1[x1[,'qvals']<=0.10,,drop=F]
+x1_sug <- x1[x1[,'qvals']<=target_fdr,,drop=F]
 x1_sug <- x1_sug[!is.na(x1_sug[,'qvals']),,drop=F]
 
 if(nrow(x1_sug)>0){
@@ -236,8 +241,6 @@ if(nrow(x1_sug)>0){
     #flag new loci
     new_loc_w <- 1000000
     x1_sug$NEW_hit <- "Y"
-
-    # AD_loci<-read.csv(file.path(out_dir, paste0('MarginalAssociationTest_',study.names[replicate],".stats.sug_hits.info.csv")))
     AD_loci<-x1_sug
     temp.new<-c()
     for(i in 1:nrow(x1_sug)){
@@ -250,7 +253,7 @@ if(nrow(x1_sug)>0){
     }
         
     # extract signal from all variants for respective independent loci (for plotting)
-    x1_sig<-x1_sug[x1_sug[,'qvals']<=0.20,]
+    x1_sig<-x1_sug[x1_sug[,'qvals']<=target_fdr,]
     signal <- c()
     for (t in x1_sig[which(!is.na(x1_sig$TOP)),"TOP"]) {
         ra <- x1_sig[which(x1_sig$TOP==t),c("CHR","RAst","RAen","qvals","W","IND","rsid")]
@@ -260,7 +263,7 @@ if(nrow(x1_sug)>0){
 
         if (length(xs$SNP)>0) {
             xs <- xs[,c("SNP","W","qvals")]
-            if (ra[,"qvals"]<=0.20) {xs$col <- "purple"}
+            if (ra[,"qvals"]<=target_fdr) {xs$col <- "purple"}
             xs$text_col <- "blue";
             if (any(x1_sig[which(x1_sig$IND==indt),"NEW_hit"] %in% "N")) {xs$text_col <- "red"}
             xs$pch <- 19
@@ -270,7 +273,7 @@ if(nrow(x1_sug)>0){
     }
 
     # keep signal with highlights
-    signal_high <- signal[which(signal[,"qvals"]<=0.10),]
+    signal_high <- signal[which(signal[,"qvals"]<=target_fdr),]
     signal_top <- signal[which(signal$SNP %in% x1_sug[which(!is.na(x1_sug$TOP)),"TOP"]),]
     signal_topp <- signal_top
 
@@ -280,22 +283,23 @@ if(nrow(x1_sug)>0){
     }
 
     # thresholds
-    T010 <- min(x1[x1[,"qvals"]<=0.10,"W"])
-    T020 <- min(x1[x1[,"qvals"]<=0.20,"W"])
-    ylim=c(0,T010*8)
+    ths <- min(x1[x1[,"qvals"]<=target_fdr,"W"])
+    ylim=c(0,ths*8)
 } else { # no discoveries
-    T010 <- min(x1[x1[,"qvals"]<=0.10,"W"])
-    T020 <- min(x1[x1[,"qvals"]<=0.20,"W"])
+    ths <- min(x1[x1[,"qvals"]<=target_fdr,"W"])
     ylim <- c(0, 1.2 * max(x1[,"W"]))
     signal_topp <- x1_sug
 }
 
+# for debugging
+# print(paste0("ths = ", ths))
+# x1t[x1t$W >= ths,]
+
 # CMplot
 x1t <- x1[,c("SNP","CHR","BP","W","qvals")] 
-x1t[which(x1t[,"W"]>T010*8),"W"]<- T010*8
-if(T010!=Inf){T010<-min(T010,max(x1t[,"W"]))}
-if(T020!=Inf){T020<-min(T020,max(x1t[,"W"]))}
-ths <- c(T010)
+x1t[which(x1t[,"W"]>ths*8),"W"]<- ths*8
+if(ths!=Inf){ths<-min(ths,max(x1t[,"W"]))}
+ths <- c(ths)
 signal_topp<-signal_topp[signal_topp[,"qvals"]<=0.1,]
 x1t <- x1t[,c("SNP","CHR","BP","W")]
 colnames(x1t)[4]<-'Test statistic'
@@ -305,7 +309,7 @@ CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="Test sta
         highlight=signal_topp$SNP, highlight.cex=1, 
         highlight.col=signal_topp$col, highlight.text.col=signal_topp$text_col, highlight.text=signal_topp$text,
         signal.col=c("cornflowerblue"),signal.cex=c(1),
-        file="jpg",file.name=memo.text,dpi=300,file.output=TRUE,verbose=TRUE,width=20,height=6)
+        file="jpg",file.name=memo.text,dpi=300,file.output=TRUE,verbose=TRUE,width=14,height=6)
 
 setwd(original_dir)
 print('Done!')

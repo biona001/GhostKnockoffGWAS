@@ -9,7 +9,9 @@ Proceed to the [Downloads page]() and download (1) the software as well as (2) a
 
 ## Step 2: Prepare a valid Z score file
 
-One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format) as input. If you would like to follow along with this tutorial, feel free to download this test data [example_zfile.txt](https://github.com/biona001/GhostKnockoffGWAS/data/example_zfile.txt) (17MB). The first few rows is
+One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format) as input. 
+
+If you would like to follow along with this tutorial, feel free to download this test data [example_zfile.txt](https://github.com/biona001/GhostKnockoffGWAS/blob/main/data/example_zfile.txt) (17MB). The first few rows is
 ```
 CHR	POS	REF	ALT	Z
 7	27916	T	C	1.82946485242
@@ -190,9 +192,9 @@ This file contains broad summary of the analysis, as shown below
 
 ```
 target_fdr_0.01_num_selected,0
-target_fdr_0.05_num_selected,52
-target_fdr_0.1_num_selected,76
-target_fdr_0.2_num_selected,92
+target_fdr_0.05_num_selected,11
+target_fdr_0.1_num_selected,15
+target_fdr_0.2_num_selected,19
 m,5
 nregions,99
 nsnps,35855
@@ -209,7 +211,7 @@ sample_knockoff_time_t23,1.103306673
 sample_knockoff_time_t24,2.3132567919999993
 ```
 
-+ The first 4 rows indicate the number of unique (conditionally-independent) discoveries according to `GhostKnockoffGWAS`, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 76 conditionally inependent discoveries. According to the knockoff procedure, these discoveries are conditionally independent, although one can apply a post-processing step to further count the number of independent discoveries. 
++ The first 4 rows indicate the number of unique (conditionally-independent) discoveries according to `GhostKnockoffGWAS`, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 15 conditionally inependent discoveries, with each discovery potentially covering >1 SNP. According to the knockoff procedure, these discoveries are conditionally independent, although one can apply a post-processing step to further count the number of independent discoveries. We will see this action later in step 5. 
 + The next few rows contain parameters used in the analysis, as well as timing results. 
 
 !!! tip
@@ -244,16 +246,17 @@ The first row is a header row. Each proceeding row corresponds to a SNP that was
 We can generate Manhattan plots by running [this R script](https://github.com/biona001/GhostKnockoffGWAS/blob/main/src/manhattan.R) in the terminal (this requires the `R` packages `data.table`, `plyr`, `dplyr`, `CMplot`). Usage:
 
 ```R
-$ Rscript --vanilla manhattan.R arg1 arg2 arg3
+$ Rscript --vanilla manhattan.R arg1 arg2 arg3 arg4
 ```
 + `arg1`: Main output file from GhostKnockoffGWAS
 + `arg2`: Where output Manhattan plots should be stored (a `.` indicates store in current directory)
 + `arg3`: Output filename (without extensions) to be used for both plots, e.g. phenotype name
++ `arg4`: Target FDR in percentage
 
 For example, 
 
 ```R
-$ Rscript --vanilla manhattan.R example_output.txt . example_plot
+$ Rscript --vanilla manhattan.R example_output.txt . example_plot 0.1
 ```
 
 This produced the following plots
@@ -263,6 +266,6 @@ This produced the following plots
 
 ### Explanation:
 
-+ The knockoff plot displays the knockoff W values on the y-axis. All dots above the knockoff threshold (dotted line) are conditionally-independent discoveries. But in the plot, we color significant SNPs with either light blue or purple, where a purple dot is the most significant discovery within 1Mb region, while light blue dots is within 1Mb region of another more significant SNP. 
++ The knockoff plot displays the knockoff W values (one for each SNP) on the y-axis. Note that in the summary file shown in step 4, we noted that knockoffs discovered 15 conditionally independent *groups*, with a group potentially including >1 SNP. Some of these groups could be very physically close to each other. Therefore, in the knockoff plot, we color each significant SNP with either light blue or purple, where a purple dot is the most significant discovery within 1Mb region, while light blue dots is within 1Mb region of another more significant SNP. In this example, although there are 15 independent discoveries according to the knockoff methodology, there are only 11 discoveries that are physically greater than 1Mb apart. 
 + The marginal plot is a standard Manhattan plot with the y-axis plotting the negative logged p-values. Similar to the knockoff plot, all dots above the dotted line are marginally significant and colored with light blue, while the most signicant SNP within 1Mb region is colored with purple. 
 + The color bars beneath the x-axis displays chromosome density.
