@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "0a6fb2fbc547eef6742364b7e080c4de52e0d646"
+project_hash = "5bfc5d7eb73e8740f1e93113186e6de4f9dc1526"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
@@ -243,8 +243,8 @@ deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[deps.Ghostbasil]]
-deps = ["CxxWrap", "ghostbasil_jll"]
-git-tree-sha1 = "3e210a26fb7cb9933ae268dc66be5444c38aa669"
+deps = ["CxxWrap", "ghostbasil_jll", "libcxxwrap_julia_jll"]
+git-tree-sha1 = "42e0921c61b6867079efc6e8852b89f79af7b86c"
 repo-rev = "main"
 repo-url = "https://github.com/biona001/Ghostbasil.jl"
 uuid = "42a9b20f-2d23-465a-b7ed-975dbff4a4d6"
@@ -710,12 +710,12 @@ uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
 version = "1.2.13+1"
 
 [[deps.ghostbasil_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "libcxxwrap_julia_jll"]
-git-tree-sha1 = "92ace2063a085add08c13d5acb8792cfa15596bf"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "libcxxwrap_julia_jll"]
+git-tree-sha1 = "8619e3a1c180b9758de63d32f7373770d3cdf059"
 repo-rev = "main"
 repo-url = "https://github.com/biona001/ghostbasil_jll.jl"
 uuid = "caeec347-1c5e-53ac-8e86-7f5e1a690164"
-version = "0.0.13+0"
+version = "0.0.15+0"
 
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
