@@ -5,7 +5,17 @@ This page collect examples of running the ghost knockoff pipeline. We will cover
 
 ## Step 1: Download pre-processed LD files and binary executable
 
-Proceed to the [Downloads page]() and download (1) the software as well as (2) a pre-processed knockoff dataset suitable for your analysis. After unzipping, the executable will be located inside `bin/GhostKnockoffGWAS`. We recommend adding the folder containing the `GhostKnockoffGWAS` executable to `PATH` for easier access.
+Proceed to the [Downloads page](https://biona001.github.io/GhostKnockoffGWAS/dev/man/download) and download (1) the software as well as (2) a pre-processed knockoff dataset suitable for your analysis. 
+
+After downloading the software, e.g. `app_linux_x86.tar.gz`, unzip the file in linux command line via:
+```shell
+tar -xvzf app_linux_x86.tar.gz
+```
+This should create a folder called `app_linux_x86` in the current directory. The executable is located inside `app_linux_x86/bin/GhostKnockoffGWAS`. We recommend adding the folder containing the `GhostKnockoffGWAS` executable to `PATH` for easier access.
+
+!!! warning
+
+    Do NOT modify the content in unzipped folder. 
 
 ## Step 2: Prepare a valid Z score file
 
@@ -31,7 +41,6 @@ In this example
 
 + The `POS` field corresponds to hg38 positions. GhostKnockoffGWAS requires the position to be either hg19 or hg38.
 + The sample size used for generating this data is `506200`. Thus one should specify `--N 506200`.
-
 
 ## Step 3: Running the analysis
 

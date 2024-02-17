@@ -244,7 +244,7 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[deps.Ghostbasil]]
 deps = ["CxxWrap", "ghostbasil_jll", "libcxxwrap_julia_jll"]
-git-tree-sha1 = "42e0921c61b6867079efc6e8852b89f79af7b86c"
+git-tree-sha1 = "96f7174a274905ecfd4d72cd5bd389dd6ae97136"
 repo-rev = "main"
 repo-url = "https://github.com/biona001/Ghostbasil.jl"
 uuid = "42a9b20f-2d23-465a-b7ed-975dbff4a4d6"

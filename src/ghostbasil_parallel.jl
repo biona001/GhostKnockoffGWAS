@@ -220,8 +220,7 @@ function ghostknockoffgwas(
                 Si_scaled = Si + A_scaling_factor*I
                 r = Zscores_store ./ sqrt(N)
                 beta_i = block_group_ghostbasil(Ci, Si_scaled, r, lambda_path, 
-                    m=m, delta_strong_size = 500, use_strong_rule=false) |> 
-                    Vector{Float64}
+                    m=m, delta_strong_size = 500, use_strong_rule=false)
             end
 
             # undo shuffling of Z and Zko

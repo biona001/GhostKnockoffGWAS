@@ -1,17 +1,6 @@
 
 # Command-line documentation and usage of GhostKnockoffGWAS
 
-After downloading the software, e.g. `app_linux_x86.tar.gz`, unzip the file in linux command line via:
-```shell
-tar -xvzf app_linux_x86.tar.gz
-```
-This should create a folder called `app_linux_x86` in the current directory. The executable is located inside `app_linux_x86/bin/GhostKnockoffGWAS`. 
-
-!!! warning
-
-    Do NOT modify the content in unzipped folder. 
-
-
 ## Usage
 
 Simple run
@@ -31,7 +20,6 @@ GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-b
 | `--out`          | String | NA | Output file name (without extensions) |
 
 ## Optional inputs
-
 
 | Option name              | Argument        | Default | Description   |
 | :---                    |    :----:   |      :---:     |   :---     |
