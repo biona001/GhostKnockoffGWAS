@@ -268,11 +268,26 @@ function ghostknockoffgwas(
         verbose && println("Mean LD shrinkage = $γ_mean.")
     end
 
-    # group knockoff filter
+    # knockoff filter
     t4 = @elapsed begin
+        # variant level 
         original_idx = findall(x -> endswith(x, "_0"), groups)
         T0 = beta[original_idx]
         Tk = [beta[findall(x -> endswith(x, "_$k"), groups)] for k in 1:m]
+        kappa, tau, W = MK_statistics(T0, Tk)
+        qvalues = get_knockoff_qvalue(kappa, tau, m, groups=groups)
+
+        # append variant level result
+        df[!, :group] = groups[original_idx]
+        df[!, :zscores] = Zscores[original_idx]
+        df[!, :lasso_beta] = beta[original_idx]
+        df[!, :variant_kappa] = kappa
+        df[!, :variant_tau] = tau
+        df[!, :variant_W] = W
+        df[!, :variant_q] = qvalues
+        df[!, :pvals] = zscore2pval(df[!, :zscores])
+
+        # group level
         T_group0 = Float64[]
         T_groupk = [Float64[] for k in 1:m]
         groups_original = groups[findall(x -> endswith(x, "_0"), groups)]
@@ -283,28 +298,23 @@ function ghostknockoffgwas(
                 push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
             end
         end
-        kappa, tau, W = MK_statistics(T_group0, T_groupk)
-        qvalues = get_knockoff_qvalue(kappa, tau, m)
+        kappa_group, tau_group, W_group = MK_statistics(T_group0, T_groupk)
+        qvalues_group = get_knockoff_qvalue(kappa_group, tau_group, m)
 
-        # kappa, tau, W = MK_statistics(T0, Tk)
-        # qvalues = get_knockoff_qvalue(kappa, tau, m, groups=groups)
-
-        # append analysis result
-        df[!, :group] = groups[original_idx]
-        df[!, :zscores] = Zscores[original_idx]
-        df[!, :lasso_beta] = beta[original_idx]
+        # append group level result
         W_full, kappa_full, tau_full, q_full = Float64[], Float64[], Float64[], Float64[]
         for idx in indexin(groups_original, unique_groups)
-            push!(W_full, W[idx])
-            push!(kappa_full, kappa[idx])
-            push!(tau_full, tau[idx])
-            push!(q_full, qvalues[idx])
+            push!(W_full, W_group[idx])
+            push!(kappa_full, kappa_group[idx])
+            push!(tau_full, tau_group[idx])
+            push!(q_full, qvalues_group[idx])
         end
-        df[!, :W] = W_full
-        df[!, :kappa] = kappa_full
-        df[!, :tau] = tau_full
-        df[!, :qvals] = q_full
-        df[!, :pvals] = zscore2pval(df[!, :zscores])
+        df[!, :group_W] = W_full
+        df[!, :group_kappa] = kappa_full
+        df[!, :group_tau] = tau_full
+        df[!, :group_qvals] = q_full
+
+        # look at group-level statistic to determine whether a variant is selected
         for fdr in target_fdrs
             selected = zeros(Int, size(df, 1))
             selected[findall(x -> x ≤ fdr, q_full)] .= 1

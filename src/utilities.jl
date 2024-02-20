@@ -435,7 +435,7 @@ function mk_threshold(τ::Vector{T}, κ::Vector{Int}, m::Int, q::Number,
 end
 
 """
-    get_knockoff_qvalue(κ, τ, m, [rej_bounds])
+    get_knockoff_qvalue(κ, τ, m, [groups], [rej_bounds])
 
 Computes the knockoff q-value for each variable. The knockoff q-value is the 
 minimum target FDR for a given variable to be selected. For details, see eq 19 

@@ -15,7 +15,6 @@ using Statistics
 using StatsBase
 
 export ghostknockoffgwas,
-    # utilities
     read_zscores
 
 include("ghostbasil_parallel.jl")

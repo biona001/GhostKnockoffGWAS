@@ -187,8 +187,8 @@ x1 <- x1[match(unique(x1$SNP),x1$SNP),]
 x1<-x1[match(unique(x1$SNP),x1$SNP),]
 
 ############ selected variants
-x1_sug <- x1[x1[,'qvals']<=target_fdr,,drop=F]
-x1_sug <- x1_sug[!is.na(x1_sug[,'qvals']),,drop=F]
+x1_sug <- x1[x1[,'group_qvals']<=target_fdr,,drop=F]
+x1_sug <- x1_sug[!is.na(x1_sug[,'group_qvals']),,drop=F]
 
 if(nrow(x1_sug)>0){
     x1_sug$IND <- NA
@@ -219,15 +219,23 @@ if(nrow(x1_sug)>0){
         }
     }
         
-    # find top SNPs in independent loci (first by W, then by zscores if multiple W coincide)
+    # find top SNPs in independent loci (first by group W, then by zscores if multiple W conincide)
+    # for (i in x1_sug$IND) {
+    #     x1_sug_t <- x1_sug[which(x1_sug$IND==i),c("TOP","SNP","group_W","zscores")]
+    #     max_W = max(x1_sug_t[,'group_W'])
+    #     max_W_idx = which(x1_sug_t[,'group_W'] == max_W)
+    #     max_Z = max(abs(x1_sug_t[max_W_idx,'zscores']))
+    #     x1_sug_t[which(abs(x1_sug_t[,'zscores']) == max_Z),"TOP"] <- 
+    #         x1_sug_t[which(abs(x1_sug_t[,'zscores']) == max_Z),"SNP"]
+    #     x1_sug[which(x1_sug$IND==i),c("TOP","SNP",'group_W',"zscores")] <- x1_sug_t
+    # }
+
+    # find top SNPs in independent loci
     for (i in x1_sug$IND) {
-        x1_sug_t <- x1_sug[which(x1_sug$IND==i),c("TOP","SNP","W","zscores")]
-        max_W = max(x1_sug_t[,'W'])
-        max_W_idx = which(x1_sug_t[,'W'] == max_W)
-        max_Z = max(abs(x1_sug_t[max_W_idx,'zscores']))
-        x1_sug_t[which(abs(x1_sug_t[,'zscores']) == max_Z),"TOP"] <- 
-            x1_sug_t[which(abs(x1_sug_t[,'zscores']) == max_Z),"SNP"]
-        x1_sug[which(x1_sug$IND==i),c("TOP","SNP",'W',"zscores")] <- x1_sug_t
+        x1_sug_t <- x1_sug[which(x1_sug$IND==i),c("TOP","SNP","variant_W")]
+        x1_sug_t[which.max(x1_sug_t[,"variant_W"]),"TOP"] <- 
+            x1_sug_t[which.max(x1_sug_t[,"variant_W"]),"SNP"]
+        x1_sug[which(x1_sug$IND==i),c("TOP","SNP","variant_W")] <- x1_sug_t
     }
         
     # set range +/- extension for independent loci
@@ -253,17 +261,17 @@ if(nrow(x1_sug)>0){
     }
         
     # extract signal from all variants for respective independent loci (for plotting)
-    x1_sig<-x1_sug[x1_sug[,'qvals']<=target_fdr,]
+    x1_sig<-x1_sug[x1_sug[,'group_qvals']<=target_fdr,]
     signal <- c()
     for (t in x1_sig[which(!is.na(x1_sig$TOP)),"TOP"]) {
-        ra <- x1_sig[which(x1_sig$TOP==t),c("CHR","RAst","RAen","qvals","W","IND","rsid")]
+        ra <- x1_sig[which(x1_sig$TOP==t),c("CHR","RAst","RAen","group_qvals","group_W","IND","rsid")]
         indt <- ra$IND
         xs <- x1[which(x1$CHR==ra$CHR & (x1$BP >= ra$RAst) & (x1$BP <= ra$RAen) ),
-                c("SNP","qvals","W","BP","CHR","rsid")]
+                c("SNP","group_qvals","group_W","BP","CHR","rsid")]
 
         if (length(xs$SNP)>0) {
-            xs <- xs[,c("SNP","W","qvals")]
-            if (ra[,"qvals"]<=target_fdr) {xs$col <- "purple"}
+            xs <- xs[,c("SNP","group_W","group_qvals")]
+            if (ra[,"group_qvals"]<=target_fdr) {xs$col <- "purple"}
             xs$text_col <- "blue";
             if (any(x1_sig[which(x1_sig$IND==indt),"NEW_hit"] %in% "N")) {xs$text_col <- "red"}
             xs$pch <- 19
@@ -273,7 +281,7 @@ if(nrow(x1_sug)>0){
     }
 
     # keep signal with highlights
-    signal_high <- signal[which(signal[,"qvals"]<=target_fdr),]
+    signal_high <- signal[which(signal[,"group_qvals"]<=target_fdr),]
     signal_top <- signal[which(signal$SNP %in% x1_sug[which(!is.na(x1_sug$TOP)),"TOP"]),]
     signal_topp <- signal_top
 
@@ -283,25 +291,26 @@ if(nrow(x1_sug)>0){
     }
 
     # thresholds
-    ths <- min(x1[x1[,"qvals"]<=target_fdr,"W"])
+    ths <- min(x1[x1[,"group_qvals"]<=target_fdr,"group_W"])
     ylim=c(0,ths*8)
 } else { # no discoveries
-    ths <- min(x1[x1[,"qvals"]<=target_fdr,"W"])
-    ylim <- c(0, 1.2 * max(x1[,"W"]))
+    ths <- min(x1[x1[,"group_qvals"]<=target_fdr,"group_W"])
+    ylim <- c(0, 1.2 * max(x1[,"group_W"]))
     signal_topp <- x1_sug
 }
 
+# CMplot
+x1t <- x1[,c("rsid","SNP","CHR","BP","variant_W","group_W","group_qvals")] 
+x1t[which(x1t[,"group_W"]>ths*8),"group_W"]<- ths*8
+if(ths!=Inf){ths<-min(ths,max(x1t[,"group_W"]))}
+ths <- c(ths)
+signal_topp<-signal_topp[signal_topp[,"group_qvals"]<=0.1,]
+
 # for debugging
 # print(paste0("ths = ", ths))
-# x1t[x1t$W >= ths,]
+# x1t[x1t$group_W >= ths,]
 
-# CMplot
-x1t <- x1[,c("SNP","CHR","BP","W","qvals")] 
-x1t[which(x1t[,"W"]>ths*8),"W"]<- ths*8
-if(ths!=Inf){ths<-min(ths,max(x1t[,"W"]))}
-ths <- c(ths)
-signal_topp<-signal_topp[signal_topp[,"qvals"]<=0.1,]
-x1t <- x1t[,c("SNP","CHR","BP","W")]
+x1t <- x1t[,c("SNP","CHR","BP","group_W")]
 colnames(x1t)[4]<-'Test statistic'
 CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="Test statistic", ylim=ylim,bin.range=c(0,500),
         chr.den.col=c("darkgreen", "yellow", "red"), main=main.text,
