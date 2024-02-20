@@ -1,7 +1,7 @@
 
 # Getting started with Ghost Knockoff GWAS analysis
 
-This package conducts knockoff-based inference to perform genome-wide conditional independent tests based on GWAS summary statistics (e.g. p-values). The methodology is described in the following papers
+This package conducts knockoff-based inference to perform genome-wide conditional independent tests based on GWAS summary statistics (e.g. p-values). The methodology is described in the following paper
 
 > He Z, Chu BB, Yang J, Gu J, Chen Z, Liu L, Morrison T, Bellow M, Qi X, Hejazi N, Mathur M, Le Guen Y, Tang H, Hastie T, Ionita-laza, I, Sabatti C, Candes C. "In silico identification of putative causal genetic variants", bioRxiv 2024. 
 

@@ -11,13 +11,13 @@ GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-b
 
 ## Required inputs
 
-| Option name              | Argument        | Default | Description   |
-| :---                    |    :----:   |      :---:     |   :---     |
-| `--zfile`        | String | NA | Input file containing Z-scores |
-| `--LD-files`     | String | NA | Input directory to the pre-processed LD files |
-| `--N`            | Int    | NA | Sample size for target (original) study |
-| `--genome-build` | Int    | NA | The human genome build used for SNP positions in `zfile` (this value must be 19 or 38) |
-| `--out`          | String | NA | Output file name (without extensions) |
+| Option name              | Argument        | Description   |
+| :---                     |    :----:       |   :---        |
+| `--zfile`        | String | Input file containing Z-scores as well as CHR/POS/REF/ALT. See [Acceptable Z-score files](https://biona001.github.io/GhostKnockoffGWAS/dev/man/zfile) for detailed requirement on this file. |
+| `--LD-files`     | String | Input directory to the pre-processed LD files. Most users downloads this from the [Downloads Page](https://biona001.github.io/GhostKnockoffGWAS/dev/man/download) |
+| `--N`            | Int    | Sample size for target (original) study |
+| `--genome-build` | Int    | The human genome build used for SNP positions in `zfile` (this value must be 19 or 38) |
+| `--out`          | String | Output file name (without extensions) |
 
 ## Optional inputs
 

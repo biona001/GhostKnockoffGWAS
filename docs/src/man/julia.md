@@ -47,7 +47,7 @@ read_zscores
 
 ## Compiling GhostKnockoffGWAS
 
-1. `]add libcxxwrap_julia_jll` (note: as of Feb 2024, libcxxwrap_julia_jll must be v0.11.x)
+1. `]add libcxxwrap_julia_jll` (note: as of Feb 2024, `libcxxwrap_julia_jll` must be v0.11.x)
 2. Make sure `GhostKnockoffGWAS` is installed within Julia. 
 3. `dev` the package via
     ```julia
