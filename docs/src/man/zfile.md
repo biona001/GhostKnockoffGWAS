@@ -21,6 +21,7 @@ CHR	POS	REF	ALT	Z
 17	152771	A	G	0.708492545266136
 ```
 
+A toy example is [example_zfile.txt](https://github.com/biona001/GhostKnockoffGWAS/blob/main/data/example_zfile.txt) (17MB).
 
 !!! tip
 
@@ -28,11 +29,11 @@ CHR	POS	REF	ALT	Z
 
 ## Requirements on the input Z-scores
 
-The input Z-scores (or p-values) must be valid Z-scores, i.e. each has $N(0, 1)$ distribution under the null. [This paper](https://arxiv.org/abs/2310.04030) shows that input Z-scores can be calculated from various marginal association tests, such as 
+In our papers, Z-scores are defined by $z = \frac{1}{\sqrt{N}}X^ty$ where $X$ is the $N \times P$ standardized genotype matrix with $N$ samples and $P$ SNPs, $y$ is the normalized $n \times 1$ phenotype vector, and these Z-scores have $N(0, 1)$ distribution under the null. 
+
+In practice, [this paper](https://arxiv.org/abs/2310.04030) shows that other association test statistics that are $N(0, 1)$ under the null also result in FDR control. This includes commonly used tests in genetic association studies such as:
 + generalized linear mixed effect model to account for sample relatedness
 + saddle point approximation for extreme case-control imbalance
 + meta-analysis that aggregates multiple studies.
 
-## Obtaining Z scores from p-values, odds ratios, or equivalent
-
-If you have p-values, effect sizes, odds ratios...etc but not Z scores, you can convert them into Z score, for example by following the *Notes on computing Z-scores* of [this blog post](https://huwenboshi.github.io/data%20management/2017/11/23/tips-for-formatting-gwas-summary-stats.html). 
+If you have p-values, effect sizes, odds ratios,...etc, converting them into Z score might be possible, for example by following the *Notes on computing Z-scores* of [this blog post](https://huwenboshi.github.io/data%20management/2017/11/23/tips-for-formatting-gwas-summary-stats.html). 
