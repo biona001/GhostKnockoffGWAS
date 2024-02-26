@@ -4,11 +4,13 @@
 |-------------------|------------------|--------------------|
 | [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://biona001.github.io/GhostKnockoffGWAS/dev/)| [![build Actions Status](https://github.com/biona001/GhostKnockoffGWAS/actions/workflows/CI.yml/badge.svg)](https://github.com/biona001/GhostKnockoffGWAS/actions) [![CI (Julia nightly)](https://github.com/biona001/GhostKnockoffGWAS/actions/workflows/JuliaNightly.yml/badge.svg)](https://github.com/biona001/GhostKnockoffGWAS.jl/actions/workflows/JuliaNightly.yml) | [![codecov](https://codecov.io/gh/biona001/GhostKnockoffGWAS/branch/main/graph/badge.svg)](https://codecov.io/gh/biona001/GhostKnockoffGWAS) |
 
-This is a package for analyzing summary statistics data from [*genome-wide association studies (GWAS)*](https://en.wikipedia.org/wiki/Genome-wide_association_study). The main working assumption is that we do not have access to individual level genotype or phenotype data. Rather, for each SNP, we have its Z-scores with respect to some phenotype from a GWAS, and access to LD (linkage disequilibrium) data. The user is expected supply the Z-scores, while we supply the LD data. `GhostKnockoffGWAS` integrates numerous recent advances in the knockoffs literature to control the false discovery rate of variable selection, while maximizing power, statility, and its ability to prioritize causal variants. 
+This is a package for analyzing summary statistics data from [*genome-wide association studies (GWAS)*](https://en.wikipedia.org/wiki/Genome-wide_association_study) under the statistical *knockoff framework*. Compared to marginal association testing which controls the FWER, the knockoff framework conducts conditional independence testing while controlling the FDR. As a consequence, `GhostKnockoffGWAS` can be both more precise and powerful than current state-of-the-art GWAS+fine-mapping methods. Its detailed evaluations can be found in our [companion paper]().
 
 ## New users
 
 To get started, please refer to the [documentation](https://biona001.github.io/GhostKnockoffGWAS/dev). 
+
+In `GhostKnockoffGWAS`, the main working assumption is that we do not have access to individual level genotype or phenotype data. Rather, for each SNP, we have its Z-scores with respect to some phenotype from a GWAS, and access to LD (linkage disequilibrium) data. The user is expected supply the Z-scores, while we supply pre-processed LD files freely downloadable from the cloud. 
 
 ## Advantages/disadvantages of GhostKnockoffGWAS
 
