@@ -110,26 +110,26 @@ This file contains broad summary of the analysis, as shown below
 
 ```
 target_fdr_0.01_num_selected,0
-target_fdr_0.05_num_selected,11
+target_fdr_0.05_num_selected,10
 target_fdr_0.1_num_selected,15
-target_fdr_0.2_num_selected,19
+target_fdr_0.2_num_selected,25
 m,5
 nregions,99
 nsnps,35855
 lasso_lambda,0.003807185801078654
 mean_LD_shrinkage,0.020501422972314207
-import_time,14.982829126999999
-sample_knockoff_time,8.674102106999996
-ghostbasil_time,0.706785777
-knockoff_filter_time,5.011729142
-total_time,29.969953060150146
-sample_knockoff_time_t21,4.213006547999999
-sample_knockoff_time_t22,0.9331997300000002
-sample_knockoff_time_t23,1.103306673
-sample_knockoff_time_t24,2.3132567919999993
+import_time,11.890378966000004
+sample_knockoff_time,7.483832024999999
+ghostbasil_time,0.7074100039999999
+knockoff_filter_time,6.180893948
+total_time,26.47797393798828
+sample_knockoff_time_t21,2.7361857229999993
+sample_knockoff_time_t22,1.532605566
+sample_knockoff_time_t23,0.81481418
+sample_knockoff_time_t24,2.3322181589999995
 ```
 
-+ The first 4 rows indicate the number of unique (conditionally-independent) discoveries according to `GhostKnockoffGWAS`, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 15 conditionally inependent discoveries, with each discovery potentially covering >1 SNP. According to the knockoff procedure, these discoveries are conditionally independent, although one can apply a post-processing step to further count the number of independent discoveries. We will see this action later in step 5. 
++ The first 4 rows indicate the number of discovered SNPs according to `GhostKnockoffGWAS`, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 15 significant SNPs whose knockoff q-value is below 0.1. If these SNPs reside in different groups, then according to the knockoff procedure, these discoveries are conditionally independent. Later in step 5, we will apply a post-processing step to further count the number of independent discoveries are determined by the physical distance between these SNPs. 
 + The next few rows contain parameters used in the analysis, as well as timing results. 
 
 !!! tip
@@ -141,11 +141,11 @@ sample_knockoff_time_t24,2.3132567919999993
 This is a comma-separated file that contains the full knockoff analysis output. The first 5 rows are shown:
 ```
 $ head -5 example_output.txt
-rsid,AF,chr,ref,alt,pos_hg19,pos_hg38,group,zscores,lasso_beta,variant_kappa,variant_tau,variant_W,variant_q,pvals,group_W,group_kappa,group_tau,group_qvals,selected_fdr0.01,selected_fdr0.05,selected_fdr0.1,selected_fdr0.2
-rs4535687,0.15927,7,G,C,41892,41892,chr7_start16161_end972751_group1_0,-1.17940334810126,0.0,0,0.0,0.0,1.0,0.23823760256835697,0.0,0.0,0.0,1.0,0,0,0,0
-rs62429406,0.031058,7,T,G,43748,43748,chr7_start16161_end972751_group2_0,0.636126444862832,0.0,0,0.0,0.0,1.0,0.5246940103826294,0.0,0.0,0.0,1.0,0,0,0,0
-rs117163387,0.034958,7,C,T,43961,43961,chr7_start16161_end972751_group3_0,-0.548757491205702,0.0,0,0.0,0.0,1.0,0.5831718861307663,0.0,0.0,0.0,1.0,0,0,0,0
-rs4247525,0.040199,7,T,C,44167,44167,chr7_start16161_end972751_group4_0,0.463442453535633,0.0,0,0.0,0.0,1.0,0.6430472544316368,0.0,0.0,0.0,1.0,0,0,0,0
+rsid,AF,chr,ref,alt,pos_hg19,pos_hg38,group,zscores,lasso_beta,kappa,tau,W,qvals,pvals,selected_fdr0.01,selected_fdr0.05,selected_fdr0.1,selected_fdr0.2
+rs4535687,0.15927,7,G,C,41892,41892,chr7_start16161_end972751_group1_0,-1.17940334810126,0.0,0,0.0,0.0,1.0,0.23823760256835697,0,0,0,0
+rs62429406,0.031058,7,T,G,43748,43748,chr7_start16161_end972751_group2_0,0.636126444862832,0.0,0,0.0,0.0,1.0,0.5246940103826294,0,0,0,0
+rs117163387,0.034958,7,C,T,43961,43961,chr7_start16161_end972751_group3_0,-0.548757491205702,0.0,0,0.0,0.0,1.0,0.5831718861307663,0,0,0,0
+rs4247525,0.040199,7,T,C,44167,44167,chr7_start16161_end972751_group4_0,0.463442453535633,0.0,0,0.0,0.0,1.0,0.6430472544316368,0,0,0,0
 ```
 
 The first row is a header row. Each proceeding row corresponds to a SNP that was used in the analysis. 
@@ -154,10 +154,14 @@ The first row is a header row. Each proceeding row corresponds to a SNP that was
 + `group` column: defines group membership. Note that in GhostKnockoffGWAS, false discovery rate (FDR) is guaranteed at the group level, that is, the expected number of falsely discovered groups is less than the target FDR level.
 + `zscores`: This is the user-provided Z-scores.
 + `lasso_beta`: This is the Lasso's estimated effect size for each SNP conditional on the knockoffs. 
-+ `variant_kappa,variant_tau,variant_W,variant_q,pvals,group_W,group_kappa,group_tau`: these are knockoff statistics computed from the analysis, please refer to our paper for more detail. 
-+ `variant_q,group_qvals`: This is the knockoff q-values, which is the minimum target FDR for a given variable to be selected, i.e. for a target FDR level $\alpha$, all variants with `group_qvals` $\le \alpha$ is selected. `GhostKnockoffGWAS` performs selection on the group-level while variant-level qvalue is used for labeling significant SNPs in downstream manhattan plots. For details, see eq 19 of [this paper](https://www.nature.com/articles/s41467-022-34932-z)
++ `kappa,tau,W`: these are knockoff statistics computed from the analysis, please refer to our paper for more detail. 
++ `qvals`: This is the knockoff q-values, which is the minimum target FDR for a given variable to be selected, i.e. for a target FDR level $\alpha$, all variants with `qvals` $\le \alpha$ is selected. 
 + `pvals`: This is the p-value obtained by back-transforming the input Z-scores
 + `selected_fdr*` columns: these inform whether the variable is selected. Its values are 0 (indicating the SNP does not belong to a group that has been selected) or 1 (this SNP has been selected, along with those in the same group ).
+
+!!! note
+
+    Sometimes it is useful to determine the number of *conditionally independent* discoveries according to the knockoff procedure. In this case, one should count the number of unique *groups* that contains the discovered SNPs. In this example, when target FDR is $10\%$, there are 15 SNPs with knockoff q-values less than 0.1, and they reside in 11 unique groups. Thus, the knockoff procedure claims there are at least 11 unique (conditionally-independent) causal variables. 
 
 ## Step 5: Generating Manhattan plots
 
@@ -184,6 +188,6 @@ This produced the following plots
 
 ### Explanation:
 
-+ The knockoff plot displays the knockoff W values on the y-axis, one dot for each SNP. As we are plotting the group-level W statistics, all variants within the same group possess the same W value. How then do we decide which SNP to label? In this R script, the most significant SNP (as determined by the *individual-variant-level W statistics*) within a 1Mb region is labeled and colored with purple. A light blue dot is within 1Mb region of another more significant SNP. Careful readers may recall that in the summary file (shown in step 4), knockoffs discovered 15 conditionally independent *groups*, but here only 11 SNPs were labelled. This is because some discovered groups are too close to each other. In this example, although there are 15 independent discoveries according to the knockoff methodology, there are only 11 discoveries that are physically greater than 1Mb apart. Finally, for the variant rs9640386, although it has a weaker *group-level* W score compared to a nearby variant, its individual level W statistic is stronger, and therefore it is the labeled SNP. 
++ The knockoff plot displays the knockoff W values on the y-axis, one dot for each SNP. The most significant SNP within a 1Mb region is labeled and colored with purple. Light blue dots are knockoff discoveries that are within 1Mb distance to another more significant SNP. Careful readers may recall that in the summary file (shown in step 4), `GhostKnockoffGWAS` discovered 15 SNPs which falls within 11 unique *groups*, but here only 9 SNPs were labelled. This is because some discoveries are too close to each other. In this example, only 9 among 15 SNPs are physically greater than 1Mb apart. This immediate begs the question of how many discoveries one should report. Our papers typically report the number of discoveries physically >1Mb apart (i.e. 9 discoveries in this case), but please note that there are in fact at least 11 conditionally independent discoveries according to the knockoff methodology.
 + The marginal plot is a standard Manhattan plot with the y-axis plotting the negative logged p-values. Similar to the knockoff plot, all dots above the dotted line are marginally significant and colored with light blue, while the most signicant SNP within 1Mb region is colored with purple. 
 + The color bars beneath the x-axis displays chromosome density.

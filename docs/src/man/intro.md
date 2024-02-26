@@ -19,30 +19,30 @@ Answer: If you already conducted a GWAS, have an output file that includes Z sco
 + If your study subjects are somewhat admixed, one can try using the most suitable LD files, and check how much deviation there are from the LD files by examining the `LD_shrinkage` parameter in the output of `GhostKnockoffGWAS`, see [this FAQ](https://biona001.github.io/GhostKnockoffGWAS/dev/man/FAQ/#Is-the-result-is-trustworthy?).
 + If instead you have individual level genotypes, you should run a GWAS using standard tools (e.g. PLINK, BOLT, GCTA, SAIGE, GEMMA, ...etc) before running GhostKnockoffGWAS. 
 
-## Typical Workflow (minimal working example)
+## Quick Start
 
-Most users are expected to follow this workflow. 
+Most users are expected to follow this workflow. Detailed explanations for each step is available in [Tutorial](https://biona001.github.io/GhostKnockoffGWAS/dev/man/examples/).
 
 1. Go to [Download Page](https://biona001.github.io/GhostKnockoffGWAS/dev/man/download) and download (1) the software and (2) the pre-processed LD files. For example,
-```
-wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.1.0/app_linux_x86.tar.gz
-wget https://zenodo.org/records/10433663/files/EUR.zip
-```
-2. Unzip them both, e.g.
-```
-tar -xvzf app_linux_x86.tar.gz
-unzip EUR.zip  # decompresses to ~8.7GB
-```
-3. Prepare your input Z score file into accepted format, see [Acceptable Z-scores](https://biona001.github.io/GhostKnockoffGWAS/dev/man/zfile). Download a toy example by
-```
-wget https://github.com/biona001/GhostKnockoffGWAS/blob/main/data/example_zfile.txt
-```
-4. Run the executable
-```
-app_linux_x86/bin/GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
-```
 
-For detailed explanations of these steps, see [Detailed Example](https://biona001.github.io/GhostKnockoffGWAS/dev/man/examples/). Those familiar with the Julia programming language can use GhostKnockoffGWAS as a regular julia package, see [usage within Julia](https://biona001.github.io/GhostKnockoffGWAS/dev/man/julia).
+        wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.1.0/app_linux_x86.tar.gz
+        wget https://zenodo.org/records/10433663/files/EUR.zip
+2. Unzip them both:
+
+        tar -xvzf app_linux_x86.tar.gz
+        unzip EUR.zip  # decompresses to ~8.7GB
+3. Prepare your input Z score file into accepted format, see [Acceptable Z-scores](https://biona001.github.io/GhostKnockoffGWAS/dev/man/zfile). A toy example can be downloaded by:
+
+        wget https://github.com/biona001/GhostKnockoffGWAS/blob/main/data/example_zfile.txt
+4. Run the executable
+
+        app_linux_x86/bin/GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
+        
+5. Make Manhattan plot with [this R script](https://github.com/biona001/GhostKnockoffGWAS/blob/main/src/manhattan.R). See step 5 in [Tutorial](https://biona001.github.io/GhostKnockoffGWAS/dev/man/examples/) for more details. 
+
+    
+
+Those familiar with the Julia programming language can use GhostKnockoffGWAS as a regular julia package, see [usage within Julia](https://biona001.github.io/GhostKnockoffGWAS/dev/man/julia).
 
 ## More general knockoff constructions
 

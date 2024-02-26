@@ -15,7 +15,7 @@ makedocs(
         "Documentation" => "man/documentation.md",
         "Downloads" => "man/download.md",
         "Acceptable Z-scores file" => "man/zfile.md",
-        "Quick start/detailed example" => "man/examples.md",
+        "Tutorial" => "man/examples.md",
         # "Video tutorials" => "man/video.md",
         "FAQ" => "man/FAQ.md",
         "Usage within Julia" => "man/julia.md",
