@@ -95,7 +95,7 @@ region 2 / 99 (f = LD_start101199253_end103197509.h5): chr 7, nz beta = 11, nsnp
 region 3 / 99 (f = LD_start103197510_end104159524.h5): chr 7, nz beta = 12, nsnps = 215, shrinkage = 0.0458
 ...
 ```
-    Here there are 99 regions in chromosome 7. For each region it prints the number of non-zero beta estimated in that region, the number of Z-scores that are present in that region, and finally the level of shrinkage. The shrinkage level is a number between 0 and 1. It quantifies how well the correlation matrices used in the analysis approximates the LD structure for the original GWAS study under the null ($z = 0$), see [SuSiE paper](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010299) equation 24 for details.
++ Here there are 99 regions in chromosome 7. For each region it prints the number of non-zero beta estimated in that region, the number of Z-scores that are present in that region, and finally the level of shrinkage. The shrinkage level is a number between 0 and 1. It quantifies how well the correlation matrices used in the analysis approximates the LD structure for the original GWAS study under the null ($z = 0$), see [SuSiE paper](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010299) equation 24 for details.
 + Finally, the program concludes by printing the number of Z scores successfully matched, the output path, as well as a rough estimate of runtime. In this simple example, the analysis finished in roughly half a minute. 
 
 ## Step 4: Interpreting the result
@@ -129,7 +129,7 @@ sample_knockoff_time_t23,0.81481418
 sample_knockoff_time_t24,2.3322181589999995
 ```
 
-+ The first 4 rows indicate the number of discovered SNPs according to `GhostKnockoffGWAS`, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 15 significant SNPs whose knockoff q-value is below 0.1. If these SNPs reside in different groups, then according to the knockoff procedure, these discoveries are conditionally independent. Later in step 5, we will apply a post-processing step to further count the number of independent discoveries are determined by the physical distance between these SNPs. 
++ The first 4 rows indicate the number of discovered SNPs according to `GhostKnockoffGWAS`, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 15 significant SNPs whose knockoff q-value is below 0.1. If these SNPs reside in different groups, then according to the knockoff procedure, these discoveries are conditionally independent. Later in step 5, we will apply a post-processing step to further count the number of independent discoveries as determined by the physical distance between these SNPs. 
 + The next few rows contain parameters used in the analysis, as well as timing results. 
 
 !!! tip
@@ -157,7 +157,7 @@ The first row is a header row. Each proceeding row corresponds to a SNP that was
 + `kappa,tau,W`: these are knockoff statistics computed from the analysis, please refer to our paper for more detail. 
 + `qvals`: This is the knockoff q-values, which is the minimum target FDR for a given variable to be selected, i.e. for a target FDR level $\alpha$, all variants with `qvals` $\le \alpha$ is selected. 
 + `pvals`: This is the p-value obtained by back-transforming the input Z-scores
-+ `selected_fdr*` columns: these inform whether the variable is selected. Its values are 0 (indicating the SNP does not belong to a group that has been selected) or 1 (this SNP has been selected, along with those in the same group ).
++ `selected_fdrα` columns: these inform whether the variable is selected when target FDR is $\alpha$. 
 
 !!! note
 
