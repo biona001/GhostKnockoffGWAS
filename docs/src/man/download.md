@@ -5,9 +5,9 @@ Here is the main downloads page. New software and pre-processed knockoff data wi
 
 ## Software
 
-| Operating System | v0.1.0 (Pre-release, 19 Feb, 2024)      |
+| Operating System | v0.1.1 (March 4th, 2024)      |
 | :---             |       :----:               |
-| Linux 64-bit     | [Download](https://github.com/biona001/GhostKnockoffGWAS/releases/tag/v0.1.0)       |
+| Linux 64-bit     | [Download](https://github.com/biona001/GhostKnockoffGWAS/releases/tag/v0.1.1)       |
 
 After unzipping, the executable will be located inside `bin/GhostKnockoffGWAS`. We recommend adding the folder containing the `GhostKnockoffGWAS` executable to `PATH` for easier access.
 
