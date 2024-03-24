@@ -123,13 +123,12 @@ function ghostknockoffgwas(
         GWAS_nea = non_effect_allele[chr_idx]
         zscores = z[chr_idx]
         for f in files
-            endswith(f, ".h5") || continue
-            fname = f[4:end-3]
+            endswith(f, ".jld2") || continue
+            fname = f[4:end-5]
 
             # read knockoff results in current region
             t1 += @elapsed begin
-                # result = JLD2.load(joinpath(LD_files, "chr$c", f)) # possibly runs into https://github.com/biona001/GhostKnockoffGWAS/issues/7
-                result = FileIO.load(joinpath(LD_files, "chr$c", f))
+                result = JLD2.load(joinpath(LD_files, "chr$c", f))
                 Sigma_info = CSV.read(joinpath(LD_files, "chr$(c)", "Info_$fname.csv"), DataFrame)
                 nknockoff_snps += size(Sigma_info, 1)
                 # map reference LD panel to GWAS Z-scores by position

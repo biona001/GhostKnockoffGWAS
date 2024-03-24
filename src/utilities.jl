@@ -80,8 +80,8 @@ function count_matchable_snps(
         GWAS_nea = non_effect_allele[chr_idx]
         zscores = z[chr_idx]
         for f in files
-            endswith(f, ".h5") || continue
-            fname = f[4:end-3]
+            endswith(f, ".jld2") || continue
+            fname = f[4:end-5]
 
             # read LD/knockoff files
             Sigma_info = CSV.read(
