@@ -1,7 +1,6 @@
 module GhostKnockoffGWAS
 
 using Ghostbasil
-using JLD2
 using HDF5
 using CSV
 using DataFrames
@@ -13,8 +12,6 @@ using Optim
 using ArgParse
 using Statistics
 using StatsBase
-using UnPack
-using .UnPack
 
 export ghostknockoffgwas,
     read_zscores
