@@ -13,6 +13,8 @@ using Optim
 using ArgParse
 using Statistics
 using StatsBase
+using UnPack
+using .UnPack
 
 export ghostknockoffgwas,
     read_zscores
