@@ -25,7 +25,7 @@ Most users are expected to follow this workflow. Detailed explanations for each 
 
 1. Go to [Download Page](https://biona001.github.io/GhostKnockoffGWAS/dev/man/download) and download (1) the software and (2) the pre-processed LD files. For example,
 
-        wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.1.0/app_linux_x86.tar.gz
+        wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.1.1/app_linux_x86.tar.gz
         wget https://zenodo.org/records/10433663/files/EUR.zip
 2. Unzip them both:
 
@@ -33,7 +33,7 @@ Most users are expected to follow this workflow. Detailed explanations for each 
         unzip EUR.zip  # decompresses to ~8.7GB
 3. Prepare your input Z score file into accepted format, see [Acceptable Z-scores](https://biona001.github.io/GhostKnockoffGWAS/dev/man/zfile). A toy example can be downloaded by:
 
-        wget https://github.com/biona001/GhostKnockoffGWAS/blob/main/data/example_zfile.txt
+        wget https://github.com/biona001/GhostKnockoffGWAS/raw/main/data/example_zfile.txt
 4. Run the executable
 
         app_linux_x86/bin/GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
