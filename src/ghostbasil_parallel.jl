@@ -128,7 +128,7 @@ function ghostknockoffgwas(
 
             # read knockoff results in current region
             t1 += @elapsed begin
-                result = JLD2.load(joinpath(LD_files, "chr$c", f))
+                h5reader = HDF5.h5open(joinpath(LD_files, "chr$c", f), "r")
                 Sigma_info = CSV.read(joinpath(LD_files, "chr$(c)", "Info_$fname.csv"), DataFrame)
                 nknockoff_snps += size(Sigma_info, 1)
                 # map reference LD panel to GWAS Z-scores by position
@@ -169,8 +169,8 @@ function ghostknockoffgwas(
             # generate knockoffs for z scores
             t2 += @elapsed begin
                 # use original Sigma and D (S matrix for rep+nonrep variables)
-                Si = result["D"][LD_keep_idx, LD_keep_idx]
-                Σi = result["Sigma"][LD_keep_idx, LD_keep_idx]
+                Si = read(h5reader, "D")[LD_keep_idx, LD_keep_idx]
+                Σi = read(h5reader, "Sigma")[LD_keep_idx, LD_keep_idx]
                 zscore_tmp = @view(zscores[GWAS_keep_idx])
 
                 # shrinkage for consistency (todo: only use reps for better speed)
@@ -195,7 +195,7 @@ function ghostknockoffgwas(
             append!(Zscores_store, zscore_tmp) # append original Z scores 
             append!(Zscores_store, Zko)        # append knockoffs
             append!(Zscores, Zscores_store)
-            current_groups = result["groups"][LD_keep_idx]
+            current_groups = read(h5reader, "groups")[LD_keep_idx]
             grp = ["chr$(c)_$(fname)_group$(g)_0" for g in current_groups] # the last _0 implies this is original variable
             append!(groups, grp)
             for k in 1:m
