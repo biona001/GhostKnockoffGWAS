@@ -168,7 +168,7 @@ x1t[which(x1t$pvals<=1e-50),"pvals"] <- 1e-50
 x1t <- x1t[,c("SNP","CHR","BP","pvals")]
 x1t[,4]<--log10(x1t[,4])
 if (num_discoveries > 100) {
-    CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="-log10(p)",bin.range=c(0,500),
+    CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="-log10(p)", # bin.range=c(0,500),
             chr.den.col=c("darkgreen", "yellow", "red"), main=main.text,
             threshold=ths, threshold.lty=c(2), threshold.lwd=c(1), threshold.col=c("black"),
             highlight=signal_topp$SNP, highlight.cex=1, 
@@ -176,7 +176,7 @@ if (num_discoveries > 100) {
             signal.col=c("cornflowerblue"),signal.cex=c(1),
             file="jpg",file.name=memo.text,dpi=300,file.output=TRUE,verbose=TRUE,width=14,height=6)
 } else {
-    CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="-log10(p)",bin.range=c(0,500),
+    CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="-log10(p)", # bin.range=c(0,500),
             chr.den.col=c("darkgreen", "yellow", "red"), main=main.text,
             threshold=ths, threshold.lty=c(2), threshold.lwd=c(1), threshold.col=c("black"),
             highlight=signal_topp$SNP, highlight.cex=1, 
@@ -337,7 +337,7 @@ colnames(x1t)[4]<-'Test statistic'
 
 # do not label SNPs (code runs too slow) if there are too many discoveries
 if (num_discoveries > 100) {
-    CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="Test statistic", ylim=ylim,bin.range=c(0,500),
+    CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="Test statistic", ylim=ylim, # bin.range=c(0,500),
         chr.den.col=c("darkgreen", "yellow", "red"), main=main.text,
         threshold=ths, threshold.lty=c(2), threshold.lwd=c(1), threshold.col=c("red"),
         highlight=signal_topp$SNP, highlight.cex=1, 
@@ -345,7 +345,7 @@ if (num_discoveries > 100) {
         signal.col=c("cornflowerblue"),signal.cex=c(1),
         file="jpg",file.name=memo.text,dpi=300,file.output=TRUE,verbose=TRUE,width=14,height=6)
 } else {
-    CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="Test statistic", ylim=ylim,bin.range=c(0,500),
+    CMplot(x1t, plot.type="m", LOG10=FALSE, col=c("grey30","grey60"), ylab="Test statistic", ylim=ylim, # bin.range=c(0,500),
         chr.den.col=c("darkgreen", "yellow", "red"), main=main.text,
         threshold=ths, threshold.lty=c(2), threshold.lwd=c(1), threshold.col=c("red"),
         highlight=signal_topp$SNP, highlight.cex=1, 
