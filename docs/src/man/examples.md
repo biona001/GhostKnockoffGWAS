@@ -23,7 +23,7 @@ This should create 2 folders `app_linux_x86/` and `EUR/` in the current director
 
 ## Step 2: Prepare a valid Z score file
 
-One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/getting_started/#Acceptable-Z-scores-file-format) as input. 
+One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/zfile) as input. 
 
 If you would like to follow along with this tutorial, feel free to download this test data [example_zfile.txt](https://github.com/biona001/GhostKnockoffGWAS/blob/main/data/example_zfile.txt) (17MB). The first few rows is
 ```
