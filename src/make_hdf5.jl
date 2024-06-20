@@ -10,16 +10,24 @@ double precision numeric matrix.
 
 # Inputs
 + `vcffile`: A VCF file storing individual level genotypes. Must end in `.vcf` 
-    or `.vcf.gz`. The CHROM field for all SNPs must equal to the input `chr` 
-    for computational reasons. Finally, the ALT field for each record must be 
-    unique, i.e. multiallelic records must be split first. 
-+ `chr`: 
+    or `.vcf.gz`. The ALT field for each record must be unique, i.e. 
+    multiallelic records must be split first. Missing genotypes will be imputed.
++ `chr`: Target chromosome. This must match the `CHROM` field in the VCF file. 
++ `start_bp`: starting basepair (position)
++ `end_bp`: ending basepair (position)
 
 # Optional inputs
-+ 
++ `min_maf`: minimum minor allele frequency for a SNP to be imported (default `0.01`)
++ `min_hwe`: minimum HWE p-value for a SNP to be imported (default `0.0`)
 
 # output
-+ ``
++ `X`: Double precision matrix containing genotypes between `start_bp` and 
+    `end_bp`. All entries are {0, 1, 2} except for missing entries which is 
+    imputed with column mean.
++ `chrs`: Chromosome for each column of `X`
++ `poss`: Basepair position for each column of `X`
++ `ref`: Reference allele for each column of `X`
++ `alt`: Alt allele for each column of `X`
 """
 function get_block(
     vcffile::String, 
