@@ -19,6 +19,8 @@ double precision numeric matrix.
 # Optional inputs
 + `min_maf`: minimum minor allele frequency for a SNP to be imported (default `0.01`)
 + `min_hwe`: minimum HWE p-value for a SNP to be imported (default `0.0`)
++ `snps_to_keep`: Vector of SNP positions to import. If specified, only SNPs
+    whose position is listed in `snps_to_keep` will be kept (default `nothing`)
 
 # output
 + `X`: Double precision matrix containing genotypes between `start_bp` and 
@@ -35,7 +37,8 @@ function get_block(
     start_bp::Int, 
     end_bp::Int;
     min_maf::Float64=0.01,
-    min_hwe::Float64=0.0
+    min_hwe::Float64=0.0,
+    snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing
     )
     reader = VCF.Reader(openvcf(vcffile, "r"))
     T = Float64
@@ -86,6 +89,12 @@ function get_block(
         # save record info
         push!(df, [join(VCF.id(record), ','), alt_freq, chr_i, pos_i, 
                   VCF.ref(record), alt_i[1]])
+    end
+
+    if !isnothing(snps_to_keep) 
+        idx = filter!(!isnothing, indexin(snps_to_keep, df[!, "pos"]))
+        df = df[idx, :]
+        X = X[:, idx]
     end
 
     return Matrix(X), df
