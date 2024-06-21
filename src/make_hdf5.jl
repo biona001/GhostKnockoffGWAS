@@ -16,7 +16,8 @@ double precision numeric matrix.
 # Inputs
 + `vcffile`: A VCF file storing individual level genotypes. Must end in `.vcf` 
     or `.vcf.gz`. The ALT field for each record must be unique, i.e. 
-    multiallelic records must be split first. Missing genotypes will be imputed.
+    multiallelic records must be split first. Missing genotypes will be imputed
+    by column mean. 
 + `chr`: Target chromosome. This must match the `CHROM` field in the VCF file. 
 + `start_bp`: starting basepair (position)
 + `end_bp`: ending basepair (position)
@@ -143,6 +144,73 @@ function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
     return nothing
 end
 
+"""
+    solve_blocks(vcffile::String, chr::String, start_bp::Int, end_bp::Int, 
+        outdir::String, hg_build::Int; [m=5], [tol=0.0001], [min_maf=0.01], 
+        [min_hwe=0.0], [force_block_diag=true], 
+        [method::String = "maxent"], [group_def::String="hc"], 
+        [group_cor_cutoff::Float64=0.5], [group_rep_cutoff::Float64=0.5], 
+        [verbose=true])
+
+Solves the group knockoff optimization problem on provided individual-level data
+and outputs the result into `outdir`.
+
+# Inputs
++ `vcffile`: A VCF file storing individual level genotypes. Must end in `.vcf` 
+    or `.vcf.gz`. The ALT field for each record must be unique, i.e. 
+    multiallelic records must be split first. Missing genotypes will be imputed
+    by column mean. 
++ `chr`: Target chromosome. This must match the `CHROM` field in the VCF file. 
++ `start_bp`: starting basepair (position)
++ `end_bp`: ending basepair (position)
++ `outdir`: Directory that the output will be stored in (must exist)
+
+# Optional inputs (for group knockoff optimization)
++ `tol`: Convergence tolerlance for coordinate descent algorithm (default `0.0001`)
++ `min_maf`: Minimum minor allele frequency for a variable to be considered (
+    default `0.01`)
++ `min_hwe`: Cutoff for hardy-weinburg equilibrium p-values. Only SNPs with 
+    p-value > `min_hwe` will be included (default `0.0`)
++ `force_block_diag`: Whether to re-order the columns/rows of the correlation 
+    matrix and corresponding `S` matrix so that features in the same group 
+    are contiguous (default `true`). This has no impact on the final results, 
+    it is simply for computational performance. 
++ `method`: group knockoff optimization algorithm, choices include "maxent" 
+    (defualt), "mvr", "sdp", or "equi". See sec 2 of https://arxiv.org/abs/2310.15069
++ `group_def`: method for constructing groups, choices include "hc" 
+    (default, average-linkage hierarchical clustering) or "id" (interpolative 
+    decomposition). See supplemental S6 of https://arxiv.org/abs/2310.15069
++ `group_cor_cutoff`: correlation cutoff value for defining groups (default 
+    `0.5`). Value should be between 0 and 1, where larger values correspond to 
+    larger groups. 
++ `group_rep_cutoff`: cutoff value for selecting group-representatives (default
+    `0.5`). Value should be between 0 and 1, where larger values correspond to 
+    more representatives per group. 
++ `verbose`: whether to print informative intermediate results (default `true`)
+
+# output
+Calling `solve_blocks` will create 3 files in the directory `outdir/chr`:
++ `XXX.h5`:  This contains data (Sigma, S, groups, ..., etc) for region XXX. It 
+    contains the following:
+    - `D`: A `p × p` (dense) matrix corresponding to the S matrix for both the
+        representative and non-representative variables. Knockoff sampling should 
+        use this matrix. If the graphical conditional independent assumption is 
+        satisfied exactly, this matrix should be sparse, but it is always never sparse
+        unless we use `cond_indep_corr` to force the covariance matrix to satisify it. 
+    - `S`: Matrix obtained from solving the group knockoff optimization problem 
+        on the representatives.
+    - `Sigma`: The original `p × p` correlation matrix estimated from `vcffile`
+    - `SigmaInv`: Inverse of `Sigma`
+    - `Sigma_reps`: The correlation matrix for the representative variables. This
+        is the matrix actually used to solve the group-knockoff optimization
+    - `Sigma_reps_inv`: Inverse of `Sigma_reps`
+    - `group_reps`: Indices `groups` that are used as representatives (i.e. 
+        group-key variables)
+    - `groups`: The group membership vector
++ `Info_XXX.csv`: This includes information for each variant (chr/pos/etc) present 
+    in the corresponding `.h5` file.
++ `summary_XXX.csv`: Summary file for the knockoff optimization problem
+"""
 function solve_blocks(
     vcffile::String,
     chr::String,
@@ -152,11 +220,10 @@ function solve_blocks(
     hg_build::Int; # 19 or 38
     snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing, # list of position (if provided, only SNPs in snps_to_keep will be included in Sigma)
     # group knockoff options
-    m=5,
     tol=0.0001, 
-    min_maf=0.01, # only SNPs with maf > min_maf will be included in Sigma
-    min_hwe=0.0, # only SNPs with hwe > min_hwe will be included in Sigma
-    force_block_diag=true, # whether to reorder row/col of S/Sigma/etc so S is returned as block diagonal 
+    min_maf=0.01,
+    min_hwe=0.0,
+    force_block_diag=true,
     method::String = "maxent",
     group_def::String="hc",
     group_cor_cutoff::Float64=0.5,
@@ -183,6 +250,11 @@ function solve_blocks(
     isdir(outdir) || error("output directory $outdir does not exist!")
     group_def ∈ ["hc", "id"] || error("group_def should be \"hc\" or \"id\"")
     method = Symbol(method)
+
+    # number of simultaneous knockoffs to generate. Note this number is FIXED 
+    # because in `ghostbasil_parallel.jl`, `m=5` is hard-coded into high 
+    # dimensional lasso regression
+    m = 5 
 
     # import VCF data and estimate Sigma
     import_time = @elapsed begin
