@@ -1,5 +1,10 @@
 function estimate_sigma(X::AbstractMatrix)
-    return cor(X)
+    n, p = size(X)
+    if n > p
+        return cor(X)
+    else
+        error("p > n case not handled yet!")
+    end
 end
 
 """
@@ -123,4 +128,124 @@ function validate(record, alt_i)
         error("Detected multiallelic marker at chr $chr_i pos $pos_i. " * 
               "Please split multiallelic markers first." )
     end
+end
+
+# function to rearrange the SNP orders to that resulting S/D actually block diagonal
+function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
+    perm = sortperm(groups)
+    iperm = invperm(perm)
+    groups .= @views groups[perm]
+    group_reps .= @views iperm[group_reps]
+    sort!(group_reps)
+    @assert issorted(groups) && issorted(group_reps)
+    Sigma.data .= @views Sigma[perm, perm]
+    Sigma_info .= @views Sigma_info[perm, :]
+    return nothing
+end
+
+function solve_blocks(
+    vcffile::String,
+    chr::String,
+    start_bp::Int, 
+    end_bp::Int, 
+    outdir::String,
+    hg_build::Int; # 19 or 38
+    snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing, # list of position (if provided, only SNPs in snps_to_keep will be included in Sigma)
+    # group knockoff options
+    m=5,
+    tol=0.0001, 
+    min_maf=0.01, # only SNPs with maf > min_maf will be included in Sigma
+    min_hwe=0.0, # only SNPs with hwe > min_hwe will be included in Sigma
+    force_block_diag=true, # whether to reorder row/col of S/Sigma/etc so S is returned as block diagonal 
+    method::String = "maxent",
+    group_def::String="hc",
+    group_cor_cutoff::Float64=0.5,
+    group_rep_cutoff::Float64=0.5,
+    verbose=true
+    )
+    # using VCFTools, VariantCallFormat, ElasticArrays, DataFrames, Statistics, LinearAlgebra, Knockoffs
+    # vcffile = "/oak/stanford/groups/zihuai/paisa/chr1.vcf.gz"
+    # chr = "1"
+    # min_maf = 0.01
+    # min_hwe = 1e-8
+    # start_bp = 58814 # first 500 records
+    # end_bp = 2338569
+    # snps_to_keep = nothing
+    # hg_build = 19
+    # group_def = "hc"
+    # group_cor_cutoff = 0.5
+    # group_rep_cutoff = 0.5
+    # method = "maxent"
+    # m = 5
+    # tol = 0.0001
+    # verbose = true
+
+    isdir(outdir) || error("output directory $outdir does not exist!")
+    group_def ∈ ["hc", "id"] || error("group_def should be \"hc\" or \"id\"")
+    method = Symbol(method)
+
+    # import VCF data and estimate Sigma
+    import_time = @elapsed begin
+        X, data_info = get_block(vcffile, chr, start_bp, end_bp, 
+            min_maf=min_maf, min_hwe=min_hwe, snps_to_keep=snps_to_keep)
+        Sigma = Symmetric(estimate_sigma(X))
+        rename!(data_info, "pos" => "pos_hg$hg_build") # associate pos with hg_build
+    end
+
+    # define groups and representatives
+    def_group_time = @elapsed begin
+        groups = group_def == "hc" ? 
+            hc_partition_groups(Sigma, cutoff=group_cor_cutoff, linkage=:average) : 
+            id_partition_groups(Sigma, rss_target=group_cor_cutoff)
+        group_reps = choose_group_reps(Sigma, groups, threshold=group_rep_cutoff)
+    end
+
+    # reorder SNPs so D2/S2 is really block diagonal
+    if force_block_diag
+        rearrange_snps!(groups, group_reps, Sigma, data_info)
+    end
+
+    # solve for S
+    solve_S_time = @elapsed begin
+        S, D, obj = solve_s_graphical_group(Sigma, groups, group_reps, method,
+            m=m, tol=tol, verbose=verbose)
+
+        # solve S using modified Sigma (enforcing conditional independence)
+        # Sigma2 = Symmetric(cond_indep_corr(Sigma, groups, group_reps))
+        # S2, D2, obj2 = solve_s_graphical_group(Sigma2, groups, group_reps, method,
+        #     m=m, tol=tol, verbose=verbose)
+    end
+
+    # save main result in .h5 format and summary information in .csv
+    dir = joinpath(outdir, "chr$chr")
+    isdir(dir) || mkpath(dir)
+    JLD2.save(
+        joinpath(dir, "LD_start$(start_pos)_end$(end_pos).h5"), 
+        Dict(
+            "S" => S,
+            "D" => D,
+            "Sigma" => Sigma,
+            "SigmaInv" => inv(Sigma),
+            "groups" => groups,
+            "group_reps" => group_reps,
+            "Sigma_reps" => Sigma[group_reps, group_reps],
+            "Sigma_reps_inv" => inv(Sigma[group_reps, group_reps])
+        )
+    )
+    CSV.write(joinpath(dir, "Info_start$(start_pos)_end$(end_pos).csv"), data_info)
+    open(joinpath(dir, "summary_start$(start_pos)_end$(end_pos)"), "w") do io
+        println(io, "chr,$chr")
+        println(io, "start_bp,$start_bp")
+        println(io, "end_bp,$end_bp")
+        println(io, "m,$m")
+        println(io, "p,", size(Sigma, 1))
+        println(io, "nreps,", length(group_reps))
+        println(io, "max_group_size,", countmap(groups) |> values |> collect |> maximum)
+        println(io, "max_rep_group_size,", countmap(groups[group_reps]) |> values |> collect |> maximum)
+        println(io, "import_time,$import_time")
+        println(io, "def_group_time,$def_group_time")
+        println(io, "solve_S_time,$solve_S_time")
+    end
+
+    return nothing
 end
