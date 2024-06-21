@@ -151,8 +151,11 @@ and outputs the result into `outdir`.
 + `start_bp`: starting basepair (position)
 + `end_bp`: ending basepair (position)
 + `outdir`: Directory that the output will be stored in (must exist)
++ `hg_build`: human genome build for the VCF file, must be 19 (hg19) or 38 (hg38)
 
 # Optional inputs (for group knockoff optimization)
++ `snps_to_keep`: Vector of SNP positions to import. If specified, only SNPs
+    whose position is listed in `snps_to_keep` will be kept (default `nothing`)
 + `tol`: Convergence tolerlance for coordinate descent algorithm (default `0.0001`)
 + `min_maf`: Minimum minor allele frequency for a variable to be considered (
     default `0.01`)
@@ -205,7 +208,7 @@ function solve_blocks(
     end_bp::Int, 
     outdir::String,
     hg_build::Int; # 19 or 38
-    snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing, # list of position (if provided, only SNPs in snps_to_keep will be included in Sigma)
+    snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing,
     # group knockoff options
     tol=0.0001, 
     min_maf=0.01,
@@ -240,14 +243,10 @@ function solve_blocks(
             hc_partition_groups(Sigma, cutoff=group_cor_cutoff, linkage=:average) : 
             id_partition_groups(Sigma, rss_target=group_cor_cutoff)
         group_reps = choose_group_reps(Sigma, groups, threshold=group_rep_cutoff)
+        force_block_diag && rearrange_snps!(groups, group_reps, Sigma, data_info)
     end
 
-    # reorder SNPs so D2/S2 is really block diagonal
-    if force_block_diag
-        rearrange_snps!(groups, group_reps, Sigma, data_info)
-    end
-
-    # solve for S
+    # solve group knockoff optimization problem
     solve_S_time = @elapsed begin
         S, D, obj = solve_s_graphical_group(Sigma, groups, group_reps, method,
             m=m, tol=tol, verbose=verbose)
@@ -287,6 +286,12 @@ function solve_blocks(
         println(io, "import_time,$import_time")
         println(io, "def_group_time,$def_group_time")
         println(io, "solve_S_time,$solve_S_time")
+    end
+
+    if verbose
+        println("Time to read VCF file: $import_time")
+        println("Time to define groups: $def_group_time")
+        println("Time to perform group knockoff optimization: $solve_S_time")
     end
 
     return nothing
