@@ -8,7 +8,9 @@ function estimate_sigma(X::AbstractMatrix)
 end
 
 """
-    get_block(vcffile, )
+    get_block(vcffile::String, chr::String, start_bp::Int, end_bp::Int;
+        [min_maf::Float64=0.01], [min_hwe::Float64=0.0], 
+        [snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing])
 
 Imports genotype data of a VCF file from pos `start_bp` to `end_bp` as 
 double precision numeric matrix.
@@ -105,21 +107,6 @@ function get_block(
 
     return Matrix(X), df
 end
-# using VCFTools, VariantCallFormat, ElasticArrays, DataFrames
-# vcffile = "/oak/stanford/groups/zihuai/paisa/chr1.vcf.gz"
-# chr = "1"
-# min_maf = 0.0
-# min_hwe = 0.0
-# start_bp = 58814 # first 10 records
-# end_bp = 801536
-# @time X, df = get_block(vcffile, chr, start_bp, end_bp, min_maf=min_maf, min_hwe=min_hwe)
-# 0.012035 seconds (46.78 k allocations: 13.440 MiB)
-
-# chr = "1"
-# start_bp = 249208612 # last 10 records
-# end_bp = 249222527
-# @time X, df = get_block(vcffile, chr, start_bp, end_bp, min_maf=min_maf, min_hwe=min_hwe)
-# 44.146655 seconds (196.81 M allocations: 53.676 GiB, 2.20% gc time)
 
 function validate(record, alt_i)
     if VariantCallFormat.findgenokey(record, "GT") === nothing
@@ -230,23 +217,6 @@ function solve_blocks(
     group_rep_cutoff::Float64=0.5,
     verbose=true
     )
-    # using VCFTools, VariantCallFormat, ElasticArrays, DataFrames, Statistics, LinearAlgebra, Knockoffs
-    # vcffile = "/oak/stanford/groups/zihuai/paisa/chr1.vcf.gz"
-    # chr = "1"
-    # min_maf = 0.01
-    # min_hwe = 1e-8
-    # start_bp = 58814 # first 500 records
-    # end_bp = 2338569
-    # snps_to_keep = nothing
-    # hg_build = 19
-    # group_def = "hc"
-    # group_cor_cutoff = 0.5
-    # group_rep_cutoff = 0.5
-    # method = "maxent"
-    # m = 5
-    # tol = 0.0001
-    # verbose = true
-
     isdir(outdir) || error("output directory $outdir does not exist!")
     group_def ∈ ["hc", "id"] || error("group_def should be \"hc\" or \"id\"")
     method = Symbol(method)
