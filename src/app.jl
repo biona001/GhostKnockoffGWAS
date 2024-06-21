@@ -1,10 +1,11 @@
-# main function that PackageCompiler will build against
+# this becomes the GhostKnockoffGWAS executable
 function julia_main()::Cint
     try
         # read command line arguments
         zfile, LD_files, N, hg_build, outfile, outdir, chr_col, pos_col, 
             ref_col, alt_col, z_col, seed, verbose,
-            random_shuffle, skip_shrinkage_check = parse_commandline(true)
+            random_shuffle, skip_shrinkage_check = 
+            parse_ghostknockoffgwas_commandline(true)
 
         println("\n\nWelcome to GhostKnockoffGWAS analysis!")
         println("You have specified the following options:")
@@ -60,7 +61,7 @@ function julia_main()::Cint
     return 0
 end
 
-function parse_commandline(parseargs::Bool)
+function parse_ghostknockoffgwas_commandline(parseargs::Bool)
     s = ArgParseSettings()
     @add_arg_table! s begin
         "--zfile"
@@ -178,4 +179,157 @@ function parse_commandline(parseargs::Bool)
     return zfile, LD_files, N, hg_build, outfile, outdir, 
         chr_col, pos_col, ref_col, alt_col, z_col, seed, verbose, 
         random_shuffle, skip_shrinkage_check
+end
+
+function julia_solveblock()::Cint
+    try
+        # read command line arguments
+        vcffile, chr, start_bp, end_bp, outdir, 
+            hg_build, tol, min_maf, min_hwe, method, group_def, group_cor_cutoff, 
+            group_rep_cutoff, verbose = parse_solveblock_commandline(true)
+
+        println("\n\nWelcome to the `solve_block` module of GhostKnockoffGWAS!")
+        println("You have specified the following options:")
+        println("vcffile          = ", abspath(vcffile))
+        println("chr              = ", chr)
+        println("start_bp         = ", start_bp)
+        println("end_bp           = ", end_bp)
+        println("outdir           = ", abspath(outdir))
+        println("hg_build         = ", hg_build)
+        println("tol              = ", tol)
+        println("min_maf          = ", min_maf)
+        println("min_hwe          = ", min_hwe)
+        println("method           = ", method)
+        println("group_def        = ", group_def)
+        println("group_cor_cutoff = ", group_cor_cutoff)
+        println("group_rep_cutoff = ", group_rep_cutoff)
+        println("verbose          = ", verbose)
+        println("\n")
+
+        solve_blocks(vcffile, chr, start_bp, end_bp, outdir, 
+            hg_build, tol=tol, min_maf=min_maf, min_hwe=min_hwe, 
+            method=method, group_def=group_def, 
+            group_cor_cutoff=group_cor_cutoff, 
+            group_rep_cutoff=group_rep_cutoff, verbose=verbose)
+    catch
+        Base.invokelatest(Base.display_error, Base.catch_stack())
+        return 1
+    end
+    return 0
+end
+
+function parse_solveblock_commandline(parseargs::Bool)
+    s = ArgParseSettings()
+    @add_arg_table! s begin
+        "--vcffile"
+            help = "A VCF file storing individual level genotypes. Must end in
+                `.vcf` or `.vcf.gz`. The ALT field for each record must be
+                unique, i.e. multiallelic records must be split first. Missing
+                genotypes will be imputed by column mean."
+            required = true
+            arg_type = String
+        "--chr"
+            help = "Target chromosome. This must match the `CHROM` field in 
+                the VCF file. "
+            required = true
+            arg_type = String
+        "--start_bp"
+            help = "starting basepair (position)"
+            required = true
+            arg_type = Int
+        "--end_bp"
+            help = "ending basepair (position)"
+            arg_type = Int
+            required = true
+        "--outdir"
+            help = "Directory that the output will be stored in (must exist)"
+            required = true
+            arg_type = String
+        "--genome-build"
+            help = "human genome build for the VCF file, must be 19 (hg19) or
+                38 (hg38)"
+            required = true
+            arg_type = String
+        "--tol"
+            help = "Convergence tolerlance for coordinate descent algorithm 
+                    (default `0.0001`)"
+            default = 0.0001
+            arg_type = Float64
+        "--min_maf"
+            help = "Minimum minor allele frequency for a variable to be
+                considered (default `0.01`)"
+            default = 0.01
+            arg_type = Float64
+        "--min_hwe"
+            help = "Cutoff for hardy-weinburg equilibrium p-values. Only SNPs with 
+                p-value > `min_hwe` will be included (default `0.0`)"
+            default = 0.0
+            arg_type = Float64
+        "--method"
+            help = "group knockoff optimization algorithm, choices include `maxent`
+                (defualt), `mvr`, `sdp`, or `equi`. See sec 2 of 
+                https://arxiv.org/abs/2310.15069"
+            default = "maxent"
+            arg_type = String
+        "--group_def"
+            help = "method for constructing groups, choices include `hc`
+                (default, average-linkage hierarchical clustering) or `id`
+                (interpolative decomposition). See supplemental S6 of 
+                https://arxiv.org/abs/2310.15069"
+            default = "hc"
+            arg_type = String
+        "--group_cor_cutoff"
+            help = "correlation cutoff value for defining groups (default 
+                `0.5`). Value should be between 0 and 1, where larger values
+                correspond to larger groups."
+            arg_type = Float64
+            default = 0.5
+        "--group_rep_cutoff"
+            help = "cutoff value for selecting group-representatives (default
+                `0.5`). Value should be between 0 and 1, where larger values
+                correspond to more representatives per group. "
+            arg_type = Bool
+            default = true
+        "--verbose"
+            help = "Whether to print intermediate messages"
+            arg_type = Bool
+            default = true
+    end
+
+    # This is for code pre-compilation, enabling fast printing of "help statement".
+    # It runs the parser once when the module is loaded
+    # so that Julia can compile everything including functions that are defined in
+    # other modules. Of course, we need to make sure that the arguments are valid or
+    # the module will fail to load
+    if !parseargs
+        _useless = parse_args(
+            ["--vcffile","testfile","--chr","1","--start_bp","1","--end_bp","2",
+            "--outdir","testdir","--genome-build","19","--tol","0.0001",
+            "--min_maf","0.01","--min_hwe","0.01","--method","maxent",
+            "--group_def","hc","--group_cor_cutoff","0.5",
+            "group_rep_cutoff","0.5", "--verbose","true"], s
+        )
+        _useless = parse_args(["--help"], s)
+        return nothing
+    end
+
+    parsed_args = parse_args(s)
+    vcffile = parsed_args["vcffile"]
+    chr = parsed_args["chr"]
+    start_bp = parsed_args["start_bp"]
+    end_bp = parsed_args["end_bp"]
+    outdir = parsed_args["outdir"]
+    hg_build = parsed_args["genome-build"]
+    tol = parsed_args["tol"]
+    min_maf = parsed_args["min_maf"]
+    min_hwe = parsed_args["min_hwe"]
+    method = parsed_args["method"]
+    group_def = parsed_args["group_def"]
+    group_cor_cutoff = parsed_args["group_cor_cutoff"]
+    group_rep_cutoff = parsed_args["group_rep_cutoff"]
+    verbose = parsed_args["verbose"]
+
+    return vcffile, chr, start_bp, end_bp, outdir, 
+        hg_build, tol, min_maf, min_hwe, method, group_def, group_cor_cutoff, 
+        group_rep_cutoff, verbose
 end
