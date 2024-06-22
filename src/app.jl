@@ -184,8 +184,8 @@ end
 function julia_solveblock()::Cint
     try
         # read command line arguments
-        vcffile, chr, start_bp, end_bp, outdir, 
-            hg_build, tol, min_maf, min_hwe, method, group_def, group_cor_cutoff, 
+        vcffile, chr, start_bp, end_bp, outdir, hg_build, tol, min_maf, 
+            min_hwe, method, linkage, force_contiguous, group_cor_cutoff, 
             group_rep_cutoff, verbose = parse_solveblock_commandline(true)
 
         println("\n\nWelcome to the `solve_block` module of GhostKnockoffGWAS!")
@@ -200,7 +200,8 @@ function julia_solveblock()::Cint
         println("min_maf          = ", min_maf)
         println("min_hwe          = ", min_hwe)
         println("method           = ", method)
-        println("group_def        = ", group_def)
+        println("linkage          = ", linkage)
+        println("force_contiguous = ", force_contiguous)
         println("group_cor_cutoff = ", group_cor_cutoff)
         println("group_rep_cutoff = ", group_rep_cutoff)
         println("verbose          = ", verbose)
@@ -208,7 +209,7 @@ function julia_solveblock()::Cint
 
         solve_blocks(vcffile, chr, start_bp, end_bp, outdir, 
             hg_build, tol=tol, min_maf=min_maf, min_hwe=min_hwe, 
-            method=method, group_def=group_def, 
+            method=method, linkage=linkage, force_contiguous=force_contiguous,
             group_cor_cutoff=group_cor_cutoff, 
             group_rep_cutoff=group_rep_cutoff, verbose=verbose)
     catch
@@ -271,13 +272,19 @@ function parse_solveblock_commandline(parseargs::Bool)
                 https://arxiv.org/abs/2310.15069"
             default = "maxent"
             arg_type = String
-        "--group_def"
-            help = "method for constructing groups, choices include `hc`
-                (default, average-linkage hierarchical clustering) or `id`
-                (interpolative decomposition). See supplemental S6 of 
-                https://arxiv.org/abs/2310.15069"
-            default = "hc"
+        "--linkage"
+            help = "Linkage function to use for defining group membership. It 
+                defines how the distances between features are aggregated into
+                the distances between groups. Valid choices include `average` 
+                (default), `single`, `complete`, `ward`, and `ward_presquared`.
+                Note if `force_contiguous=true`, `linkage` must be `:single`"
+            default = "average"
             arg_type = String
+        "--force_contiguous"
+            help = "whether to force groups to be contiguous (default `false`).
+                Note if `force_contiguous=true`, `linkage` must be `:single`)"
+            default = false
+            arg_type = Bool
         "--group_cor_cutoff"
             help = "correlation cutoff value for defining groups (default 
                 `0.5`). Value should be between 0 and 1, where larger values
@@ -324,12 +331,13 @@ function parse_solveblock_commandline(parseargs::Bool)
     min_maf = parsed_args["min_maf"]
     min_hwe = parsed_args["min_hwe"]
     method = parsed_args["method"]
-    group_def = parsed_args["group_def"]
+    linkage = parsed_args["linkage"]
+    force_contiguous = parsed_args["force_contiguous"]
     group_cor_cutoff = parsed_args["group_cor_cutoff"]
     group_rep_cutoff = parsed_args["group_rep_cutoff"]
     verbose = parsed_args["verbose"]
 
     return vcffile, chr, start_bp, end_bp, outdir, 
-        hg_build, tol, min_maf, min_hwe, method, group_def, group_cor_cutoff, 
-        group_rep_cutoff, verbose
+        hg_build, tol, min_maf, min_hwe, method, linkage, force_contiguous, 
+        group_cor_cutoff, group_rep_cutoff, verbose
 end

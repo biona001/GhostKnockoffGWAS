@@ -167,9 +167,18 @@ and outputs the result into `outdir`.
     it is simply for computational performance. 
 + `method`: group knockoff optimization algorithm, choices include "maxent" 
     (defualt), "mvr", "sdp", or "equi". See sec 2 of https://arxiv.org/abs/2310.15069
-+ `group_def`: method for constructing groups, choices include "hc" 
-    (default, average-linkage hierarchical clustering) or "id" (interpolative 
-    decomposition). See supplemental S6 of https://arxiv.org/abs/2310.15069
++ `linkage`: *cluster linkage* function to use for defining group membership. It
+    defines how the distances between features are aggregated into the distances 
+    between groups. Valid choices include:
+    + `:average` (default): use the mean distance between any of the cluster members
+    + `:single`: use the minimum distance between any of the cluster members
+    + `:complete`: use the maximum distance between any of the members
+    + `:ward`: the distance is the increase of the average squared distance of a
+        point to its cluster centroid after merging the two clusters
+    + `:ward_presquared`: same as `:ward`, but assumes that the distances in d 
+        are already squared.
++ `force_contiguous`: whether to force groups to be contiguous (default `false`).
+    Note if `force_contiguous=true`, `linkage` must be `:single`)
 + `group_cor_cutoff`: correlation cutoff value for defining groups (default 
     `0.5`). Value should be between 0 and 1, where larger values correspond to 
     larger groups. 
@@ -215,7 +224,8 @@ function solve_blocks(
     min_hwe=0.0,
     force_block_diag=true,
     method::String = "maxent",
-    group_def::String="hc",
+    linkage::String = "average",
+    force_contiguous::Bool=false,
     group_cor_cutoff::Float64=0.5,
     group_rep_cutoff::Float64=0.5,
     verbose=true
@@ -223,6 +233,7 @@ function solve_blocks(
     isdir(outdir) || error("output directory $outdir does not exist!")
     group_def ∈ ["hc", "id"] || error("group_def should be \"hc\" or \"id\"")
     method = Symbol(method)
+    linkage = Symbol(linkage)
 
     # number of simultaneous knockoffs to generate. Note this number is FIXED 
     # because in `ghostbasil_parallel.jl`, `m=5` is hard-coded into high 
@@ -239,9 +250,8 @@ function solve_blocks(
 
     # define groups and representatives
     def_group_time = @elapsed begin
-        groups = group_def == "hc" ? 
-            hc_partition_groups(Sigma, cutoff=group_cor_cutoff, linkage=:average) : 
-            id_partition_groups(Sigma, rss_target=group_cor_cutoff)
+        groups = hc_partition_groups(Sigma, cutoff=group_cor_cutoff, 
+            linkage=linkage, force_contiguous=force_contiguous)
         group_reps = choose_group_reps(Sigma, groups, threshold=group_rep_cutoff)
         force_block_diag && rearrange_snps!(groups, group_reps, Sigma, data_info)
     end
