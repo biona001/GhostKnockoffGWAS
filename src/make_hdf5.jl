@@ -99,6 +99,7 @@ function get_block(
         push!(df, [join(VCF.id(record), ','), alt_freq, chr_i, pos_i, 
                   VCF.ref(record), alt_i[1]])
     end
+    close(reader)
 
     if !isnothing(snps_to_keep) 
         idx = filter!(!isnothing, indexin(snps_to_keep, df[!, "pos"]))
