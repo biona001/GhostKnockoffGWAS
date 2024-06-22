@@ -13,7 +13,9 @@ end
         [snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing])
 
 Imports genotype data of a VCF file from pos `start_bp` to `end_bp` as 
-double precision numeric matrix.
+double precision numeric matrix. Each row is a sample and each column is a SNP.
+All entries are {0, 1, 2} except for missing entries which is imputed with 
+column mean.
 
 # Inputs
 + `vcffile`: A VCF file storing individual level genotypes. Must end in `.vcf` 
@@ -34,10 +36,9 @@ double precision numeric matrix.
 + `X`: Double precision matrix containing genotypes between `start_bp` and 
     `end_bp`. All entries are {0, 1, 2} except for missing entries which is 
     imputed with column mean.
-+ `chrs`: Chromosome for each column of `X`
-+ `poss`: Basepair position for each column of `X`
-+ `ref`: Reference allele for each column of `X`
-+ `alt`: Alt allele for each column of `X`
++ `df`: A `DataFrame` containing meta information on the columns of `X`, 
+    including `rsid` (SNP id), `AF` (alt allele frequency), `chr`, `pos`, 
+    `ref`, and `alt`
 """
 function get_block(
     vcffile::String, 
@@ -140,7 +141,14 @@ end
         [verbose=true])
 
 Solves the group knockoff optimization problem on provided individual-level data
-and outputs the result into `outdir`.
+and outputs the result into `outdir`. All variants that reside on chromosome 
+`chr` with position between `start_bp` and `end_bp` (inclusive) will be included. 
+
+# Note on large VCF files
+Currently reading/parsing a VCF file is a single-threaded operation (even if 
+it is indexed). Thus, we *strongly recommend* one to split the input VCF 
+file by chromosomes, and possibly into smaller chunks, before running this
+function. 
 
 # Inputs
 + `vcffile`: A VCF file storing individual level genotypes. Must end in `.vcf` 
@@ -193,11 +201,9 @@ Calling `solve_blocks` will create 3 files in the directory `outdir/chr`:
     contains the following:
     - `D`: A `p × p` (dense) matrix corresponding to the S matrix for both the
         representative and non-representative variables. Knockoff sampling should 
-        use this matrix. If the graphical conditional independent assumption is 
-        satisfied exactly, this matrix should be sparse, but it is always never sparse
-        unless we use `cond_indep_corr` to force the covariance matrix to satisify it. 
+        use this matrix. 
     - `S`: Matrix obtained from solving the group knockoff optimization problem 
-        on the representatives.
+        on the representative (group-key) variables.
     - `Sigma`: The original `p × p` correlation matrix estimated from `vcffile`
     - `SigmaInv`: Inverse of `Sigma`
     - `Sigma_reps`: The correlation matrix for the representative variables. This
