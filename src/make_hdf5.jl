@@ -75,7 +75,7 @@ function get_block(
         alt_i = VCF.alt(record)
         validate(record, alt_i)
         _, _, _, _, _, alt_freq, _, _, _, maf, hwepval = gtstats(record, nothing)
-        maf < min_maf && continue
+        (isnan(maf) || maf < min_maf) && continue
         hwepval < min_hwe && continue
         gtkey = VariantCallFormat.findgenokey(record, "GT")
 
