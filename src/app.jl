@@ -253,7 +253,7 @@ function parse_solveblock_commandline(parseargs::Bool)
             help = "human genome build for the VCF file, must be 19 (hg19) or
                 38 (hg38)"
             required = true
-            arg_type = String
+            arg_type = Int
         "--tol"
             help = "Convergence tolerlance for coordinate descent algorithm 
                     (default `0.0001`)"
