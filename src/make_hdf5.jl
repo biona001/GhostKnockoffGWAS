@@ -279,21 +279,18 @@ function solve_blocks(
     # save main result in .h5 format and summary information in .csv
     dir = joinpath(outdir, "chr$chr")
     isdir(dir) || mkpath(dir)
-    JLD2.save(
-        joinpath(dir, "LD_start$(start_bp)_end$(end_bp).h5"), 
-        Dict(
-            "S" => S,
-            "D" => D,
-            "Sigma" => Sigma,
-            "SigmaInv" => inv(Sigma),
-            "groups" => groups,
-            "group_reps" => group_reps,
-            "Sigma_reps" => Sigma[group_reps, group_reps],
-            "Sigma_reps_inv" => inv(Sigma[group_reps, group_reps])
-        )
-    )
+    h5open(joinpath(dir, "LD_start$(start_bp)_end$(end_bp).h5"), "w") do file
+        write(file, "S", S)
+        write(file, "D", D)
+        write(file, "Sigma", Sigma)
+        write(file, "SigmaInv", inv(Sigma))
+        write(file, "groups", groups)
+        write(file, "group_reps", group_reps)
+        write(file, "Sigma_reps", Sigma[group_reps, group_reps])
+        write(file, "Sigma_reps_inv", inv(Sigma[group_reps, group_reps]))
+    end
     CSV.write(joinpath(dir, "Info_start$(start_bp)_end$(end_bp).csv"), data_info)
-    open(joinpath(dir, "summary_start$(start_bp)_end$(end_bp)"), "w") do io
+    open(joinpath(dir, "summary_start$(start_bp)_end$(end_bp).csv"), "w") do io
         println(io, "chr,$chr")
         println(io, "start_bp,$start_bp")
         println(io, "end_bp,$end_bp")
@@ -311,6 +308,7 @@ function solve_blocks(
         println("Time to read VCF file: $import_time")
         println("Time to define groups: $def_group_time")
         println("Time to perform group knockoff optimization: $solve_S_time")
+        println("Done!")
     end
 
     return nothing
