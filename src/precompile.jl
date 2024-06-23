@@ -1,3 +1,4 @@
 # fast GhostKnockoffGwAS --help
 using GhostKnockoffGWAS
-GhostKnockoffGWAS.parse_commandline(false)
+GhostKnockoffGWAS.parse_solveblock_commandline(false)
+GhostKnockoffGWAS.parse_ghostknockoffgwas_commandline(false)
