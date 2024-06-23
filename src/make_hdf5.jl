@@ -128,7 +128,7 @@ function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
     group_reps .= @views iperm[group_reps]
     sort!(group_reps)
     @assert issorted(groups) && issorted(group_reps)
-    Sigma.data .= @views Sigma[perm, perm]
+    Sigma .= @views Sigma[perm, perm]
     Sigma_info .= @views Sigma_info[perm, :]
     return nothing
 end
@@ -137,9 +137,9 @@ end
     solve_blocks(vcffile::String, chr::Int, start_bp::Int, end_bp::Int, 
         outdir::String, hg_build::Int; [m=5], [tol=0.0001], [min_maf=0.01], 
         [min_hwe=0.0], [force_block_diag=true], 
-        [method::String = "maxent"], [group_def::String="hc"], 
-        [group_cor_cutoff::Float64=0.5], [group_rep_cutoff::Float64=0.5], 
-        [verbose=true])
+        [method::String = "maxent"], [linkage::String="average"],
+        [force_contiguous::Bool=false], [group_cor_cutoff::Float64=0.5], 
+        [group_rep_cutoff::Float64=0.5], [verbose=true])
 
 Solves the group knockoff optimization problem on provided individual-level data
 and outputs the result into `outdir`. All variants that reside on chromosome 
@@ -240,7 +240,6 @@ function solve_blocks(
     verbose=true
     )
     isdir(outdir) || error("output directory $outdir does not exist!")
-    group_def ∈ ["hc", "id"] || error("group_def should be \"hc\" or \"id\"")
     method = Symbol(method)
     linkage = Symbol(linkage)
 
@@ -253,22 +252,23 @@ function solve_blocks(
     import_time = @elapsed begin
         X, data_info = get_block(vcffile, string(chr), start_bp, end_bp, 
             min_maf=min_maf, min_hwe=min_hwe, snps_to_keep=snps_to_keep)
-        Sigma = Symmetric(estimate_sigma(X))
+        Sigma = estimate_sigma(X)
         rename!(data_info, "pos" => "pos_hg$hg_build") # associate pos with hg_build
     end
 
     # define groups and representatives
     def_group_time = @elapsed begin
-        groups = hc_partition_groups(Sigma, cutoff=group_cor_cutoff, 
+        groups = hc_partition_groups(Symmetric(Sigma), cutoff=group_cor_cutoff, 
             linkage=linkage, force_contiguous=force_contiguous)
-        group_reps = choose_group_reps(Sigma, groups, threshold=group_rep_cutoff)
+        group_reps = choose_group_reps(Symmetric(Sigma), groups, 
+            threshold=group_rep_cutoff)
         force_block_diag && rearrange_snps!(groups, group_reps, Sigma, data_info)
     end
 
     # solve group knockoff optimization problem
     solve_S_time = @elapsed begin
-        S, D, obj = solve_s_graphical_group(Sigma, groups, group_reps, method,
-            m=m, tol=tol, verbose=verbose)
+        S, D, obj = solve_s_graphical_group(Symmetric(Sigma), groups, 
+            group_reps, method, m=m, tol=tol, verbose=verbose)
 
         # solve S using modified Sigma (enforcing conditional independence)
         # Sigma2 = Symmetric(cond_indep_corr(Sigma, groups, group_reps))
