@@ -1,10 +1,16 @@
-function estimate_sigma(X::AbstractMatrix)
+function estimate_sigma(X::AbstractMatrix; min_eigval=1e-5)
     n, p = size(X)
     if n > p
-        return cor(X)
+        Sigma = cor(X)
     else
         error("p > n case not handled yet!")
     end
+    # ensure Sigma is PSD
+    evals, evecs = eigen(Sigma)
+    evals[findall(x -> x < min_eigval, evals)] .= min_eigval
+    Sigma = evecs * Diagonal(evals) * evecs'
+    Statistics.cov2cor!(Sigma, sqrt.(diag(Sigma))) # scale to correlation matrix
+    return Sigma
 end
 
 """
