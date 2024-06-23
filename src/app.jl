@@ -152,7 +152,8 @@ function parse_ghostknockoffgwas_commandline(parseargs::Bool)
             ["--zfile","testdir","--LD-files","testdir2",
             "--N","1","--genome-build","38","--out","testdir3",
             "--CHR","1","--POS","2","--REF","3","--ALT","4","--Z","5",
-            "--seed","2024","--verbose","true"], s
+            "--seed","2024","--verbose","true","--random-shuffle","true",
+            "--skip-shrinkage-check","false"], s
         )
         _useless = parse_args(["--help"], s)
         return nothing
@@ -230,10 +231,12 @@ function parse_solveblock_commandline(parseargs::Bool)
             required = true
             arg_type = String
         "--chr"
-            help = "Target chromosome. This must match the `CHROM` field in 
-                the VCF file. "
+            help = "Target chromosome. This MUST be an integer and it must match 
+                the `CHROM` field in your VCF file. Thus, if your VCF file has
+                CHROM field like `chr1`, `CHR1`, or `CHROM1` etc, each record
+                must be renamed into `1`."
             required = true
-            arg_type = String
+            arg_type = Int
         "--start_bp"
             help = "starting basepair (position)"
             required = true
@@ -295,8 +298,8 @@ function parse_solveblock_commandline(parseargs::Bool)
             help = "cutoff value for selecting group-representatives (default
                 `0.5`). Value should be between 0 and 1, where larger values
                 correspond to more representatives per group. "
-            arg_type = Bool
-            default = true
+            arg_type = Float64
+            default = 0.5
         "--verbose"
             help = "Whether to print intermediate messages"
             arg_type = Bool
@@ -313,8 +316,9 @@ function parse_solveblock_commandline(parseargs::Bool)
             ["--vcffile","testfile","--chr","1","--start_bp","1","--end_bp","2",
             "--outdir","testdir","--genome-build","19","--tol","0.0001",
             "--min_maf","0.01","--min_hwe","0.01","--method","maxent",
-            "--group_def","hc","--group_cor_cutoff","0.5",
-            "group_rep_cutoff","0.5", "--verbose","true"], s
+            "--linkage","average","--force_contiguous","false",
+            "--group_cor_cutoff","0.5","--group_rep_cutoff","0.5",
+            "--verbose","true"], s
         )
         _useless = parse_args(["--help"], s)
         return nothing
