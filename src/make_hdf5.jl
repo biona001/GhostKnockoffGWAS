@@ -51,7 +51,7 @@ function get_block(
     )
     reader = VCF.Reader(openvcf(vcffile, "r"))
     T = Float64
-    n = nsamples(vcffile)
+    n = VCFTools.nsamples(vcffile)
     nsnps = 0
     X = ElasticArray{T}(undef, n, 0)
     df = DataFrame("rsid"=>String[], "AF"=>T[], "chr"=>String[], "pos"=> Int[], 
