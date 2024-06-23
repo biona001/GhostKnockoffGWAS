@@ -280,7 +280,7 @@ function solve_blocks(
     dir = joinpath(outdir, "chr$chr")
     isdir(dir) || mkpath(dir)
     JLD2.save(
-        joinpath(dir, "LD_start$(start_pos)_end$(end_pos).h5"), 
+        joinpath(dir, "LD_start$(start_bp)_end$(end_bp).h5"), 
         Dict(
             "S" => S,
             "D" => D,
@@ -292,8 +292,8 @@ function solve_blocks(
             "Sigma_reps_inv" => inv(Sigma[group_reps, group_reps])
         )
     )
-    CSV.write(joinpath(dir, "Info_start$(start_pos)_end$(end_pos).csv"), data_info)
-    open(joinpath(dir, "summary_start$(start_pos)_end$(end_pos)"), "w") do io
+    CSV.write(joinpath(dir, "Info_start$(start_bp)_end$(end_bp).csv"), data_info)
+    open(joinpath(dir, "summary_start$(start_bp)_end$(end_bp)"), "w") do io
         println(io, "chr,$chr")
         println(io, "start_bp,$start_bp")
         println(io, "end_bp,$end_bp")
