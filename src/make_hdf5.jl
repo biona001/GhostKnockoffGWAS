@@ -134,7 +134,7 @@ function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
 end
 
 """
-    solve_blocks(vcffile::String, chr::String, start_bp::Int, end_bp::Int, 
+    solve_blocks(vcffile::String, chr::Int, start_bp::Int, end_bp::Int, 
         outdir::String, hg_build::Int; [m=5], [tol=0.0001], [min_maf=0.01], 
         [min_hwe=0.0], [force_block_diag=true], 
         [method::String = "maxent"], [group_def::String="hc"], 
@@ -156,7 +156,9 @@ function.
     or `.vcf.gz`. The ALT field for each record must be unique, i.e. 
     multiallelic records must be split first. Missing genotypes will be imputed
     by column mean. 
-+ `chr`: Target chromosome. This must match the `CHROM` field in the VCF file. 
++ `chr`: Target chromosome. This MUST be an integer and it must match the `CHROM`
+    field in your VCF file. Thus, if your VCF file has CHROM field like `chr1`, 
+    `CHR1`, or `CHROM1` etc, each record must be renamed into `1`. 
 + `start_bp`: starting basepair (position)
 + `end_bp`: ending basepair (position)
 + `outdir`: Directory that the output will be stored in (must exist)
@@ -219,7 +221,7 @@ Calling `solve_blocks` will create 3 files in the directory `outdir/chr`:
 """
 function solve_blocks(
     vcffile::String,
-    chr::String,
+    chr::Int,
     start_bp::Int, 
     end_bp::Int, 
     outdir::String,
@@ -249,7 +251,7 @@ function solve_blocks(
 
     # import VCF data and estimate Sigma
     import_time = @elapsed begin
-        X, data_info = get_block(vcffile, chr, start_bp, end_bp, 
+        X, data_info = get_block(vcffile, string(chr), start_bp, end_bp, 
             min_maf=min_maf, min_hwe=min_hwe, snps_to_keep=snps_to_keep)
         Sigma = Symmetric(estimate_sigma(X))
         rename!(data_info, "pos" => "pos_hg$hg_build") # associate pos with hg_build
