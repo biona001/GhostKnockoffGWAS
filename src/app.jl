@@ -224,17 +224,17 @@ function parse_solveblock_commandline(parseargs::Bool)
     s = ArgParseSettings()
     @add_arg_table! s begin
         "--vcffile"
-            help = "A VCF file storing individual level genotypes. Must end in
-                `.vcf` or `.vcf.gz`. The ALT field for each record must be
-                unique, i.e. multiallelic records must be split first. Missing
-                genotypes will be imputed by column mean."
+            help = "A VCF file storing individual level genotypes. Must end in " *
+                "`.vcf` or `.vcf.gz`. The ALT field for each record must be " *
+                "unique, i.e. multiallelic records must be split first. Missing " *
+                "genotypes will be imputed by column mean."
             required = true
             arg_type = String
         "--chr"
-            help = "Target chromosome. This MUST be an integer and it must match 
-                the `CHROM` field in your VCF file. Thus, if your VCF file has
-                CHROM field like `chr1`, `CHR1`, or `CHROM1` etc, each record
-                must be renamed into `1`."
+            help = "Target chromosome. This MUST be an integer and it must match " *
+                "the `CHROM` field in your VCF file. Thus, if your VCF file has " *
+                "CHROM field like `chr1`, `CHR1`, or `CHROM1` etc, each record " *
+                "must be renamed into `1`."
             required = true
             arg_type = Int
         "--start_bp"
@@ -250,54 +250,54 @@ function parse_solveblock_commandline(parseargs::Bool)
             required = true
             arg_type = String
         "--genome-build"
-            help = "human genome build for the VCF file, must be 19 (hg19) or
-                38 (hg38)"
+            help = "human genome build for the VCF file, must be 19 (hg19) or " *
+                "38 (hg38)"
             required = true
             arg_type = Int
         "--tol"
-            help = "Convergence tolerlance for coordinate descent algorithm 
-                    (default `0.0001`)"
+            help = "Convergence tolerlance for coordinate descent algorithm " *
+                "(default `0.0001`)"
             default = 0.0001
             arg_type = Float64
         "--min_maf"
-            help = "Minimum minor allele frequency for a variable to be
-                considered (default `0.01`)"
+            help = "Minimum minor allele frequency for a variable to be " *
+                "considered (default `0.01`)"
             default = 0.01
             arg_type = Float64
         "--min_hwe"
-            help = "Cutoff for hardy-weinburg equilibrium p-values. Only SNPs with 
-                p-value > `min_hwe` will be included (default `0.0`)"
+            help = "Cutoff for hardy-weinburg equilibrium p-values. Only SNPs with " *
+                "p-value > `min_hwe` will be included (default `0.0`)"
             default = 0.0
             arg_type = Float64
         "--method"
-            help = "group knockoff optimization algorithm, choices include `maxent`
-                (defualt), `mvr`, `sdp`, or `equi`. See sec 2 of 
-                https://arxiv.org/abs/2310.15069"
+            help = "group knockoff optimization algorithm, choices include `maxent` " *
+                "(defualt), `mvr`, `sdp`, or `equi`. See sec 2 of " *
+                "https://arxiv.org/abs/2310.15069"
             default = "maxent"
             arg_type = String
         "--linkage"
-            help = "Linkage function to use for defining group membership. It 
-                defines how the distances between features are aggregated into
-                the distances between groups. Valid choices include `average` 
-                (default), `single`, `complete`, `ward`, and `ward_presquared`.
-                Note if `force_contiguous=true`, `linkage` must be `:single`"
+            help = "Linkage function to use for defining group membership. It " *
+                "defines how the distances between features are aggregated into " *
+                "the distances between groups. Valid choices include `average` " *
+                "(default), `single`, `complete`, `ward`, and `ward_presquared`. " *
+                "Note if `force_contiguous=true`, `linkage` must be `:single`"
             default = "average"
             arg_type = String
         "--force_contiguous"
-            help = "whether to force groups to be contiguous (default `false`).
-                Note if `force_contiguous=true`, `linkage` must be `:single`)"
+            help = "whether to force groups to be contiguous (default `false`). " *
+                "Note if `force_contiguous=true`, `linkage` must be `:single`)"
             default = false
             arg_type = Bool
         "--group_cor_cutoff"
-            help = "correlation cutoff value for defining groups (default 
-                `0.5`). Value should be between 0 and 1, where larger values
-                correspond to larger groups."
+            help = "correlation cutoff value for defining groups (default " *
+                "`0.5`). Value should be between 0 and 1, where larger values " *
+                "correspond to larger groups."
             arg_type = Float64
             default = 0.5
         "--group_rep_cutoff"
-            help = "cutoff value for selecting group-representatives (default
-                `0.5`). Value should be between 0 and 1, where larger values
-                correspond to more representatives per group. "
+            help = "cutoff value for selecting group-representatives (default " *
+                "`0.5`). Value should be between 0 and 1, where larger values " *
+                "correspond to more representatives per group. "
             arg_type = Float64
             default = 0.5
         "--verbose"
