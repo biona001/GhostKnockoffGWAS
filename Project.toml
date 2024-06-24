@@ -24,7 +24,7 @@ ghostbasil_jll = "caeec347-1c5e-53ac-8e86-7f5e1a690164"
 
 [compat]
 ArgParse = "1.0"
-Knockoffs = "1.1.11"
+Knockoffs = "2"
 CSV = "0.10"
 DataFrames = "1"
 DelimitedFiles = "1"
