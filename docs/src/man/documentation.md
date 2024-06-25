@@ -30,7 +30,7 @@ GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-b
 | `--Z`          | Int    | The column in `zfile` that will be read as Z-scores. [If not specified, we will search for a column with header `Z`] |
 | `--seed`       | Int    | Sets the random seed [If not specified, defaults to `2023`] |
 | `--verbose`    | Bool   | Whether to print intermediate messages [If not specified, defaults to `true`] |
-| `--random-shuffle` | Bool | Whether to randomly permute the order of Z-scores and their knockoffs to adjust for potential ordering bias. [If not specified, defaults to `true`] |
+| `--random-shuffle` | Bool | Whether to randomly permute the order of Z-scores and their knockoffs to adjust for potential ordering bias. The main purpose of this option is to take care of potential ordering bias of Lasso solvers. However, in our simulations we never observed such biases, so we turn this off by default.[If not specified, defaults to `false`] |
 | `--skip-shrinkage-check` | Bool | Whether to allow Knockoff analysis to proceed even with large (>0.25) LD shrinkages [If not specified, defaults to `false`] |
 
 

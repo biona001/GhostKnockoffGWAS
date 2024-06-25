@@ -45,6 +45,10 @@ pre-computed knockoff data in `LD_files`.
     default = `true`)
 + `skip_shrinkage_check`: Forces a result output even if there is a high
     estimated LD shrinkage by SuSiE's method (default = `false`)
++ `random_shuffle`: Whether to randomly permute the order of the original and 
+    knockoff variables (default `false`). The main purpose of this option is 
+    to take care of potential ordering bias of Lasso solvers. However, in our 
+    simulations we never observed such biases, so we turn this off by default. 
 
 # Output
 By default we output 2 files into `outdir`
@@ -76,7 +80,7 @@ function ghostknockoffgwas(
     target_fdrs = [0.01, 0.05, 0.1, 0.2],
     verbose::Bool=true,
     skip_shrinkage_check::Bool=false,
-    random_shuffle::Bool = true
+    random_shuffle::Bool = false
     )
     # check for errors
     any(isnan, z) && error("Z score contains NaN!")

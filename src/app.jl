@@ -133,7 +133,7 @@ function parse_ghostknockoffgwas_commandline(parseargs::Bool)
             help = "Whether to randomly permute the order of Z-scores and " * 
                    "their knockoffs to adjust for potential ordering bias."
             arg_type = Bool
-            default = true
+            default = false
         "--skip-shrinkage-check"
             help = "Whether to allow Knockoff analysis to proceed even with " * 
                    "large (>0.25) LD shrinkages. Only use this option if you " *
