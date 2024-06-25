@@ -110,8 +110,8 @@ function ghostknockoffgwas(
     t21, t22, t23, t24 = 0.0, 0.0, 0.0, 0.0# some timers
     start_t = time()
     γ_mean = 0.0                           # keeps track of LD shrinkage across regions
-    df = DataFrame(rsid=String[], AF=Float64[], chr=Int[], 
-        ref=String[], alt=String[], pos_hg19=Int[], pos_hg38=Int[])
+    headers = ["rsid", "AF", "chr", "ref", "alt", "pos_hg$(hg_build)"]
+    df = DataFrame([String[], Float64[], Int[], String[], String[], Int[]], headers)
 
     # assemble knockoff results across regions
     nregions, nsnps, nknockoff_snps = 0, 0, 0
@@ -155,7 +155,7 @@ function ghostknockoffgwas(
                 # save matching snps info
                 LD_keep_idx = indexin(shared_snps, LD_pos)
                 GWAS_keep_idx = indexin(shared_snps, GWAS_pos)
-                append!(df, Sigma_info[LD_keep_idx, :])
+                append!(df, @view(Sigma_info[LD_keep_idx, headers]))
                 if length(LD_keep_idx) == 0 || length(GWAS_keep_idx) == 0 
                     nregions += 1
                     if verbose
@@ -294,7 +294,7 @@ function ghostknockoffgwas(
         end
 
         # sort by chr and pos
-        sort!(df, [:chr, :pos_hg19])
+        sort!(df, [:chr, Symbol("pos_hg$(hg_build)")])
 
         # write to output
         CSV.write(joinpath(outdir, outname * ".txt"), df)
