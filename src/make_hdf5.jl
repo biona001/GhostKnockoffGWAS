@@ -258,6 +258,8 @@ function solve_blocks(
     import_time = @elapsed begin
         X, data_info = get_block(vcffile, string(chr), start_bp, end_bp, 
             min_maf=min_maf, min_hwe=min_hwe, snps_to_keep=snps_to_keep)
+        size(X, 2) > 0 || 
+            error("No SNPs exist between start_bp=$start_bp and end_bp=$end_bp, exiting.")
         Sigma = estimate_sigma(X)
         rename!(data_info, "pos" => "pos_hg$hg_build") # associate pos with hg_build
     end
