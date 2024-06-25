@@ -44,32 +44,5 @@ z, chr, pos, effect_allele, non_effect_allele = GhostKnockoffGWAS.read_zscores(z
 ```@docs
 ghostknockoffgwas
 read_zscores
+solve_blocks
 ```
-
-## Compiling GhostKnockoffGWAS
-
-I compiled this with julia v1.9.0 on Sherlock cluster, with `gcc/7.3.0` loaded. 
-
-1. Within julia,
-    ```
-    ]add libcxxwrap_julia_jll
-    ```
-    Note: as of Feb 2024, `libcxxwrap_julia_jll` must be v0.11.x
-2. Make sure `GhostKnockoffGWAS` is installed within Julia. 
-3. `dev` the package via
-    ```julia
-    ]dev GhostKnockoffGWAS
-    ```
-4. Compile using [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl)
-```julia
-using PackageCompiler, GhostKnockoffGWAS
-src = normpath(pathof(GhostKnockoffGWAS), "../..")
-des = normpath(pathof(GhostKnockoffGWAS), "../../app_linux_x86")
-precompile_script = normpath(pathof(GhostKnockoffGWAS), "../precompile.jl")
-@time create_app(src, des, 
-    include_lazy_artifacts=true, 
-    force=true, 
-    precompile_execution_file=precompile_script
-)
-```
-The last step takes >15 minutes. 

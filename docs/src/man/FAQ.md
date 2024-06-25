@@ -34,7 +34,7 @@ We currently do not support X/Y/M chromosome analysis.
 
 ## When will non-European LD files be available?
 
-We will release more pre-processed LD files for download, once we tested and verified the methodology against suitable datasets. Most likely, the first non-EUR release will be on African and East Asian populations. 
+We will release more pre-processed LD files for download, once we tested and verified the methodology against suitable datasets. For now, users with non-EUR samples must build their own LD files using the `solveblock` executable, see [Customizing LD files](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks).
 
 ## Admixed samples?
 
@@ -42,6 +42,6 @@ If your study subjects are somewhat admixed, one can try `GhostKnockoffGWAS` wit
 
 If your study subjects are extremely admixed, then it is unlikely that GhostKnockoffGWAS will return good results. The main difficulty in enabling analysis for admixed cohorts lies in pre-computing good LD files for admixed subjects. Computing required quantities on the fly is too computationally intensive. 
 
-## How do I specify my own groups?
+## I want to build my own LD files. How do I determine `start_bp` and `end_bp`?
 
-We will add this feature in the near future
+In our papers, we defined each start and end position by adapting the [quasi-independent regions of ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/). Given individual level data, one can compute approximately independent LD blocks directly, see [reference](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8696101/) and [R software](https://privefl.github.io/bigsnpr/reference/snp_ldsplit.html).

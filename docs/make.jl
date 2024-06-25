@@ -16,6 +16,7 @@ makedocs(
         "Downloads" => "man/download.md",
         "Acceptable Z-scores file" => "man/zfile.md",
         "Tutorial" => "man/examples.md",
+        "Customizing LD files" => "man/solveblocks.md",
         # "Video tutorials" => "man/video.md",
         "FAQ" => "man/FAQ.md",
         "Usage within Julia" => "man/julia.md",

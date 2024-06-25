@@ -1,10 +1,10 @@
 
 # Developer documentation
 
-This is for advanced users who wish to build customized knockoff analysis pipelines. Currently, customization is not easy, but it is possible in principle at 2 levels: 
+This is for advanced users who wish to build customized knockoff analysis pipelines. It is possible at 2 levels: 
 
-1. Processing LD panels
-    + Specifying which LD panel to use
+1. Processing LD panels (see [Customizing LD files](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks))
+    + Specifying which LD panel to use or [use individual-level data](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks)
     + Defining quasi-independent regions and groups
     + Solving the knockoff (convex) optimization problem
     + Saving the result in a easy-to-read format, which will be read in step 2
@@ -14,13 +14,15 @@ This is for advanced users who wish to build customized knockoff analysis pipeli
     + Fit a pseudo-lasso problem
     + Applying the knockoff filter
 
-A full example is provided in 3 separate jupyter notebooks: [part 0](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part0.ipynb), [part 1](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part1.ipynb), and [part 2](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part2.ipynb). If you need assistance on any of these steps, feel free to reach out to us. 
+A full example using the Pan-UKB LD files is provided in 3 separate jupyter notebooks: [part 0](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part0.ipynb), [part 1](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part1.ipynb), and [part 2](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part2.ipynb). If you need assistance on any of these steps, feel free to reach out to us. 
 
-## 1. Processing LD panels
+## 1. Processing downloaded LD panels
 
-This section gives a high-level overview up to part 1 of the GhostKnockoff pipeline (processing of LD files to be used as input to `GhostKnockoffGWAS`). 
+See [Customizing LD files](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks) if you have individual level data and are willing to use in-sample LD. 
 
-+ Processing of LD panels (including downloading and importing the data matrices) is carried out by [EasyLD.jl](https://github.com/biona001/EasyLD.jl). This package should make it easy to import a region of the LD matrix into memory in Julia. 
+Otherwise, large consortiums such as [Pan-UKBB](https://pan-dev.ukbb.broadinstitute.org/docs/hail-format/index.html) and [gnomAD](https://gnomad.broadinstitute.org/downloads#v2-linkage-disequilibrium) distributes LD panels for various population. 
+
++ These pre-existing LD panels can be downloaded and imported by [EasyLD.jl](https://github.com/biona001/EasyLD.jl) within Julia. 
 + To partition the extremely large LD matrix into manageable pieces, we directly adopted the output of [ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/) for which `AFR` (african), `ASN` (east Asians), and `EUR` (european) results are already available (position coordinates are given in HG19). For the EUR panel, the autosomes are partitioned into 1703 "quasi-independent" regions, see Figure S2 of [this paper](https://arxiv.org/abs/2310.15069) for summaries. 
 + Knockoff optimization problem was carried out by [Knockoffs.jl](https://github.com/biona001/Knockoffs.jl). In particular, we defined groups via average-linkage hierarchical clustering, chose group-key variants within each group via Algorithm A1 in the paper with threshold value $c=0.5$, and employed the maximum-entropy group-knockoff solver.
 
@@ -99,3 +101,32 @@ with the understanding that $B_i$ is the covariance matrix for $(Z, \tilde{Z}_1,
 \end{aligned}
 ```
 where $C_i = \Sigma_i - S_i$. In Julia, this functionality is supported via the [Ghostbasil.jl](https://github.com/biona001/ghostbasil.jl) package. 
+
+## Compiling GhostKnockoffGWAS
+
+I compiled this with julia v1.9.0 on Sherlock cluster, with `gcc/7.3.0` loaded. 
+
+1. Within julia,
+    ```
+    ]add libcxxwrap_julia_jll
+    ```
+    Note: as of Feb 2024, `libcxxwrap_julia_jll` must be v0.11.x
+2. Make sure `GhostKnockoffGWAS` is installed within Julia. 
+3. `dev` the package via
+    ```julia
+    ]dev GhostKnockoffGWAS
+    ```
+4. Compile using [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl)
+```julia
+using PackageCompiler, GhostKnockoffGWAS
+src = normpath(pathof(GhostKnockoffGWAS), "../..")
+des = normpath(pathof(GhostKnockoffGWAS), "../../app_linux_x86")
+precompile_script = normpath(pathof(GhostKnockoffGWAS), "../precompile.jl")
+@time create_app(src, des, 
+    include_lazy_artifacts=true, 
+    force=true, 
+    precompile_execution_file=precompile_script,
+    executables=["GhostKnockoffGWAS"=>"julia_main", "solveblock"=>"julia_solveblock"]
+)
+```
+The last step takes >15 minutes. 

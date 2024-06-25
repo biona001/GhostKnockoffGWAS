@@ -271,16 +271,16 @@ function parse_solveblock_commandline(parseargs::Bool)
             arg_type = Float64
         "--method"
             help = "group knockoff optimization algorithm, choices include `maxent` " *
-                "(defualt), `mvr`, `sdp`, or `equi`. See sec 2 of " *
+                "(default), `mvr`, `sdp`, or `equi`. See sec 2 of " *
                 "https://arxiv.org/abs/2310.15069"
             default = "maxent"
             arg_type = String
         "--linkage"
-            help = "Linkage function to use for defining group membership. It " *
-                "defines how the distances between features are aggregated into " *
+            help = "Linkage function to use for hierarchically clustering groups. " *
+                "It defines how the distances between features are aggregated into " *
                 "the distances between groups. Valid choices include `average` " *
                 "(default), `single`, `complete`, `ward`, and `ward_presquared`. " *
-                "Note if `force_contiguous=true`, `linkage` must be `:single`"
+                "Note if `force_contiguous` is `true`, `linkage` must be `single`"
             default = "average"
             arg_type = String
         "--force_contiguous"

@@ -3,6 +3,25 @@
 
 This page collect examples of running the ghost knockoff pipeline. We will cover topics such as installation, examining input data, running the software, and interpreting the output. 
 
+## Quick Start
+
+Here is a short summary of this tutorial:
+
+1. Step 1: Download pre-processed LD files and binary executable and extract their content
+
+        wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.1.2/app_linux_x86.tar.gz
+        wget https://zenodo.org/records/10433663/files/EUR.zip
+        tar -xvzf app_linux_x86.tar.gz
+        unzip EUR.zip  # decompresses to ~8.7GB
+2. Step 2: Prepare a valid Z score file, or download an example as:
+
+        wget https://github.com/biona001/GhostKnockoffGWAS/raw/main/data/example_zfile.txt
+3. Step 3: Run the analysis
+
+        app_linux_x86/bin/GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
+        
+4. (optional): Make Manhattan plot with [this R script](https://github.com/biona001/GhostKnockoffGWAS/blob/main/src/manhattan.R). 
+
 ## Step 1: Download pre-processed LD files and binary executable
 
 Proceed to the [Downloads page](https://biona001.github.io/GhostKnockoffGWAS/dev/man/download) and download (1) the software as well as (2) a pre-processed knockoff dataset suitable for your analysis, e.g.

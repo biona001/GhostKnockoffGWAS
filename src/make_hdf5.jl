@@ -183,9 +183,9 @@ function.
     are contiguous (default `true`). This has no impact on the final results, 
     it is simply for computational performance. 
 + `method`: group knockoff optimization algorithm, choices include "maxent" 
-    (defualt), "mvr", "sdp", or "equi". See sec 2 of https://arxiv.org/abs/2310.15069
-+ `linkage`: *cluster linkage* function to use for defining group membership. It
-    defines how the distances between features are aggregated into the distances 
+    (default), "mvr", "sdp", or "equi". See sec 2 of https://arxiv.org/abs/2310.15069
++ `linkage`: *cluster linkage* function to use for hierarchically clustering groups.
+    It defines how the distances between features are aggregated into the distances 
     between groups. Valid choices include:
     + `:average` (default): use the mean distance between any of the cluster members
     + `:single`: use the minimum distance between any of the cluster members
