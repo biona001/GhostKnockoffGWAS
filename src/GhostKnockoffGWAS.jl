@@ -18,6 +18,7 @@ using Knockoffs
 using VCFTools
 using VariantCallFormat
 using ElasticArrays
+using CovarianceEstimation
 
 export ghostknockoffgwas,
     read_zscores,

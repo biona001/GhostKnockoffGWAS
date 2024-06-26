@@ -1,15 +1,20 @@
 function estimate_sigma(X::AbstractMatrix; min_eigval=1e-5)
-    n, p = size(X)
-    if n > p
-        Sigma = cor(X)
-    else
-        error("p > n case not handled yet!")
-    end
+    # n, p = size(X)
+    # if n > p
+    #     Sigma = cor(X)
+    # else
+    #     error("p > n case not handled yet!")
+    # end
+
+    # shrinkage based covariance, handles high dimensional case
+    Sigma = cov(LinearShrinkage(DiagonalUnequalVariance(), :lw), X)
+
     # ensure Sigma is PSD
     evals, evecs = eigen(Sigma)
     evals[findall(x -> x < min_eigval, evals)] .= min_eigval
     Sigma = evecs * Diagonal(evals) * evecs'
     Statistics.cov2cor!(Sigma, sqrt.(diag(Sigma))) # scale to correlation matrix
+
     return Sigma
 end
 
