@@ -24,7 +24,7 @@ Otherwise, large consortiums such as [Pan-UKBB](https://pan-dev.ukbb.broadinstit
 
 + These pre-existing LD panels can be downloaded and imported by [EasyLD.jl](https://github.com/biona001/EasyLD.jl) within Julia. 
 + To partition the extremely large LD matrix into manageable pieces, we directly adopted the output of [ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/) for which `AFR` (african), `ASN` (east Asians), and `EUR` (european) results are already available (position coordinates are given in HG19). For the EUR panel, the autosomes are partitioned into 1703 "quasi-independent" regions, see Figure S2 of [this paper](https://arxiv.org/abs/2310.15069) for summaries. 
-+ Knockoff optimization problem was carried out by [Knockoffs.jl](https://github.com/biona001/Knockoffs.jl). In particular, we defined groups via average-linkage hierarchical clustering, chose group-key variants within each group via Algorithm A1 in the paper with threshold value $c=0.5$, and employed the maximum-entropy group-knockoff solver.
++ Knockoff optimization problem was carried out by [Knockoffs.jl](https://github.com/biona001/Knockoffs.jl). In particular, we defined groups via average-linkage hierarchical clustering, chose group-key variants within each group via Algorithm A2 in the paper with threshold value $c=0.5$, and employed the maximum-entropy group-knockoff solver.
 
 For details, please see section 5.1 and 5.2 of [this paper](https://arxiv.org/pdf/2310.15069.pdf). Note that the precomputed knockoff statistics includes everything up to this point. 
 

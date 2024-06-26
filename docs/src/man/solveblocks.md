@@ -65,4 +65,4 @@ Calling `solveblock` will create 3 files in the directory `outdir/chr` (the `chr
 
 ## A note on run-time
 
-Because VCF files text files, it is inherently slow to read, even if it is indexed. Thus, we *strongly recommend* one to split the input VCF file by chromosomes, and possibly into smaller chunks, before running `solveblock`. For optimal performance, it is best to filter the VCF file down to records between `start_bp` and `end_bp` (e.g. with `bcftools`) before running `solveblock`. 
+Because VCF files are plain text files, it is inherently slow to read even if it is indexed. Thus, we *strongly recommend* one to split the input VCF file by chromosomes, and possibly into smaller chunks, before running `solveblock`. For optimal performance, it is best to filter the VCF file down to records between `start_bp` and `end_bp` (e.g. with `bcftools`) before running `solveblock`. 
