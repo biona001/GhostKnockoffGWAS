@@ -48,6 +48,11 @@ setwd(out_dir)
 # out_filename = "AD_meta"
 # target_fdr = 0.1
 
+# input_file = "GK_out.txt"
+# out_dir = "."
+# out_filename = "chr1_plt"
+# target_fdr = 0.1
+
 #############################################################################
 ############ FIRST, CREATE MANHATTAN PLOT FOR MARGINAL ANALYSIS #############
 ############ In particular, this will generate an intermediate .csv file ####
@@ -59,8 +64,11 @@ memo.text = paste('MarginalAssociationTest_',out_filename, sep='') # full file n
 
 ## read result file
 x1 <- fread(input_file,header=T)
-setnames(x1, c(3,7), c("CHR","BP"))
-setnames(x1, 4:5, c("REF","ALT"))
+x1_cols = colnames(x1)
+setnames(x1, grep("^chr", x1_cols)[1], "CHR")
+setnames(x1, grep("^pos", x1_cols)[1], "BP")
+setnames(x1, grep("^ref", x1_cols)[1], "REF")
+setnames(x1, grep("^alt", x1_cols)[1], "ALT")
 x1 <- x1[, SNP:=paste(CHR,BP,REF,ALT,sep=":")]
 x1 <- x1[which(!is.na(x1[,'CHR'])),]
 setorderv(x1, c("CHR","BP"))
@@ -196,8 +204,11 @@ memo.text = paste('GhostKnockoffGWAS_',out_filename, sep='') # full file name
 
 ## read result file
 x1 <- fread(input_file,header=T)
-setnames(x1, c(3,7), c("CHR","BP"))
-setnames(x1, 4:5, c("REF","ALT"))
+x1_cols = colnames(x1)
+setnames(x1, grep("^chr", x1_cols)[1], "CHR")
+setnames(x1, grep("^pos", x1_cols)[1], "BP")
+setnames(x1, grep("^ref", x1_cols)[1], "REF")
+setnames(x1, grep("^alt", x1_cols)[1], "ALT")
 x1 <- x1[, SNP:=paste(CHR,BP,REF,ALT,sep=":")]
 x1 <- x1[which(!is.na(x1[,'CHR'])),]
 setorderv(x1, c("CHR","BP"))
