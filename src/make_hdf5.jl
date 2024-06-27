@@ -134,7 +134,7 @@ function validate(record, chr_i, pos_i, prev_pos, alt_i)
         error("Detected VCF file is not sorted starting at pos $pos_i")
     end
     if !isdigit(chr_i[1])
-        error("Detected non-integer chromosome with $chr_i at pos $pos_i, " * 
+        error("Detected non-integer chromosome `$chr_i` at pos $pos_i, " * 
             "please rename all CHROM field in the VCF file into an integer. " * 
             "E.g. `chr1` should be renamed into `1`."
             )
@@ -274,7 +274,7 @@ function solve_blocks(
         X, data_info = get_block(vcffile, chr, start_bp, end_bp, 
             min_maf=min_maf, min_hwe=min_hwe, snps_to_keep=snps_to_keep)
         size(X, 2) > 1 || 
-            error("Less than 1 SNP(s) exist between start_bp=$start_bp and end_bp=$end_bp, exiting.")
+            error("Detected 1 or fewer SNP(s) between start_bp=$start_bp and end_bp=$end_bp, exiting.")
         size(X, 1) ≥ 10 || 
             error("Detected less than 10 samples, not recommended")
 
