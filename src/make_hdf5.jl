@@ -19,7 +19,7 @@ function estimate_sigma(X::AbstractMatrix; min_eigval=1e-5)
 end
 
 """
-    get_block(vcffile::String, chr::String, start_bp::Int, end_bp::Int;
+    get_block(vcffile::String, chr::Int, start_bp::Int, end_bp::Int;
         [min_maf::Float64=0.01], [min_hwe::Float64=0.0], 
         [snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing])
 
@@ -53,7 +53,7 @@ column mean.
 """
 function get_block(
     vcffile::String, 
-    chr::String, 
+    chr::Int, 
     start_bp::Int, 
     end_bp::Int;
     min_maf::Float64=0.01,
@@ -68,27 +68,27 @@ function get_block(
     df = DataFrame("rsid"=>String[], "AF"=>T[], "chr"=>String[], "pos"=> Int[], 
                    "ref"=> String[], "alt"=>String[])
     model = :additive # additive genetic model
+    prev_pos = 0
 
     record = VCF.Record()
     while !eof(reader)
         read!(reader, record)
 
-        # check chr
+        # current SNP info
         chr_i = VCF.chrom(record)
-        chr_i > chr && break
-
-        # check position
         pos_i = VCF.pos(record)
+        alt_i = VCF.alt(record)
+        _, _, _, _, _, alt_freq, _, _, _, maf, hwepval = gtstats(record, nothing)
+        gtkey = VariantCallFormat.findgenokey(record, "GT")
+
+        # quick exit
+        validate(record, chr_i, pos_i, prev_pos, alt_i)
+        chr_i = parse(Int, chr_i)
         pos_i < start_bp && continue
         pos_i > end_bp && break
-
-        # check SNP is usable
-        alt_i = VCF.alt(record)
-        validate(record, alt_i)
-        _, _, _, _, _, alt_freq, _, _, _, maf, hwepval = gtstats(record, nothing)
+        chr_i > chr && break
         (isnan(maf) || maf < min_maf) && continue
         hwepval < min_hwe && continue
-        gtkey = VariantCallFormat.findgenokey(record, "GT")
 
         # add column to X
         nsnps += 1
@@ -107,6 +107,7 @@ function get_block(
         end
 
         # save record info
+        prev_pos = pos_i
         push!(df, [join(VCF.id(record), ','), alt_freq, chr_i, pos_i, 
                   VCF.ref(record), alt_i[1]])
     end
@@ -121,13 +122,22 @@ function get_block(
     return Matrix(X), df
 end
 
-function validate(record, alt_i)
+function validate(record, chr_i, pos_i, prev_pos, alt_i)
     if VariantCallFormat.findgenokey(record, "GT") === nothing
         error("chr $chr_i at pos $pos_i has no GT field!")
     end
     if length(alt_i) > 1
         error("Detected multiallelic marker at chr $chr_i pos $pos_i. " * 
               "Please split multiallelic markers first." )
+    end
+    if pos_i < prev_pos
+        error("Detected VCF file is not sorted starting at pos $pos_i")
+    end
+    if !isdigit(chr_i[1])
+        error("Detected non-integer chromosome `$chr_i` at pos $pos_i, " * 
+            "please rename all CHROM field in the VCF file into an integer. " * 
+            "E.g. `chr1` should be renamed into `1`."
+            )
     end
 end
 
@@ -261,10 +271,10 @@ function solve_blocks(
 
     # import VCF data and estimate Sigma
     import_time = @elapsed begin
-        X, data_info = get_block(vcffile, string(chr), start_bp, end_bp, 
+        X, data_info = get_block(vcffile, chr, start_bp, end_bp, 
             min_maf=min_maf, min_hwe=min_hwe, snps_to_keep=snps_to_keep)
         size(X, 2) > 1 || 
-            error("Less than 1 SNP(s) exist between start_bp=$start_bp and end_bp=$end_bp, exiting.")
+            error("Detected 1 or fewer SNP(s) between start_bp=$start_bp and end_bp=$end_bp, exiting.")
         size(X, 1) ≥ 10 || 
             error("Detected less than 10 samples, not recommended")
 
