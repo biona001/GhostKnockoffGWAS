@@ -78,15 +78,16 @@ function get_block(
         chr_i = VCF.chrom(record)
         pos_i = VCF.pos(record)
         alt_i = VCF.alt(record)
-        _, _, _, _, _, alt_freq, _, _, _, maf, hwepval = gtstats(record, nothing)
         gtkey = VariantCallFormat.findgenokey(record, "GT")
+        _, _, _, _, _, alt_freq, _, _, _, maf, hwepval = gtstats(record, nothing)
 
         # quick exit
-        validate(record, chr_i, pos_i, prev_pos, alt_i)
+        validate(record, chr_i, pos_i, prev_pos, alt_i, gtkey)
         chr_i = parse(Int, chr_i)
+        chr_i < chr && continue
+        chr_i > chr && break
         pos_i < start_bp && continue
         pos_i > end_bp && break
-        chr_i > chr && break
         (isnan(maf) || maf < min_maf) && continue
         hwepval < min_hwe && continue
 
@@ -122,8 +123,8 @@ function get_block(
     return Matrix(X), df
 end
 
-function validate(record, chr_i, pos_i, prev_pos, alt_i)
-    if VariantCallFormat.findgenokey(record, "GT") === nothing
+function validate(record, chr_i, pos_i, prev_pos, alt_i, gtkey)
+    if gtkey === nothing
         error("chr $chr_i at pos $pos_i has no GT field!")
     end
     if length(alt_i) > 1
