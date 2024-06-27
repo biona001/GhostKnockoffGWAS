@@ -26,6 +26,7 @@ ghostbasil_jll = "caeec347-1c5e-53ac-8e86-7f5e1a690164"
 [compat]
 ArgParse = "1.0"
 CSV = "0.10"
+CovarianceEstimation = "0.2"
 DataFrames = "1"
 DelimitedFiles = "1"
 Distributions = "0.25"
