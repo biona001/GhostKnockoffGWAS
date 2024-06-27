@@ -65,7 +65,7 @@ function get_block(
     n = VCFTools.nsamples(vcffile)
     nsnps = 0
     X = ElasticArray{T}(undef, n, 0)
-    df = DataFrame("rsid"=>String[], "AF"=>T[], "chr"=>String[], "pos"=> Int[], 
+    df = DataFrame("rsid"=>String[], "AF"=>T[], "chr"=>Int[], "pos"=> Int[], 
                    "ref"=> String[], "alt"=>String[])
     model = :additive # additive genetic model
     prev_pos = 0
