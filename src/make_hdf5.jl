@@ -109,7 +109,7 @@ function get_block(
 
         # save record info
         prev_pos = pos_i
-        push!(df, [join(VCF.id(record), ','), alt_freq, chr_i, pos_i, 
+        push!(df, [get_record_id(record), alt_freq, chr_i, pos_i, 
                   VCF.ref(record), alt_i[1]])
     end
     close(reader)
@@ -121,6 +121,11 @@ function get_block(
     end
 
     return Matrix(X), df
+end
+
+# return "." if id is missing
+function get_record_id(record)
+    return isempty(record.id) ? "." : join(VCF.id(record), ',')
 end
 
 function validate(record, chr_i, pos_i, prev_pos, alt_i, gtkey)
@@ -142,7 +147,7 @@ function validate(record, chr_i, pos_i, prev_pos, alt_i, gtkey)
     end
 end
 
-# function to rearrange the SNP orders to that resulting S/D actually block diagonal
+# function to rearrange the SNP orders so that groups are contiguous
 function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
     perm = sortperm(groups)
     iperm = invperm(perm)
