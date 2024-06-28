@@ -11,3 +11,5 @@ data/test*
 data/AD*
 data/seed*
 data/*output*
+
+app_linux_x86.tar.gz
