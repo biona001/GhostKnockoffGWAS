@@ -5,6 +5,12 @@ using LinearAlgebra
 using DelimitedFiles
 using CSV
 using DataFrames
+using Downloads
+using VCFTools
+using HDF5
+using Distributions
+using Random
+using StatsBase
 
 @testset "utilities" begin
     # convert between z score and p-value
@@ -163,4 +169,189 @@ end
 
     # true answer compared with Zihuai's code
     @test all(qvalues .≈ [0.3, 0.2, 1.0, 1.0, 1.0, 0.33333333333333333, 1.0])
+end
+
+@testset "solve_blocks (within julia)" begin
+    # download a test VCF file if not exist
+    # This VCF file 
+        # - have ~1300 records
+        # - some rsIDs are missing
+        # - some GT fields are missing?
+        # - chr field as integers
+    vcffile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
+        "test/test.08Jun17.d8b.vcf.gz")
+    isfile(vcffile) || Downloads.download(
+        "http://faculty.washington.edu/browning/beagle/test.08Jun17.d8b.vcf.gz",
+        vcffile)
+
+    # get VCF summary
+    tmpfile = tempname()
+    gtstats(vcffile, tmpfile)
+    df = CSV.read(tmpfile, DataFrame, 
+        header=[:chr, :pos, :id, :ref, :alt, :qual, :filt, :info, :missings, 
+        :missfreq, :nalt, :altfreq, :nminor, :maf, :hwe])
+    rm(tmpfile, force=true)
+    @test size(df, 1) == nrecords(vcffile) == 1356
+
+    # read the region into memory and solve knockoff optimization problem
+    chr = 22
+    start_bp = 1
+    end_bp = 999999999999
+    outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
+    isdir(outdir) || mkpath(outdir)
+    hg_build = 19
+    @time solve_blocks(vcffile, chr, start_bp, end_bp, outdir, hg_build, 
+        min_maf = 0.01, min_hwe = 0.0)
+
+    # test basic output structure
+    @test isdir(outdir)
+    @test isdir(joinpath(outdir, "chr22"))
+    @test length(readdir(joinpath(outdir, "chr22"))) == 3
+
+    # test Info file
+    file = joinpath(outdir, "chr22", "Info_start$(start_bp)_end$(end_bp).csv")
+    @test isfile(file)
+    info = CSV.read(file, DataFrame)
+    @test "pos_hg$hg_build" in names(info)
+    @test all(x -> 0.01 ≤ x ≤ 0.99, info[!, "AF"])
+
+    # test summary file
+    file = joinpath(outdir, "chr22", "summary_start$(start_bp)_end$(end_bp).csv")
+    @test isfile(file)
+    summary = CSV.read(file, DataFrame, header=false)
+    summary[findfirst(x -> x == "chr", summary[!, 1]), 2] == chr
+    summary[findfirst(x -> x == "start_bp", summary[!, 1]), 2] == start_bp
+    summary[findfirst(x -> x == "end_bp", summary[!, 1]), 2] == end_bp
+    summary[findfirst(x -> x == "m", summary[!, 1]), 2] == 5
+    summary[findfirst(x -> x == "p", summary[!, 1]), 2] == size(info, 1)
+
+    # test h5 file
+    file = joinpath(outdir, "chr22", "LD_start$(start_bp)_end$(end_bp).h5")
+    @test isfile(file)
+    h5reader = h5open(file, "r")
+    D = read(h5reader, "D")
+    S = read(h5reader, "S")
+    Sigma = read(h5reader, "Sigma")
+    @test eigmin(Symmetric(6/5*Sigma - D)) > 0
+    @test size(D) == size(Sigma)
+    @test size(D, 1) == summary[findfirst(x -> x == "p", summary[!, 1]), 2]
+    @test size(S, 1) == summary[findfirst(x -> x == "nreps", summary[!, 1]), 2]
+end
+
+@testset "ghostbasil (within julia)" begin
+    testdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "../test")
+    k = 25
+    mu = 0
+    sigma = 10.0 # beta ~ N(mu, sigma)
+
+    # import VCF and remove SNPs with MAF < 0.1
+    vcffile = joinpath(testdir, "test.08Jun17.d8b.vcf.gz")
+    X, sampleID, chr, pos, rsid, ref, alt = 
+        convert_gt(Float64, vcffile, impute=true, center=false, scale=false, 
+        save_snp_info=true)
+    mafs = mean.(skipmissing.(eachcol(X))) ./ 2
+    idx = findall(x -> 0.01 < x < 0.99, mafs)
+    X = X[:, idx]
+    chr, pos, rsid, ref, alt = chr[idx], pos[idx], vcat(rsid...)[idx], 
+        ref[idx], vcat(alt...)[idx]
+    n, p = size(X)
+
+    # simulate phenotypes and normalize it
+    beta = zeros(p)
+    beta[1:k] .= rand(Normal(mu, sigma), k)
+    shuffle!(beta)
+    y = X * beta + randn(n)
+    zscore!(y, mean(y), std(y))
+
+    # compute z scores and save for later use
+    z = X'*y ./ sqrt(n)
+    zfile = joinpath(testdir, "zfile.txt")
+    LD_files = joinpath(testdir, "LD_files")
+    CSV.write(zfile, DataFrame("CHR"=>chr,"POS"=>pos,"REF"=>ref,"ALT"=>alt,"Z"=>z))
+
+    # GhostKnockoffGWAS function
+    LDfiles = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
+    chr = parse.(Int, chr)
+    N = size(X, 1)
+    hg_build = 19
+    outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test")
+    ghostknockoffgwas(LDfiles, z, chr, pos, alt, ref, N, hg_build, outdir)
+    @test isfile(joinpath(outdir, "result.txt"))
+    @test isfile(joinpath(outdir, "result_summary.txt"))
+    result = CSV.read(joinpath(outdir, "result.txt"), DataFrame)
+    summary = CSV.read(joinpath(outdir, "result_summary.txt"), DataFrame, header=false)
+    # @test summary[findfirst(x -> x == "target_fdr_0.1_num_selected", summary[!, 1]), 2] == 0
+    # @test summary[findfirst(x -> x == "target_fdr_0.2_num_selected", summary[!, 1]), 2] == 8
+    @test summary[findfirst(x -> x == "m", summary[!, 1]), 2] == 5
+    @test summary[findfirst(x -> x == "nregions", summary[!, 1]), 2] == 1
+    @test summary[findfirst(x -> x == "nsnps", summary[!, 1]), 2] == 402
+    @test summary[findfirst(x -> x == "m", summary[!, 1]), 2] == 5
+    @test summary[findfirst(x -> x == "lasso_lambda", summary[!, 1]), 2] ≈ 0.14776789851770086
+    # @test summary[findfirst(x -> x == "mean_LD_shrinkage", summary[!, 1]), 2] ≈ 3.324562949461316e-16
+end
+
+@testset "Download, unpack, and run exe" begin
+    wd = pwd()
+
+    # download and unpack 
+    cd(joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test"))
+    run(`wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.1/app_linux_x86.tar.gz`)
+    run(`tar -xvzf app_linux_x86.tar.gz`)
+    @test isdir("app_linux_x86")
+    @test isfile("app_linux_x86/bin/GhostKnockoffGWAS")
+    @test isfile("app_linux_x86/bin/solveblock")
+
+    # help messages
+    help1 = run(`./app_linux_x86/bin/solveblock -h`)
+    help2 = run(`./app_linux_x86/bin/GhostKnockoffGWAS -h`)
+    @test help1.exitcode == 0
+    @test help2.exitcode == 0
+
+    # solveblock executable
+    exe = joinpath(dirname(pathof(GhostKnockoffGWAS)), "../test/app_linux_x86/bin/solveblock")
+    vcffile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/test.08Jun17.d8b.vcf.gz")
+    chr = 22
+    start_bp = 1
+    end_bp = 999999999999
+    outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
+    isdir(outdir) || mkpath(outdir)
+    hg_build = 19
+    sb = run(`$exe --vcffile $vcffile --chr $chr --start_bp $start_bp --end_bp $end_bp --outdir $outdir --genome-build $hg_build`)
+    @test sb.exitcode == 0
+
+    # GhostKnockoffGWAS executable
+    exe = joinpath(dirname(pathof(GhostKnockoffGWAS)), "../test/app_linux_x86/bin/GhostKnockoffGWAS")
+    LDfiles = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
+    outfile = "GK_out"
+    zfile = "zfile.txt"
+    gk = run(`$exe --zfile $zfile --LD-files $LDfiles --N 191 --genome-build 19 --out $outfile`)
+    @test gk.exitcode == 0
+
+    # cleanup
+    rm("app_linux_x86.tar.gz", force=true)
+    rm("app_linux_x86", force=true, recursive=true)
+    rm("GK_out_summary.txt", force=true)
+    rm("GK_out.txt", force=true)
+    rm("LD_files", force=true, recursive=true)
+    rm("result_summary.txt", force=true)
+    rm("result.txt", force=true)
+    rm("test.08Jun17.d8b.vcf.gz", force=true)
+    rm("zfile.txt", force=true)
+    cd(wd)
+end
+
+@testset "solve_blocks on bad VCF files" begin
+    # breaks when chr have non-Int values, e.g. "chr22"
+
+    # breaks when POS is not sorted within chrs (but not between chrs)
+
+    # breaks when >1 ALT allele
+
+    # breaks when too little sample size
+
+    # breaks when too little SNPs within a region
+
+    # breaks when outdir doesn't exist
+
+    # is able to skip to chr2
 end
