@@ -240,9 +240,9 @@ end
 
 @testset "ghostbasil (within julia)" begin
     testdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "../test")
-    k = 25
+    k = 10
     mu = 0
-    sigma = 10.0 # beta ~ N(mu, sigma)
+    sigma = 5.0 # beta ~ N(mu, sigma)
 
     # import VCF and remove SNPs with MAF < 0.1
     vcffile = joinpath(testdir, "test.08Jun17.d8b.vcf.gz")
@@ -257,6 +257,7 @@ end
     n, p = size(X)
 
     # simulate phenotypes and normalize it
+    Random.seed!(2024)
     beta = zeros(p)
     beta[1:k] .= rand(Normal(mu, sigma), k)
     shuffle!(beta)
