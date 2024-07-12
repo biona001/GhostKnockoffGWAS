@@ -29,6 +29,7 @@ CSV = "0.10"
 DataFrames = "1"
 DelimitedFiles = "1"
 Distributions = "0.25"
+HDF5 = "0.17"
 Knockoffs = "2"
 LinearAlgebra = "1"
 Optim = "1.7"
@@ -37,8 +38,8 @@ StatsBase = "0.34"
 julia = "1.6"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Downloads"]
