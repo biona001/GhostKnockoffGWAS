@@ -18,8 +18,9 @@ function estimate_sigma(X::AbstractMatrix; min_eigval=1e-5)
     return Sigma
 end
 
+
 """
-    get_block(vcffile::String, chr::Int, start_bp::Int, end_bp::Int;
+    get_VCF_block(vcffile::String, chr::Int, start_bp::Int, end_bp::Int;
         [min_maf::Float64=0.01], [min_hwe::Float64=0.0], 
         [snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing])
 
@@ -52,6 +53,31 @@ column mean.
     `ref`, and `alt`
 """
 function get_block(
+    file::String, 
+    chr::Int, 
+    start_bp::Int, 
+    end_bp::Int;
+    min_maf::Float64=0.01,
+    min_hwe::Float64=0.0,
+    snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing
+    )
+    is_vcf = endswith(file, ".vcf") || endswith(file, ".vcf.gz")
+    is_plink = endswith(file, ".bed")
+    is_vcf || is_plink || error(
+        "Invalid input file. Genotype file should be in VCF (ends in .vcf " *
+        "or .vcf.gz) or binary PLINK (ends in .bed) format."
+        )
+
+    if is_vcf
+        return get_VCF_block(file, chr, start_bp, end_bp, min_maf=min_maf,
+                min_hwe = min_hwe, snps_to_keep=snps_to_keep)
+    else 
+        return get_PLINK_block(file, chr, start_bp, end_bp, min_maf=min_maf,
+                min_hwe = min_hwe, snps_to_keep=snps_to_keep)
+    end
+end
+
+function get_VCF_block(
     vcffile::String, 
     chr::Int, 
     start_bp::Int, 
@@ -123,6 +149,65 @@ function get_block(
     return Matrix(X), df
 end
 
+"""
+    get_AF(x::AbstractMatrix)
+
+Compute alternate allele frequency on dosage matrix `x`, 
+skipping missing values if there are any
+"""
+function get_AF(x::AbstractMatrix)
+    return mean.(skipmissing.(eachcol(x))) ./ 2
+end
+
+function get_PLINK_block(
+    bedfile::String, 
+    chr::Int, 
+    start_bp::Int, 
+    end_bp::Int;
+    min_maf::Float64=0.01,
+    min_hwe::Float64=0.0,
+    snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing
+    )
+    xdata = SnpArray(bedfile)
+    T = Float64
+    df = DataFrame("rsid"=>String[], "AF"=>T[], "chr"=>Int[], "pos"=> Int[], 
+                   "ref"=> String[], "alt"=>String[])
+
+    # import target region of X as numeric matrix, after MAF filtering
+    idx = findall(x -> 
+        x.chromosome == string(chr) && start_bp ≤ x.position ≤ end_bp, 
+        eachrow(xdata.snp_info))
+    mafs = maf(@view(xdata.snparray[:, idx]))
+    idx2 = idx[findall(x -> x ≥ min_maf, mafs)]
+    X = convert(Matrix{Float64}, @view(x[:, idx2]), impute=true)
+
+    # SNP info
+    df = xdata.snp_info[idx2, [1, 2, 4, 5, 6]]
+    rename!(df, "chromosome"=>"chr", "snpid"=>"rsid", "position"=>"pos", 
+        "allele1"=>"ref", "allele2"=>"alt")
+    df[!, "AF"] = get_AF(X)
+    df = df[:, [2, 6, 1, 3, 4, 5]] # reorder columns into rsid, AF, chr, pos, ref, alt
+
+    # hwe filtering
+    if min_hwe > 0
+        n00s = [count(iszero, x) for x in eachcol(X)]
+        n01s = [count(isone, x) for x in eachcol(X)]
+        n11s = [count(xi -> xi == 2, x) for x in eachcol(X)]
+        hwes = SnpArrays.hwe.(n00s, n01s, n11s)
+        idx3  = findall(x -> x > min_hwe, hwes)
+        X = X[:, idx3]
+        df = df[idx3, :]
+    end
+
+    if !isnothing(snps_to_keep) 
+        idx4 = filter!(!isnothing, indexin(snps_to_keep, df[!, "pos"]))
+        df = df[idx4, :]
+        X = X[:, idx4]
+    end
+
+    return Matrix(X), df
+end
+
 # return "." if id is missing
 function get_record_id(record)
     return isempty(record.id) ? "." : join(VCF.id(record), ',')
@@ -179,17 +264,18 @@ file by chromosomes, and possibly into smaller chunks, before running this
 function. 
 
 # Inputs
-+ `vcffile`: A VCF file storing individual level genotypes. Must end in `.vcf` 
-    or `.vcf.gz`. The ALT field for each record must be unique, i.e. 
-    multiallelic records must be split first. Missing genotypes will be imputed
-    by column mean. 
++ `file`: A VCF or binary PLINK file storing individual level genotypes. Must
+    end in `.vcf`, `.vcf.gz`, or `.bed`. If a VCF file is used, the ALT field for
+    each record must be unique, i.e. multiallelic records must be split first. 
+    Missing genotypes will be imputed by column mean. 
 + `chr`: Target chromosome. This MUST be an integer and it must match the `CHROM`
-    field in your VCF file. Thus, if your VCF file has CHROM field like `chr1`, 
-    `CHR1`, or `CHROM1` etc, each record must be renamed into `1`. 
+    field in your VCF/PLINK file. For example, if your VCF file has CHROM field
+    like `chr1`, `CHR1`, or `CHROM1` etc, they must be renamed into `1`. 
 + `start_bp`: starting basepair (position)
 + `end_bp`: ending basepair (position)
 + `outdir`: Directory that the output will be stored in (must exist)
-+ `hg_build`: human genome build for the VCF file, must be 19 (hg19) or 38 (hg38)
++ `hg_build`: human genome build for position of each SNP, must be 19 (hg19) or
+    38 (hg38)
 
 # Optional inputs (for group knockoff optimization)
 + `snps_to_keep`: Vector of SNP positions to import. If specified, only SNPs
@@ -247,7 +333,7 @@ Calling `solve_blocks` will create 3 files in the directory `outdir/chr`:
 + `summary_XXX.csv`: Summary file for the knockoff optimization problem
 """
 function solve_blocks(
-    vcffile::String,
+    file::String,
     chr::Int,
     start_bp::Int, 
     end_bp::Int, 
