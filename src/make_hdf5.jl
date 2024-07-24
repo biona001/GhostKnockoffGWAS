@@ -70,6 +70,11 @@ function get_block(
         "Invalid input file. Genotype file should be in VCF (ends in .vcf " *
         "or .vcf.gz) or binary PLINK (ends in .bed) format."
         )
+    if is_plink
+        plinkprefix = file[1:end-4]
+        isfile(plinkprefix * ".bim") && isfile(plinkprefix * ".fam") || 
+            error("Detected PLINK input but .bim or .fam file not found")
+    end
 
     if is_vcf
         return get_VCF_block(file, chr, start_bp, end_bp, min_maf=min_maf,
@@ -171,7 +176,7 @@ function get_PLINK_block(
     min_hwe::Float64=0.0,
     snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing
     )
-    xdata = SnpData(bedfile)
+    xdata = SnpData(bedfile[1:end-4])
 
     # import target region of X as numeric matrix, after MAF filtering
     idx = findall(x -> 
@@ -179,7 +184,7 @@ function get_PLINK_block(
         eachrow(xdata.snp_info))
     mafs = maf(@view(xdata.snparray[:, idx]))
     idx2 = idx[findall(x -> x ≥ min_maf, mafs)]
-    X = convert(Matrix{Float64}, @view(x[:, idx2]), impute=true)
+    X = convert(Matrix{Float64}, @view(xdata.snparray[:, idx2]), impute=true)
 
     # SNP info
     df = xdata.snp_info[idx2, [1, 2, 4, 5, 6]]
@@ -246,7 +251,7 @@ function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
 end
 
 """
-    solve_blocks(vcffile::String, chr::Int, start_bp::Int, end_bp::Int, 
+    solve_blocks(file::String, chr::Int, start_bp::Int, end_bp::Int, 
         outdir::String, hg_build::Int; [m=5], [tol=0.0001], [min_maf=0.01], 
         [min_hwe=0.0], [force_block_diag=true], 
         [method::String = "maxent"], [linkage::String="average"],
@@ -259,9 +264,7 @@ and outputs the result into `outdir`. All variants that reside on chromosome
 
 # Note on large VCF files
 Currently reading/parsing a VCF file is a single-threaded operation (even if 
-it is indexed). Thus, we *strongly recommend* one to split the input VCF 
-file by chromosomes, and possibly into smaller chunks, before running this
-function. 
+it is indexed). Thus, we *strongly recommend* one convert to binary PLINK format.
 
 # Inputs
 + `file`: A VCF or binary PLINK file storing individual level genotypes. Must
@@ -363,7 +366,7 @@ function solve_blocks(
 
     # import VCF data and estimate Sigma
     import_time = @elapsed begin
-        X, data_info = get_block(vcffile, chr, start_bp, end_bp, 
+        X, data_info = get_block(file, chr, start_bp, end_bp, 
             min_maf=min_maf, min_hwe=min_hwe, snps_to_keep=snps_to_keep)
         size(X, 2) > 1 || 
             error("Detected 1 or fewer SNP(s) between start_bp=$start_bp and end_bp=$end_bp, exiting.")
