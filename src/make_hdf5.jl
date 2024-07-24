@@ -20,21 +20,23 @@ end
 
 
 """
-    get_VCF_block(vcffile::String, chr::Int, start_bp::Int, end_bp::Int;
+    get_VCF_block(file::String, chr::Int, start_bp::Int, end_bp::Int;
         [min_maf::Float64=0.01], [min_hwe::Float64=0.0], 
         [snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing])
 
-Imports genotype data of a VCF file from pos `start_bp` to `end_bp` as 
-double precision numeric matrix. Each row is a sample and each column is a SNP.
+Imports genotype data of a VCF or binary PLINK file from pos `start_bp` to `end_bp` 
+as double precision numeric matrix. Each row is a sample and each column is a SNP.
 All entries are {0, 1, 2} except for missing entries which is imputed with 
 column mean.
 
 # Inputs
-+ `vcffile`: A VCF file storing individual level genotypes. Must end in `.vcf` 
-    or `.vcf.gz`. The ALT field for each record must be unique, i.e. 
-    multiallelic records must be split first. Missing genotypes will be imputed
-    by column mean. 
-+ `chr`: Target chromosome. This must match the `CHROM` field in the VCF file. 
++ `file`: A VCF file (ending in `.vcf` or `.vcf.gz`) or binary PLINK (ending in 
+    `.bed`) file storing individual level genotypes. If VCF file is used, the 
+    ALT field for each record must be unique, i.e. multiallelic records must be
+    split first. Missing genotypes will be imputed by column mean. 
++ `chr`: Target chromosome. This must be an integer and, for VCF files, it must 
+    match the `CHROM` field in the VCF file (i.e. if the VCF CHROM field is e.g.
+    `chr1`, it must be renamed into `1`). 
 + `start_bp`: starting basepair (position)
 + `end_bp`: ending basepair (position)
 
@@ -50,7 +52,8 @@ column mean.
     imputed with column mean.
 + `df`: A `DataFrame` containing meta information on the columns of `X`, 
     including `rsid` (SNP id), `AF` (alt allele frequency), `chr`, `pos`, 
-    `ref`, and `alt`
+    `ref`, and `alt`. For PLINK inputs, we count the number of A2 alleles, and 
+    we assign `A1 = ref` and `A2 = alt`
 """
 function get_block(
     file::String, 
@@ -168,10 +171,7 @@ function get_PLINK_block(
     min_hwe::Float64=0.0,
     snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing
     )
-    xdata = SnpArray(bedfile)
-    T = Float64
-    df = DataFrame("rsid"=>String[], "AF"=>T[], "chr"=>Int[], "pos"=> Int[], 
-                   "ref"=> String[], "alt"=>String[])
+    xdata = SnpData(bedfile)
 
     # import target region of X as numeric matrix, after MAF filtering
     idx = findall(x -> 
