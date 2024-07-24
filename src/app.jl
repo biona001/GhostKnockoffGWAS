@@ -315,7 +315,7 @@ function parse_solveblock_commandline(parseargs::Bool)
     # the module will fail to load
     if !parseargs
         _useless = parse_args(
-            ["--vcffile","testfile","--chr","1","--start_bp","1","--end_bp","2",
+            ["--file","testfile","--chr","1","--start_bp","1","--end_bp","2",
             "--outdir","testdir","--genome-build","19","--tol","0.0001",
             "--min_maf","0.01","--min_hwe","0.01","--method","maxent",
             "--linkage","average","--force_contiguous","false",
@@ -327,7 +327,7 @@ function parse_solveblock_commandline(parseargs::Bool)
     end
 
     parsed_args = parse_args(s)
-    vcffile = parsed_args["vcffile"]
+    file = parsed_args["file"]
     chr = parsed_args["chr"]
     start_bp = parsed_args["start_bp"]
     end_bp = parsed_args["end_bp"]
@@ -343,7 +343,7 @@ function parse_solveblock_commandline(parseargs::Bool)
     group_rep_cutoff = parsed_args["group_rep_cutoff"]
     verbose = parsed_args["verbose"]
 
-    return vcffile, chr, start_bp, end_bp, outdir, 
+    return file, chr, start_bp, end_bp, outdir, 
         hg_build, tol, min_maf, min_hwe, method, linkage, force_contiguous, 
         group_cor_cutoff, group_rep_cutoff, verbose
 end

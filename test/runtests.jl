@@ -438,6 +438,13 @@ end
     cd(wd)
 end
 
+@testset "app" begin
+    s1 = GhostKnockoffGWAS.parse_ghostknockoffgwas_commandline(false)
+    s2 = GhostKnockoffGWAS.parse_solveblock_commandline(false)
+    @test isnothing(s1)
+    @test isnothing(s2)
+end
+
 @testset "solve_blocks on bad VCF files" begin
     # breaks when chr have non-Int values, e.g. "chr22"
 
