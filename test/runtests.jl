@@ -256,6 +256,7 @@ end
     @test size(D) == size(Sigma)
     @test size(D, 1) == summary[findfirst(x -> x == "p", summary[!, 1]), 2]
     @test size(S, 1) == summary[findfirst(x -> x == "nreps", summary[!, 1]), 2]
+    close(h5reader)
 end
 
 @testset "solve_blocks (within julia) with PLINK input" begin
@@ -403,11 +404,8 @@ end
 
     # cleanup
     rm("app_linux_x86.tar.gz", force=true)
-    rm("app_linux_x86", force=true, recursive=true)
     rm("GK_out_summary.txt", force=true)
     rm("GK_out.txt", force=true)
-    rm("LD_files", force=true, recursive=true)
-    rm("LD_files2", force=true, recursive=true)
     rm("result_summary.txt", force=true)
     rm("result.txt", force=true)
     rm("test.08Jun17.d8b.vcf.gz", force=true)
@@ -423,6 +421,20 @@ end
     rm("test.08Jun17.d8b.log", force=true)
     rm("toy.map", force=true)
     rm("toy.ped", force=true)
+
+    # get around directory not empty issue https://github.com/JuliaLang/julia/issues/34700
+    n = 0
+    while n < 5
+        try
+            rm("app_linux_x86", force=true, recursive=true)
+            rm("LD_files", force=true, recursive=true)
+            rm("LD_files2", force=true, recursive=true)
+        catch
+            sleep(2)
+            n += 1
+        end
+    end
+
     cd(wd)
 end
 
