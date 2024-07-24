@@ -364,7 +364,7 @@ function solve_blocks(
     # dimensional lasso regression
     m = 5 
 
-    # import VCF data and estimate Sigma
+    # import data and estimate Sigma
     import_time = @elapsed begin
         X, data_info = get_block(file, chr, start_bp, end_bp, 
             min_maf=min_maf, min_hwe=min_hwe, snps_to_keep=snps_to_keep)
@@ -426,7 +426,7 @@ function solve_blocks(
     end
 
     if verbose
-        println("Time to read VCF file: $import_time")
+        println("Time to read file: $import_time")
         println("Time to define groups: $def_group_time")
         println("Time to perform group knockoff optimization: $solve_S_time")
         println("Done!")
