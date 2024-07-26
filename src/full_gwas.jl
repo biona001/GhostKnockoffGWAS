@@ -17,6 +17,7 @@ function gwas(
     group_rep_cutoff::Float64=0.5,
     # parameters for lasso
     kappa_lasso::Float64 = 0.6,
+    A_scaling_factor::Float64 = 0.01, 
     verbose=true,
     )
     # test code
