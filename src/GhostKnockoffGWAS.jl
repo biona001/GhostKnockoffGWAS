@@ -21,9 +21,13 @@ using SnpArrays
 using ElasticArrays
 using CovarianceEstimation
 
+# needed for gwas()
+using ProgressMeter
+
 export ghostknockoffgwas,
     read_zscores,
-    solve_blocks
+    solve_blocks,
+    gwas
 
 include("ghostbasil_parallel.jl")
 include("utilities.jl")
