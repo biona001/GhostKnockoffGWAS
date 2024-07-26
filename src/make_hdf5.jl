@@ -369,7 +369,8 @@ function solve_blocks(
         X, data_info = get_block(file, chr, start_bp, end_bp, 
             min_maf=min_maf, min_hwe=min_hwe, snps_to_keep=snps_to_keep)
         size(X, 2) > 1 || 
-            error("Detected 1 or fewer SNP(s) between start_bp=$start_bp and end_bp=$end_bp, exiting.")
+            error("Detected 1 or fewer SNP(s) between start_bp=$start_bp and " * 
+                  "end_bp=$end_bp in chr $chr, exiting.")
         size(X, 1) ≥ 10 || 
             error("Detected less than 10 samples, not recommended")
 
