@@ -1,7 +1,6 @@
 function gwas(
     bed::SnpArray,
-    y::AbstractVector,
-    outdir::String;
+    y::AbstractVector;
     # parameters for this function
     window_size::Int = 500, 
     snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing,
