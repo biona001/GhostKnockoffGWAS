@@ -17,7 +17,7 @@ using StatsBase
 using Knockoffs
 using VCFTools
 using VariantCallFormat
-using SnpArray
+using SnpArrays
 using ElasticArrays
 using CovarianceEstimation
 
