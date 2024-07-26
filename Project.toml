@@ -35,6 +35,14 @@ LinearAlgebra = "1"
 Optim = "1.7"
 Random = "1"
 StatsBase = "0.34"
+Statistics = "1.9"
+SnpArrays = "0.3"
+Ghostbasil = "0.0.1"
+HDF5 = "0.17.1"
+VCFTools = "0.2"
+VariantCallFormat = "0.5"
+ElasticArrays = "1.2"
+CovarianceEstimation = "0.2"
 julia = "1.6"
 
 [extras]
@@ -43,3 +51,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Downloads"]
+
