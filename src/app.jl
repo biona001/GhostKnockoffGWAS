@@ -182,16 +182,17 @@ function parse_ghostknockoffgwas_commandline(parseargs::Bool)
         random_shuffle, skip_shrinkage_check
 end
 
+# this becomes the solveblock executable
 function julia_solveblock()::Cint
     try
         # read command line arguments
-        vcffile, chr, start_bp, end_bp, outdir, hg_build, tol, min_maf, 
+        file, chr, start_bp, end_bp, outdir, hg_build, tol, min_maf, 
             min_hwe, method, linkage, force_contiguous, group_cor_cutoff, 
             group_rep_cutoff, verbose = parse_solveblock_commandline(true)
 
         println("\n\nWelcome to the `solve_block` module of GhostKnockoffGWAS!")
         println("You have specified the following options:")
-        println("vcffile          = ", abspath(vcffile))
+        println("genotype file    = ", abspath(file))
         println("chr              = ", chr)
         println("start_bp         = ", start_bp)
         println("end_bp           = ", end_bp)
@@ -208,7 +209,7 @@ function julia_solveblock()::Cint
         println("verbose          = ", verbose)
         println("\n")
 
-        solve_blocks(vcffile, chr, start_bp, end_bp, outdir, 
+        solve_blocks(file, chr, start_bp, end_bp, outdir, 
             hg_build, tol=tol, min_maf=min_maf, min_hwe=min_hwe, 
             method=method, linkage=linkage, force_contiguous=force_contiguous,
             group_cor_cutoff=group_cor_cutoff, 
@@ -223,18 +224,19 @@ end
 function parse_solveblock_commandline(parseargs::Bool)
     s = ArgParseSettings()
     @add_arg_table! s begin
-        "--vcffile"
-            help = "A VCF file storing individual level genotypes. Must end in " *
-                "`.vcf` or `.vcf.gz`. The ALT field for each record must be " *
-                "unique, i.e. multiallelic records must be split first. Missing " *
-                "genotypes will be imputed by column mean."
+        "--file"
+            help = "A VCF file (ending in `.vcf` or `.vcf.gz`) or binary PLINK" *  
+                " (ending in `.bed`) file storing individual level genotypes. If" *  
+                " VCF file is used, the ALT field for each record must be unique," *  
+                " i.e. multiallelic records must be split first. Missing genotypes" *  
+                " will be imputed by column mean."
             required = true
             arg_type = String
         "--chr"
-            help = "Target chromosome. This MUST be an integer and it must match " *
-                "the `CHROM` field in your VCF file. Thus, if your VCF file has " *
-                "CHROM field like `chr1`, `CHR1`, or `CHROM1` etc, each record " *
-                "must be renamed into `1`."
+            help = "Target chromosome. This MUST be an integer and, for VCF files, " * 
+                "it must match the `CHROM` field in the VCF file. Thus, if your " *
+                "VCF file has CHROM field like `chr1`, `CHR1`, or `CHROM1` etc, " *
+                "each record must be renamed into `1`."
             required = true
             arg_type = Int
         "--start_bp"
@@ -313,7 +315,7 @@ function parse_solveblock_commandline(parseargs::Bool)
     # the module will fail to load
     if !parseargs
         _useless = parse_args(
-            ["--vcffile","testfile","--chr","1","--start_bp","1","--end_bp","2",
+            ["--file","testfile","--chr","1","--start_bp","1","--end_bp","2",
             "--outdir","testdir","--genome-build","19","--tol","0.0001",
             "--min_maf","0.01","--min_hwe","0.01","--method","maxent",
             "--linkage","average","--force_contiguous","false",
@@ -325,7 +327,7 @@ function parse_solveblock_commandline(parseargs::Bool)
     end
 
     parsed_args = parse_args(s)
-    vcffile = parsed_args["vcffile"]
+    file = parsed_args["file"]
     chr = parsed_args["chr"]
     start_bp = parsed_args["start_bp"]
     end_bp = parsed_args["end_bp"]
@@ -341,7 +343,7 @@ function parse_solveblock_commandline(parseargs::Bool)
     group_rep_cutoff = parsed_args["group_rep_cutoff"]
     verbose = parsed_args["verbose"]
 
-    return vcffile, chr, start_bp, end_bp, outdir, 
+    return file, chr, start_bp, end_bp, outdir, 
         hg_build, tol, min_maf, min_hwe, method, linkage, force_contiguous, 
         group_cor_cutoff, group_rep_cutoff, verbose
 end

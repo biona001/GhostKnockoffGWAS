@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - "1.8"
+          - "1.9"
         os:
           - ubuntu-latest
           # - macOS-latest
@@ -75,12 +75,13 @@ jobs:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
-          version: '1.8'
+          version: '1.9'
       - run: | # add unregistered packages first
           julia --project=docs -e '
             using Pkg
             Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
             Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
+            Pkg.add(url="https://github.com/biona001/HDF5.jl")
             Pkg.add(url="https://github.com/biona001/GhostKnockoffGWAS")'
       - run: |
           julia --project=docs -e '

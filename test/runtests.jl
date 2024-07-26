@@ -11,6 +11,26 @@ using HDF5
 using Distributions
 using Random
 using StatsBase
+using SnpArrays
+
+"""
+    vcf_to_plink(plink_exe::String, vcffile::String, plinkprefix::String)
+
+Converts a VCF file to binary PLINK file using `plink_exe` (which should point 
+to the PLINK 1.9 executable). 
+
+# A1/A2 allele in PLINK vs REF/ALT in VCF?
+According to PLINK doc (https://www.cog-genomics.org/plink/1.9/data), adding
+`--keep-allele-order` will convert REF alleles in VCF files to A2 alleles. Thus,
+given our convention that `x_{ij} = 1` means there are 1 ALT allele, the resulting
+PLINK file will have all `0 <--> 2` flipped if we import the original VCF and  
+converted PLINK file into memory using VCFTools and SnpArrays. Fortunately, the
+resulting correlation matrix is identical, so this is not an issue for knockoff
+optimization. 
+"""
+function vcf_to_plink(plink_exe::String, vcffile::String, plinkprefix::String)
+    run(`$plink_exe --vcf $vcffile --double-id --keep-allele-order --real-ref-alleles --make-bed --out $plinkprefix`)
+end
 
 @testset "utilities" begin
     # convert between z score and p-value
@@ -171,7 +191,7 @@ end
     @test all(qvalues .≈ [0.3, 0.2, 1.0, 1.0, 1.0, 0.33333333333333333, 1.0])
 end
 
-@testset "solve_blocks (within julia)" begin
+@testset "solve_blocks (within julia) with VCF input" begin
     # download a test VCF file if not exist
     # This VCF file 
         # - have ~1300 records
@@ -236,6 +256,60 @@ end
     @test size(D) == size(Sigma)
     @test size(D, 1) == summary[findfirst(x -> x == "p", summary[!, 1]), 2]
     @test size(S, 1) == summary[findfirst(x -> x == "nreps", summary[!, 1]), 2]
+    close(h5reader)
+end
+
+@testset "solve_blocks (within julia) with PLINK input" begin
+    # download plink 1.9 software
+    remote = "https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20231211.zip"
+    file = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
+        "test/plink_linux_x86_64_20231211.zip")
+    Downloads.download(remote, file)
+    run(`unzip $file`)
+
+    # convert VCF file to binary PLINK using PLINK 1.9
+    plink_exe = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/plink")
+    vcffile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
+        "test/test.08Jun17.d8b.vcf.gz")
+    plinkfile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
+        "test/test.08Jun17.d8b")
+    vcf_to_plink(plink_exe, vcffile, plinkfile)
+
+    # check converted numeric matrix is the same after 0 <--> 2 flipping
+    # (see vcf_to_plink function for why there is a 0 <--> 2 flipping)
+    Xtrue = convert_gt(Float64, vcffile, impute=true)
+    Xtest = convert(Matrix{Float64}, SnpArray(plinkfile * ".bed"), impute=true)
+    @test size(Xtrue) == size(Xtest)
+    @test all(Xtrue .== 2 .- Xtest)
+
+    # run solve_block on PLINK file
+    chr = 22
+    start_bp = 1
+    end_bp = 999999999999
+    outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files2")
+    isdir(outdir) || mkpath(outdir)
+    hg_build = 19
+    @time solve_blocks(plinkfile * ".bed", chr, start_bp, end_bp, outdir,
+        hg_build, min_maf = 0.01, min_hwe = 0.0)
+
+    # check PLINK vs VCF output is the same
+    VCF_outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
+    VCF_h5 = joinpath(VCF_outdir, "chr22", "LD_start$(start_bp)_end$(end_bp).h5")
+    VCFh5reader = h5open(VCF_h5, "r")
+    PLINK_outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files2")
+    PLINK_h5 = joinpath(PLINK_outdir, "chr22", "LD_start$(start_bp)_end$(end_bp).h5")
+    PLINKh5reader = h5open(PLINK_h5, "r")
+    @test all(read(PLINKh5reader, "Sigma") .≈ read(VCFh5reader, "Sigma"))
+    @test all(read(PLINKh5reader, "groups") .== read(VCFh5reader, "groups"))
+
+    close(VCFh5reader)
+    close(PLINKh5reader)
+
+    # seems like group_reps could be slightly different due to floating point precision
+    # (we have floating point precision issues due to PLINK's X is 2 .- X in VCF)
+    # @test all(read(PLINKh5reader, "group_reps") .== read(VCFh5reader, "group_reps"))
+    # @test all(read(PLINKh5reader, "D") .≈ read(VCFh5reader, "D"))
+    # @test all(read(PLINKh5reader, "S") .≈ read(VCFh5reader, "S"))
 end
 
 @testset "ghostbasil (within julia)" begin
@@ -330,15 +404,45 @@ end
 
     # cleanup
     rm("app_linux_x86.tar.gz", force=true)
-    rm("app_linux_x86", force=true, recursive=true)
     rm("GK_out_summary.txt", force=true)
     rm("GK_out.txt", force=true)
-    rm("LD_files", force=true, recursive=true)
     rm("result_summary.txt", force=true)
     rm("result.txt", force=true)
     rm("test.08Jun17.d8b.vcf.gz", force=true)
     rm("zfile.txt", force=true)
+    rm("plink_linux_x86_64_20231211.zip", force=true)
+    rm("LICENSE", force=true)
+    rm("plink", force=true)
+    rm("prettify", force=true)
+    rm("test.08Jun17.d8b.bed", force=true)
+    rm("test.08Jun17.d8b.bim", force=true)
+    rm("test.08Jun17.d8b.fam", force=true)
+    rm("test.08Jun17.d8b.nosex", force=true)
+    rm("test.08Jun17.d8b.log", force=true)
+    rm("toy.map", force=true)
+    rm("toy.ped", force=true)
+
+    # get around directory not empty issue https://github.com/JuliaLang/julia/issues/34700
+    n = 0
+    while n < 5
+        try
+            rm("app_linux_x86", force=true, recursive=true)
+            rm("LD_files", force=true, recursive=true)
+            rm("LD_files2", force=true, recursive=true)
+        catch
+            sleep(2)
+            n += 1
+        end
+    end
+
     cd(wd)
+end
+
+@testset "app" begin
+    s1 = GhostKnockoffGWAS.parse_ghostknockoffgwas_commandline(false)
+    s2 = GhostKnockoffGWAS.parse_solveblock_commandline(false)
+    @test isnothing(s1)
+    @test isnothing(s2)
 end
 
 @testset "solve_blocks on bad VCF files" begin

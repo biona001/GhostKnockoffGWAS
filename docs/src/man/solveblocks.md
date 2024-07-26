@@ -1,26 +1,30 @@
 
 # Customizing your own LD files
 
-One can customize the `--LD-files` input starting with individual level data stored in VCF format. This feature is supported by the `solveblock` executable located within `GhostKnockoffGWAS/bin/solveblock`.
+One can customize the `--LD-files` input starting with individual level data stored in VCF or binary PLINK format. This feature is supported by the `solveblock` executable located within `GhostKnockoffGWAS/bin/solveblock`.
 
 ## Command-line documentation of `solveblock` executable
 
 Simple run
 
 ```
-solveblock --vcffile test.vcf.gz --chr 1 --start_bp 10583 --end_bp 1892607 --outdir ./test_LD_files --genome-build 19 
+# VCF format
+solveblock --file test.vcf.gz --chr 1 --start_bp 10583 --end_bp 1892607 --outdir ./test_LD_files --genome-build 19 
+
+# PLINK format
+solveblock --file test.bed --chr 1 --start_bp 10583 --end_bp 1892607 --outdir ./test_LD_files --genome-build 19 
 ```
 
 ## Required inputs
 
 | Option name              | Argument        | Description   |
 | :---                     |    :----:       |   :---        |
-| `--vcffile`        | String | A VCF file storing individual level genotypes. Must end in `.vcf` or `.vcf.gz`. The ALT field for each record must be unique, i.e. multiallelic records must be split first. Missing genotypes `GT` will be imputed by column mean. |
-| `--chr`            | Int    | Target chromosome. This MUST be an integer and it must match the `CHROM` field in your VCF file. Thus, if your VCF file has CHROM field like `chr1`, `CHR1`, or `CHROM1` etc, each record must be renamed into `1`. |
+| `--file`        | String | A VCF or binary PLINK file storing individual level genotypes. Must end in `.vcf`, `.vcf.gz`, or `.bed`. If a VCF file is used, the ALT field for each record must be unique, i.e. multiallelic records must be split first. Missing genotypes will be imputed by column mean.  |
+| `--chr`            | Int    | Target chromosome. This MUST be an integer and it must match the `CHROM` field in your VCF/PLINK file. For example, if your VCF file has CHROM field like `chr1`, `CHR1`, or `CHROM1` etc, they must be renamed into `1`.  |
 | `--start_bp` | Int    | starting basepair (position) |
 | `--end_bp` | Int    | ending basepair (position) |
 | `--outdir`          | String | Directory that the output will be stored in (must exist) |
-| `--genome-build` | Int | human genome build for position field of the VCF file. This must be 19 (hg19) or 38 (hg38) |
+| `--genome-build` | Int | human genome build for position of each SNP, must be 19 (hg19) or 38 (hg38) |
 
 ## Optional inputs
 
@@ -65,4 +69,9 @@ Calling `solveblock` will create 3 files in the directory `outdir/chr` (the `chr
 
 ## A note on run-time
 
-Because VCF files are plain text files, it is inherently slow to read even if it is indexed. Thus, we *strongly recommend* one to split the input VCF file by chromosomes, and possibly into smaller chunks, before running `solveblock`. For optimal performance, it is best to filter the VCF file down to records between `start_bp` and `end_bp` (e.g. with `bcftools`) before running `solveblock`. 
+Because VCF files are plain text files, it is inherently slow to read even if it is indexed. Thus, we recommend one to convert VCFs to binary PLINK format via [PLINK 1.9](https://www.cog-genomics.org/plink/):
+
+```
+$plink_exe --vcf $vcffile --double-id --keep-allele-order --real-ref-alleles --make-bed --out $plinkprefix
+```
+Note the `--keep-allele-order` is crucial to prevent PLINK from randomly converting the minor allele into A1. 
