@@ -125,7 +125,7 @@ function gwas(
         m=m, delta_strong_size = 500, use_strong_rule=false)
     append!(beta, beta_i)
     for k in 0:m
-        append!(groups, ["window$(window)_$k" for g in group])
+        append!(groups, ["window$(windows + 1)_$k" for g in group])
     end
 
     # knockoff filter
