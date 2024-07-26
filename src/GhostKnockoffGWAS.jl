@@ -29,5 +29,6 @@ include("ghostbasil_parallel.jl")
 include("utilities.jl")
 include("app.jl")
 include("make_hdf5.jl")
+include("full_gwas.jl")
 
 end # module GhostKnockoffGWAS
