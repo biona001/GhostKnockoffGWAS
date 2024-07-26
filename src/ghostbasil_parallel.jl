@@ -189,7 +189,6 @@ function ghostknockoffgwas(
 
                 # sample ghost knockoffs knockoffs
                 Random.seed!(seed)
-                t22 += @elapsed Zko_train = sample_mvn_efficient(Σi, Si, m + 1)
                 t23 += @elapsed Σi_inv = inv(Symmetric(Σi))
                 t24 += @elapsed Zko = ghost_knockoffs(zscore_tmp, Si, Σi_inv, m=m)
             end
