@@ -429,6 +429,7 @@ end
             rm("app_linux_x86", force=true, recursive=true)
             rm("LD_files", force=true, recursive=true)
             rm("LD_files2", force=true, recursive=true)
+            break
         catch
             sleep(2)
             n += 1
