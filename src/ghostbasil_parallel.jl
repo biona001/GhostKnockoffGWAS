@@ -137,12 +137,13 @@ function ghostknockoffgwas(
                 nknockoff_snps += size(Sigma_info, 1)
                 # map reference LD panel to GWAS Z-scores by position
                 LD_pos = Sigma_info[!, "pos_hg$(hg_build)"]
-                shared_snps = intersect(LD_pos, GWAS_pos)
+                rep_pos = LD_pos[read(h5reader, "group_reps")]
+                shared_pos = intersect(LD_pos, GWAS_pos)
                 # delete SNPs if ref/alt don't match
-                remove_idx = Int[]
-                for (i, snp) in enumerate(shared_snps)
-                    GWAS_idx = findfirst(x -> x == snp, GWAS_pos)
-                    LD_idx = findfirst(x -> x == snp, LD_pos)
+                pos2remove = Int[]
+                for pos in shared_pos
+                    GWAS_idx = findfirst(x -> x == pos, GWAS_pos)
+                    LD_idx = findfirst(x -> x == pos, LD_pos)
                     ref_match_ea = Sigma_info[LD_idx, "ref"] == GWAS_ea[GWAS_idx]
                     alt_match_nea = Sigma_info[LD_idx, "alt"] == GWAS_nea[GWAS_idx]
                     ref_match_nea = Sigma_info[LD_idx, "ref"] == GWAS_nea[GWAS_idx]
@@ -152,13 +153,14 @@ function ghostknockoffgwas(
                     elseif ref_match_ea && alt_match_nea
                         zscores[GWAS_idx] *= -1
                     else # SNP cannot get matched to LD panel
-                        push!(remove_idx, i)
+                        push!(pos2remove, pos)
                     end
                 end
-                deleteat!(shared_snps, unique!(remove_idx))
+                setdiff!(shared_pos, unique!(pos2remove))
+                setdiff!(rep_pos, pos2remove)
                 # save matching snps info
-                LD_keep_idx = indexin(shared_snps, LD_pos)
-                GWAS_keep_idx = indexin(shared_snps, GWAS_pos)
+                LD_keep_idx = indexin(shared_pos, LD_pos)
+                GWAS_keep_idx = indexin(shared_pos, GWAS_pos)
                 append!(df, @view(Sigma_info[LD_keep_idx, headers]))
                 if length(LD_keep_idx) == 0 || length(GWAS_keep_idx) == 0 
                     nregions += 1
@@ -175,11 +177,18 @@ function ghostknockoffgwas(
                 # use original Sigma and D (S matrix for rep+nonrep variables)
                 Si = read(h5reader, "D")[LD_keep_idx, LD_keep_idx]
                 Σi = read(h5reader, "Sigma")[LD_keep_idx, LD_keep_idx]
-                zscore_tmp = @view(zscores[GWAS_keep_idx])
+                zi = @view(zscores[GWAS_keep_idx])
 
-                # shrinkage for consistency (todo: only use reps for better speed)
+                # shrinkage for consistency
                 t21 += @elapsed begin
-                    γ = find_optimal_shrinkage(Σi, zscore_tmp)
+                    # γ = find_optimal_shrinkage(Σi, zi)
+                    # γ_mean += γ
+                    shared_rep_pos = intersect(shared_pos, rep_pos)
+                    Σi_idx = filter!(!isnothing, indexin(shared_rep_pos, rep_pos))
+                    zi_idx = filter!(!isnothing, indexin(shared_rep_pos, shared_pos))
+                    Σi_rep = read(h5reader, "Sigma_reps")[Σi_idx, Σi_idx]
+                    zi_rep = zi[zi_idx]
+                    γ = find_optimal_shrinkage(Σi_rep, zi_rep)
                     γ_mean += γ
                     if LD_shrinkage
                         Σi = (1 - γ)*Σi + γ*I
@@ -190,12 +199,12 @@ function ghostknockoffgwas(
                 # sample ghost knockoffs knockoffs
                 Random.seed!(seed)
                 t23 += @elapsed Σi_inv = inv(Symmetric(Σi))
-                t24 += @elapsed Zko = ghost_knockoffs(zscore_tmp, Si, Σi_inv, m=m)
+                t24 += @elapsed Zko = ghost_knockoffs(zi, Si, Σi_inv, m=m)
             end
 
             # save mapped Zscores and some other variables
             empty!(Zscores_store)
-            append!(Zscores_store, zscore_tmp) # append original Z scores 
+            append!(Zscores_store, zi)         # append original Z scores 
             append!(Zscores_store, Zko)        # append knockoffs
             append!(Zscores, Zscores_store)
             current_groups = read(h5reader, "groups")[LD_keep_idx]
@@ -209,9 +218,9 @@ function ghostknockoffgwas(
 
             # randomly permute order of Z and Zko to avoid ordering bias
             if random_shuffle
-                p = length(zscore_tmp)
+                p = length(zi)
                 perms = [collect(1:m+1) for _ in 1:p]
-                for i in eachindex(zscore_tmp)
+                for i in eachindex(zi)
                     shuffle!(perms[i])
                     @views permute!(Zscores_store[i:p:end], perms[i])
                 end
@@ -228,7 +237,7 @@ function ghostknockoffgwas(
 
             # undo shuffling of Z and Zko
             if random_shuffle
-                for i in eachindex(zscore_tmp)
+                for i in eachindex(zi)
                     @views invpermute!(beta_i[i:p:end], perms[i])
                     @views invpermute!(Zscores_store[i:p:end], perms[i])
                 end
@@ -236,11 +245,11 @@ function ghostknockoffgwas(
 
             # update counters
             append!(beta, beta_i)
-            nsnps += length(shared_snps)
+            nsnps += length(shared_pos)
             nregions += 1
             if verbose
                 println("region $nregions / $tregions (f = $f): chr $c, nz beta = " *
-                        "$(count(!iszero, beta_i)), nsnps = $(length(shared_snps))" * 
+                        "$(count(!iszero, beta_i)), nsnps = $(length(shared_pos))" * 
                         ", shrinkage = $(round(γ, digits=4))")
                 flush(stdout)
             end
