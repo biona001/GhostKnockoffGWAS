@@ -181,14 +181,16 @@ function ghostknockoffgwas(
 
                 # shrinkage for consistency
                 t21 += @elapsed begin
-                    # γ = find_optimal_shrinkage(Σi, zi)
-                    # γ_mean += γ
-                    shared_rep_pos = intersect(shared_pos, rep_pos)
-                    Σi_idx = filter!(!isnothing, indexin(shared_rep_pos, rep_pos))
-                    zi_idx = filter!(!isnothing, indexin(shared_rep_pos, shared_pos))
-                    Σi_rep = read(h5reader, "Sigma_reps")[Σi_idx, Σi_idx]
-                    zi_rep = zi[zi_idx]
-                    γ = find_optimal_shrinkage(Σi_rep, zi_rep)
+                    if length(zi) > 1000 # use reps to compute shrinkage
+                        shared_rep_pos = intersect(shared_pos, rep_pos)
+                        Σi_idx = filter!(!isnothing, indexin(shared_rep_pos, rep_pos))
+                        zi_idx = filter!(!isnothing, indexin(shared_rep_pos, shared_pos))
+                        Σi_rep = read(h5reader, "Sigma_reps")[Σi_idx, Σi_idx]
+                        zi_rep = zi[zi_idx]
+                        γ = find_optimal_shrinkage(Σi_rep, zi_rep)
+                    else
+                        γ = find_optimal_shrinkage(Σi, zi)
+                    end
                     γ_mean += γ
                     if LD_shrinkage
                         Σi = (1 - γ)*Σi + γ*I
