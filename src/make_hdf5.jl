@@ -20,7 +20,7 @@ end
 
 
 """
-    get_VCF_block(file::String, chr::Int, start_bp::Int, end_bp::Int;
+    get_block(file::String, chr::Int, start_bp::Int, end_bp::Int;
         [min_maf::Float64=0.01], [min_hwe::Float64=0.0], 
         [snps_to_keep::Union{AbstractVector{Int}, Nothing}=nothing])
 
