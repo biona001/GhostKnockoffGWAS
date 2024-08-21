@@ -51,6 +51,8 @@ function neg_mvn_logl_under_null(evals, evecs, z::AbstractVector, γ::Number)
     return sum(log.(evals_scaled)) + dot(z_scaled, Diagonal(1 ./ evals_scaled), z_scaled)
 end
 function find_optimal_shrinkage(Σ::AbstractMatrix, z::AbstractVector)
+    size(Σ, 1) == size(Σ, 2) == length(z) || 
+        error("find_optimal_shrinkage: Dimension mismatch")
     evals, evecs = eigen(Symmetric(Σ))
     opt = optimize(
         γ -> neg_mvn_logl_under_null(evals, evecs, z, γ), 
