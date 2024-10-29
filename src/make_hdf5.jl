@@ -16,9 +16,9 @@ function estimate_sigma(X::AbstractMatrix, C::AbstractMatrix;
     n == size(C, 1) || error("Sample size in X and C should be the same")
 
     # pan-ukb routine
-    zscore!(X, mean(X, dims=1), std(X, dims=1))
+    Xc = StatsBase.zscore(X, mean(X, dims=1), std(X, dims=1))
     Mc = size(C, 2) > 1 ? I - C * inv(Symmetric(C' * C)) * C' : Diagonal(ones(n))
-    Xadj = Mc * X
+    Xadj = Mc * Xc
     Sigma = Xadj' * Xadj / n
 
     # numerical stability

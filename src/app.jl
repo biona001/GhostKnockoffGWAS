@@ -259,13 +259,13 @@ function parse_solveblock_commandline(parseargs::Bool)
             arg_type = Int
         "--covfile"
             help = "An optional comma- or tab-separated file containing sample" *  
-                " covariates (e.g. sex, age, PCs). These will be used to " * 
+                " covariates (e.g. sex, age, PCs). These will be used to" * 
                 " improve LD estimation. The first row should be a header row." * 
-                " The first column should be sample IDs " * 
+                " The first column should be sample IDs" * 
                 " (not necessary to be in the sample order as genotype files" *
                 " ) and all other columns will be used as additional covariates." * 
                 " Note if genotypes are stored in binary PLINK format, then the" *
-                " sample ID column in the covariate file should be FID_IID (that " * 
+                " sample ID column in the covariate file should be FID_IID (that" * 
                 " is, the first 2 columns of the .fam file merged by an underscore)"
             arg_type = String
             default = ""
