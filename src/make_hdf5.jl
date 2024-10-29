@@ -1,10 +1,11 @@
 """
-    estimate_sigma(X::AbstractMatrix, Z::AbstractMatrix; [enforce_psd=true],
+    estimate_sigma(X::AbstractMatrix; [enforce_psd=true], [min_eigval=1e-5])
+    estimate_sigma(X::AbstractMatrix, C::AbstractMatrix; [enforce_psd=true],
         [min_eigval=1e-5])
 
-Estimate LD matrices from data `X` and covariates `C`. We adopt the method
-for Pan-UKB described here: 
-https://pan-dev.ukbb.broadinstitute.org/docs/ld/index.html#ld-matrices.
+Estimate LD matrices from data `X`, accounting for covariates `C` if there are any. 
+We adopt the method for Pan-UKB described in 
+`https://pan-dev.ukbb.broadinstitute.org/docs/ld/index.html#ld-matrices`.
 If `enforce_psd=true`, then the correlation matrix will be scaled so that the 
 minimum eigenvalue is `min_eigval`.
 """
@@ -17,7 +18,7 @@ function estimate_sigma(X::AbstractMatrix, C::AbstractMatrix;
         "Columns of X must be scaled to mean 0 variance 1.")
 
     # pan-ukb routine
-    Mc = I - C * inv(Symmetric(C' * C)) * C'
+    Mc = size(C, 2) > 1 ? I - C * inv(Symmetric(C' * C)) * C' : Diagonal(ones(n))
     Xadj = Mc * X
     Sigma = Xadj' * Xadj / n
 
@@ -33,6 +34,8 @@ function estimate_sigma(X::AbstractMatrix, C::AbstractMatrix;
 
     return Sigma
 end
+estimate_sigma(X; enforce_psd::Bool=true, min_eigval::Float64 = 1e-5) = 
+    estimate_sigma(X, zeros(size(X, 1), 0); enforce_psd=enforce_psd, min_eigval=min_eigval)
 
 """
     get_block(file::String, chr::Int, start_bp::Int, end_bp::Int;
