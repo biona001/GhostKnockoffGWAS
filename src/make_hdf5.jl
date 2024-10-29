@@ -1,23 +1,38 @@
-function estimate_sigma(X::AbstractMatrix; min_eigval=1e-5)
-    # n, p = size(X)
-    # if n > p
-    #     Sigma = cor(X)
-    # else
-    #     error("p > n case not handled yet!")
-    # end
+"""
+    estimate_sigma(X::AbstractMatrix, Z::AbstractMatrix; [enforce_psd=true],
+        [min_eigval=1e-5])
 
-    # shrinkage based covariance, handles high dimensional case
-    Sigma = cov(LinearShrinkage(DiagonalUnequalVariance(), :lw), X)
+Estimate LD matrices from data `X` and covariates `C`. We adopt the method
+for Pan-UKB described here: 
+https://pan-dev.ukbb.broadinstitute.org/docs/ld/index.html#ld-matrices.
+If `enforce_psd=true`, then the correlation matrix will be scaled so that the 
+minimum eigenvalue is `min_eigval`.
+"""
+function estimate_sigma(X::AbstractMatrix, C::AbstractMatrix;
+    enforce_psd::Bool=true, min_eigval::Float64 = 1e-5)
+    # check for errors
+    n = size(X, 1)
+    n == size(C, 1) || error("Samples in X and C should be the same")
+    all(x -> isapprox(x, 0, atol=1e-12), mean(X, dims=1)) || error(
+        "Columns of X must be scaled to mean 0 variance 1.")
 
-    # ensure Sigma is PSD
-    evals, evecs = eigen(Sigma)
-    evals[findall(x -> x < min_eigval, evals)] .= min_eigval
-    Sigma = evecs * Diagonal(evals) * evecs'
-    Statistics.cov2cor!(Sigma, sqrt.(diag(Sigma))) # scale to correlation matrix
+    # pan-ukb routine
+    Mc = I - C * inv(Symmetric(C' * C)) * C'
+    Xadj = Mc * X
+    Sigma = Xadj' * Xadj / n
+
+    # numerical stability
+    if enforce_psd
+        evals, evecs = eigen(Sigma)
+        evals[findall(x -> x < min_eigval, evals)] .= min_eigval
+        Sigma = evecs * Diagonal(evals) * evecs'
+    end
+
+    # scale to correlation matrix
+    StatsBase.cov2cor!(Sigma, sqrt.(diag(Sigma)))
 
     return Sigma
 end
-
 
 """
     get_block(file::String, chr::Int, start_bp::Int, end_bp::Int;
