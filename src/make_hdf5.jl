@@ -13,11 +13,10 @@ function estimate_sigma(X::AbstractMatrix, C::AbstractMatrix;
     enforce_psd::Bool=true, min_eigval::Float64 = 1e-5)
     # check for errors
     n = size(X, 1)
-    n == size(C, 1) || error("Samples in X and C should be the same")
-    all(x -> isapprox(x, 0, atol=1e-12), mean(X, dims=1)) || error(
-        "Columns of X must be scaled to mean 0 variance 1.")
+    n == size(C, 1) || error("Sample size in X and C should be the same")
 
     # pan-ukb routine
+    zscore!(X, mean(X, dims=1), std(X, dims=1))
     Mc = size(C, 2) > 1 ? I - C * inv(Symmetric(C' * C)) * C' : Diagonal(ones(n))
     Xadj = Mc * X
     Sigma = Xadj' * Xadj / n
