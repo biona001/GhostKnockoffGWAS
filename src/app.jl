@@ -186,13 +186,14 @@ end
 function julia_solveblock()::Cint
     try
         # read command line arguments
-        file, chr, start_bp, end_bp, outdir, hg_build, tol, min_maf, 
+        file, chr, start_bp, end_bp, outdir, hg_build, covfile, tol, min_maf, 
             min_hwe, method, linkage, force_contiguous, group_cor_cutoff, 
             group_rep_cutoff, verbose = parse_solveblock_commandline(true)
 
         println("\n\nWelcome to the `solve_block` module of GhostKnockoffGWAS!")
         println("You have specified the following options:")
         println("genotype file    = ", abspath(file))
+        println("covariate file   = ", covfile == "" ? "" : abspath(covfile))
         println("chr              = ", chr)
         println("start_bp         = ", start_bp)
         println("end_bp           = ", end_bp)
@@ -209,7 +210,7 @@ function julia_solveblock()::Cint
         println("verbose          = ", verbose)
         println("\n")
 
-        solve_blocks(file, chr, start_bp, end_bp, outdir, 
+        solve_blocks(file, covfile, chr, start_bp, end_bp, outdir, 
             hg_build, tol=tol, min_maf=min_maf, min_hwe=min_hwe, 
             method=method, linkage=linkage, force_contiguous=force_contiguous,
             group_cor_cutoff=group_cor_cutoff, 
@@ -256,6 +257,18 @@ function parse_solveblock_commandline(parseargs::Bool)
                 "38 (hg38)"
             required = true
             arg_type = Int
+        "--covfile"
+            help = "An optional comma- or tab-separated file containing sample" *  
+                " covariates (e.g. sex, age, PCs). These will be used to" * 
+                " improve LD estimation. The first row should be a header row." * 
+                " The first column should be sample IDs" * 
+                " (not necessary to be in the sample order as genotype files" *
+                " ) and all other columns will be used as additional covariates." * 
+                " Note if genotypes are stored in binary PLINK format, then the" *
+                " sample ID column in the covariate file should be FID_IID (that" * 
+                " is, the first 2 columns of the .fam file merged by an underscore)"
+            arg_type = String
+            default = ""
         "--tol"
             help = "Convergence tolerlance for coordinate descent algorithm " *
                 "(default `0.0001`)"
@@ -320,7 +333,7 @@ function parse_solveblock_commandline(parseargs::Bool)
             "--min_maf","0.01","--min_hwe","0.01","--method","maxent",
             "--linkage","average","--force_contiguous","false",
             "--group_cor_cutoff","0.5","--group_rep_cutoff","0.5",
-            "--verbose","true"], s
+            "--verbose","true","--covfile",""], s
         )
         _useless = parse_args(["--help"], s)
         return nothing
@@ -333,6 +346,7 @@ function parse_solveblock_commandline(parseargs::Bool)
     end_bp = parsed_args["end_bp"]
     outdir = parsed_args["outdir"]
     hg_build = parsed_args["genome-build"]
+    covfile = parsed_args["covfile"]
     tol = parsed_args["tol"]
     min_maf = parsed_args["min_maf"]
     min_hwe = parsed_args["min_hwe"]
@@ -344,6 +358,6 @@ function parse_solveblock_commandline(parseargs::Bool)
     verbose = parsed_args["verbose"]
 
     return file, chr, start_bp, end_bp, outdir, 
-        hg_build, tol, min_maf, min_hwe, method, linkage, force_contiguous, 
+        hg_build, covfile, tol, min_maf, min_hwe, method, linkage, force_contiguous, 
         group_cor_cutoff, group_rep_cutoff, verbose
 end

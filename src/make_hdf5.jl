@@ -1,23 +1,40 @@
-function estimate_sigma(X::AbstractMatrix; min_eigval=1e-5)
-    # n, p = size(X)
-    # if n > p
-    #     Sigma = cor(X)
-    # else
-    #     error("p > n case not handled yet!")
-    # end
+"""
+    estimate_sigma(X::AbstractMatrix; [enforce_psd=true], [min_eigval=1e-5])
+    estimate_sigma(X::AbstractMatrix, C::AbstractMatrix; [enforce_psd=true],
+        [min_eigval=1e-5])
 
-    # shrinkage based covariance, handles high dimensional case
-    Sigma = cov(LinearShrinkage(DiagonalUnequalVariance(), :lw), X)
+Estimate LD matrices from data `X`, accounting for covariates `C` if there are any. 
+We adopt the method for Pan-UKB described in 
+`https://pan-dev.ukbb.broadinstitute.org/docs/ld/index.html#ld-matrices`.
+If `enforce_psd=true`, then the correlation matrix will be scaled so that the 
+minimum eigenvalue is `min_eigval`.
+"""
+function estimate_sigma(X::AbstractMatrix, C::AbstractMatrix;
+    enforce_psd::Bool=true, min_eigval::Float64 = 1e-5)
+    # check for errors
+    n = size(X, 1)
+    n == size(C, 1) || error("Sample size in X and C should be the same")
 
-    # ensure Sigma is PSD
-    evals, evecs = eigen(Sigma)
-    evals[findall(x -> x < min_eigval, evals)] .= min_eigval
-    Sigma = evecs * Diagonal(evals) * evecs'
-    Statistics.cov2cor!(Sigma, sqrt.(diag(Sigma))) # scale to correlation matrix
+    # pan-ukb routine
+    Xc = StatsBase.zscore(X, mean(X, dims=1), std(X, dims=1))
+    Mc = size(C, 2) > 1 ? I - C * inv(Symmetric(C' * C)) * C' : Diagonal(ones(n))
+    Xadj = Mc * Xc
+    Sigma = Xadj' * Xadj / n
+
+    # numerical stability
+    if enforce_psd
+        evals, evecs = eigen(Sigma)
+        evals[findall(x -> x < min_eigval, evals)] .= min_eigval
+        Sigma = evecs * Diagonal(evals) * evecs'
+    end
+
+    # scale to correlation matrix
+    StatsBase.cov2cor!(Sigma, sqrt.(diag(Sigma)))
 
     return Sigma
 end
-
+estimate_sigma(X; enforce_psd::Bool=true, min_eigval::Float64 = 1e-5) = 
+    estimate_sigma(X, zeros(size(X, 1), 0); enforce_psd=enforce_psd, min_eigval=min_eigval)
 
 """
     get_block(file::String, chr::Int, start_bp::Int, end_bp::Int;
@@ -251,7 +268,49 @@ function rearrange_snps!(groups, group_reps, Sigma, Sigma_info)
 end
 
 """
-    solve_blocks(file::String, chr::Int, start_bp::Int, end_bp::Int, 
+    get_covariates(covfile::String, genotype_file::String)
+
+Read covariates from `covfile` and reorders the rows so that the rows come in 
+the same order as sample IDs specified in (VCF or binary PLINK) `genotype_file`.
+
+# Inputs
++ `covfile`: A comma- or tab-separated file containing sample covariates. The
+    first row should be a header row. The first column should be sample IDs (not
+    necessary to be in the sample order as genotype files and all other columns
+    will be used as additional covariates. Note if genotypes are stored in binary
+    PLINK format, then the sample ID column in the covariate file should be 
+    FID_IID (that is, the first 2 columns of the .fam file merged by an 
+    underscore).
++ `genotype_file`: A VCF or binary PLINK file storing individual level genotypes.
+    Must end in `.vcf`, `.vcf.gz`, or `.bed`. 
+"""
+function get_covariates(covfile::String, genotype_file::String)
+    if endswith(genotype_file, ".vcf") || endswith(genotype_file, ".vcf.gz")
+        sampleIDs = sampleID(genotype_file)
+    elseif endswith(genotype_file, ".bed")
+        famfile = genotype_file[1:end-4] * ".fam"
+        fam_df = CSV.read(famfile, DataFrame, header=false)
+        sampleIDs = string.(fam_df[!, 1], "_", fam_df[!, 2])
+    else
+        error("Genotype file should be in VCF (ends in .vcf " *
+            "or .vcf.gz) or binary PLINK (ends in .bed) format.")
+    end
+
+    # read covariate data and match sample IDs
+    covdata = CSV.read(covfile, DataFrame)
+    cov_sampleIDs = string.(covdata[!, 1])
+    idx = indexin(sampleIDs, cov_sampleIDs)
+    if length(idx) != length(sampleIDs)
+        error("A covariate file was supplied but >=1 genotyped sample(s)" * 
+            " does not have covariate data. Please check if the covariate" * 
+            " file has the correct sample IDs.")
+    end
+    C = Matrix(covdata[idx, 2:end])
+    return C::Matrix{Float64}
+end
+
+"""
+    solve_blocks(file::String, covfile::String, chr::Int, start_bp::Int, end_bp::Int, 
         outdir::String, hg_build::Int; [m=5], [tol=0.0001], [min_maf=0.01], 
         [min_hwe=0.0], [force_block_diag=true], 
         [method::String = "maxent"], [linkage::String="average"],
@@ -271,6 +330,11 @@ it is indexed). Thus, we *strongly recommend* one convert to binary PLINK format
     end in `.vcf`, `.vcf.gz`, or `.bed`. If a VCF file is used, the ALT field for
     each record must be unique, i.e. multiallelic records must be split first. 
     Missing genotypes will be imputed by column mean. 
++ `covfile`: An optional comma- or tab-separated file containing sample covariates 
+    (e.g. sex, age, PCs). This argument can be an empty string. The supplied 
+    covariates will be used to improve LD estimation. The first column should be
+    sample IDs (not necessary to be in the sample order as VCF or PLINK files)
+    and all other columns will be used as additional covariates.
 + `chr`: Target chromosome. This MUST be an integer and it must match the `CHROM`
     field in your VCF/PLINK file. For example, if your VCF file has CHROM field
     like `chr1`, `CHR1`, or `CHROM1` etc, they must be renamed into `1`. 
@@ -337,6 +401,7 @@ Calling `solve_blocks` will create 3 files in the directory `outdir/chr`:
 """
 function solve_blocks(
     file::String,
+    covfile::String,
     chr::Int,
     start_bp::Int, 
     end_bp::Int, 
@@ -374,7 +439,11 @@ function solve_blocks(
         size(X, 1) ≥ 10 || 
             error("Detected less than 10 samples, not recommended")
 
-        Sigma = estimate_sigma(X)
+        # read covariates, if any
+        C = covfile == "" ? zeros(size(X, 1), 0) : get_covariates(covfile, file)
+
+        # estimate correlation matrix
+        Sigma = estimate_sigma(X, C)
         rename!(data_info, "pos" => "pos_hg$hg_build") # associate pos with hg_build
     end
 

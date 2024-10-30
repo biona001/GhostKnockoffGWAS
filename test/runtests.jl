@@ -220,7 +220,8 @@ end
     outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
     isdir(outdir) || mkpath(outdir)
     hg_build = 19
-    @time solve_blocks(vcffile, chr, start_bp, end_bp, outdir, hg_build, 
+    covfile = ""
+    @time solve_blocks(vcffile, covfile, chr, start_bp, end_bp, outdir, hg_build, 
         min_maf = 0.01, min_hwe = 0.0)
 
     # test basic output structure
@@ -289,7 +290,8 @@ end
     outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files2")
     isdir(outdir) || mkpath(outdir)
     hg_build = 19
-    @time solve_blocks(plinkfile * ".bed", chr, start_bp, end_bp, outdir,
+    covfile = ""
+    @time solve_blocks(plinkfile * ".bed", covfile, chr, start_bp, end_bp, outdir,
         hg_build, min_maf = 0.01, min_hwe = 0.0)
 
     # check PLINK vs VCF output is the same
