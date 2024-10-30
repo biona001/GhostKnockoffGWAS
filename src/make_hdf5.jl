@@ -310,7 +310,7 @@ function get_covariates(covfile::String, genotype_file::String)
 end
 
 """
-    solve_blocks(file::String, chr::Int, start_bp::Int, end_bp::Int, 
+    solve_blocks(file::String, covfile::String, chr::Int, start_bp::Int, end_bp::Int, 
         outdir::String, hg_build::Int; [m=5], [tol=0.0001], [min_maf=0.01], 
         [min_hwe=0.0], [force_block_diag=true], 
         [method::String = "maxent"], [linkage::String="average"],
