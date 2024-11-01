@@ -17,9 +17,10 @@ function estimate_sigma(X::AbstractMatrix, C::AbstractMatrix;
 
     # pan-ukb routine
     Xc = StatsBase.zscore(X, mean(X, dims=1), std(X, dims=1))
-    Mc = size(C, 2) > 1 ? I - C * inv(Symmetric(C' * C)) * C' : Diagonal(ones(n))
-    Xadj = Mc * Xc
-    Sigma = Xadj' * Xadj / n
+    if size(C, 2) > 1
+        Xc .-= C * inv(Symmetric(C' * C)) * (C' * Xc)
+    end
+    Sigma = Xc' * Xc / n
 
     # numerical stability
     if enforce_psd
