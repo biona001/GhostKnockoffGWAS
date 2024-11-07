@@ -1,4 +1,3 @@
-
 # Introduction
 
 This package conducts knockoff-based inference to perform genome-wide conditional independent tests based on GWAS summary statistics. The methodology is described in the following papers
@@ -25,7 +24,7 @@ Most users are expected to follow this workflow. Detailed explanations for each 
 
 1. Go to [Download Page](https://biona001.github.io/GhostKnockoffGWAS/dev/man/download) and download (1) the software and (2) the pre-processed LD files. For example,
 
-        wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.2/app_linux_x86.tar.gz
+        wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.3/app_linux_x86.tar.gz
         wget https://zenodo.org/records/10433663/files/EUR.zip
 2. Unzip them both:
 
