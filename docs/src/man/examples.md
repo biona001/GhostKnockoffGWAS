@@ -1,4 +1,3 @@
-
 # Detailed Example
 
 This page collect examples of running the ghost knockoff pipeline. We will cover topics such as installation, examining input data, running the software, and interpreting the output. 
@@ -9,7 +8,7 @@ Here is a short summary of this tutorial:
 
 1. Step 1: Download pre-processed LD files and binary executable and extract their content
 
-        wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.2/app_linux_x86.tar.gz
+        wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.3/app_linux_x86.tar.gz
         wget https://zenodo.org/records/10433663/files/EUR.zip
         tar -xvzf app_linux_x86.tar.gz
         unzip EUR.zip  # decompresses to ~8.7GB
@@ -26,7 +25,7 @@ Here is a short summary of this tutorial:
 
 Proceed to the [Downloads page](https://biona001.github.io/GhostKnockoffGWAS/dev/man/download) and download (1) the software as well as (2) a pre-processed knockoff dataset suitable for your analysis, e.g.
 ```shell
-wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.2/app_linux_x86.tar.gz
+wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.3/app_linux_x86.tar.gz
 wget https://zenodo.org/records/10433663/files/EUR.zip
 ```
 Next, unzip the files in linux command line via:
@@ -42,7 +41,7 @@ This should create 2 folders `app_linux_x86/` and `EUR/` in the current director
 
 ## Step 2: Prepare a valid Z score file
 
-One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/zfile) as input. 
+One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/documentation/#Acceptable-Z-scores-file-format) as input. 
 
 If you would like to follow along with this tutorial, feel free to download this test data [example_zfile.txt](https://github.com/biona001/GhostKnockoffGWAS/blob/main/data/example_zfile.txt) (17MB). The first few rows is
 ```

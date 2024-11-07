@@ -14,7 +14,6 @@ makedocs(
         "Introduction" => "man/intro.md",
         "Documentation" => "man/documentation.md",
         "Downloads" => "man/download.md",
-        "Acceptable Z-scores file" => "man/zfile.md",
         "Tutorial" => "man/examples.md",
         "Customizing LD files" => "man/solveblocks.md",
         # "Video tutorials" => "man/video.md",
