@@ -1,4 +1,3 @@
-
 # Customizing your own LD files
 
 One can customize the `--LD-files` input starting with individual level data stored in VCF or binary PLINK format. This feature is supported by the `solveblock` executable located within `GhostKnockoffGWAS/bin/solveblock`.
@@ -30,6 +29,7 @@ solveblock --file test.bed --chr 1 --start_bp 10583 --end_bp 1892607 --outdir ./
 
 | Option name              | Argument         | Description   |
 | :---                    |    :----:         |   :---     |
+| `--covfile`        | String | An optional comma- or tab-separated file containing sample covariates (e.g. sex, age, PCs). `.gz` compressed text file is acceptable. These will be used to improve LD estimation. The first row should be a header row. The first column should be sample IDs (not necessary to be in the sample order as genotype files) and all other columns will be used as additional covariates. Note if genotypes are stored in binary PLINK format, then the sample ID column in the covariate file should be FID_IID (that is, the first 2 columns of the .fam file merged by an underscore) (default `""`) |
 | `--tol`        | Float64 | Convergence tolerlance for group knockoff coordinate descent optimization (default `0.0001`) |
 | `--min_maf`    | Float64 | Minimum minor allele frequency for a variable to be considered (default `0.01`) |
 | `--min_hwe`    | Int     | Cutoff for hardy-weinburg equilibrium p-values. Only SNPs with p-value >= `min_hwe` will be included (default `0.0`) |
