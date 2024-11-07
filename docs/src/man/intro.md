@@ -30,7 +30,7 @@ Most users are expected to follow this workflow. Detailed explanations for each 
 
         tar -xvzf app_linux_x86.tar.gz
         unzip EUR.zip  # decompresses to ~8.7GB
-3. Prepare your input Z score file into accepted format, see [Acceptable Z-scores](https://biona001.github.io/GhostKnockoffGWAS/dev/man/zfile). A toy example can be downloaded by:
+3. Prepare your input Z score file into accepted format, see [Acceptable Z-scores](https://biona001.github.io/GhostKnockoffGWAS/dev/man/documentation/#Acceptable-Z-scores-file-format). A toy example can be downloaded by:
 
         wget https://github.com/biona001/GhostKnockoffGWAS/raw/main/data/example_zfile.txt
 4. Run the executable
