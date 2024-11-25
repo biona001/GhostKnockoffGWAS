@@ -77,7 +77,7 @@ function ghostknockoffgwas(
     A_scaling_factor = 0.01,
     kappa_lasso::Number=0.6,
     LD_shrinkage::Bool=false,
-    target_fdrs = [0.01, 0.05, 0.1, 0.2],
+    target_fdrs = collect(0.01:0.01:0.2),
     verbose::Bool=true,
     skip_shrinkage_check::Bool=false,
     random_shuffle::Bool = false
@@ -287,25 +287,57 @@ function ghostknockoffgwas(
         original_idx = findall(x -> endswith(x, "_0"), groups)
         T0 = beta[original_idx]
         Tk = [beta[findall(x -> endswith(x, "_$k"), groups)] for k in 1:m]
-        kappa, tau, W = MK_statistics(T0, Tk)
-        qvalues = get_knockoff_qvalue(kappa, tau, m, groups=groups)
+        T_group0 = Float64[]
+        T_groupk = [Float64[] for k in 1:m]
+        groups_original = groups[findall(x -> endswith(x, "_0"), groups)]
+        unique_groups = unique(groups_original)
+        for idx in find_matching_indices(unique_groups, groups_original)
+            push!(T_group0, sum(abs, @view(T0[idx])))
+            for k in 1:m
+                push!(T_groupk[k], sum(abs, @view(Tk[k][idx])))
+            end
+        end
+        kappa, tau, W = MK_statistics(T_group0, T_groupk)
+        # qvalues = get_knockoff_qvalue(kappa, tau, m, groups=groups)
 
         # append result
         df[!, :group] = groups[original_idx]
         df[!, :zscores] = Zscores[original_idx]
         df[!, :lasso_beta] = beta[original_idx]
-        df[!, :kappa] = kappa
-        df[!, :tau] = tau
-        df[!, :W] = W
-        df[!, :qvals] = qvalues
+        W_full, kappa_full, tau_full = Float64[], Float64[], Float64[]
+        for idx in indexin(groups_original, unique_groups)
+            push!(W_full, W[idx])
+            push!(kappa_full, kappa[idx])
+            push!(tau_full, tau[idx])
+        end
+        df[!, :W] = W_full
+        df[!, :kappa] = kappa_full
+        df[!, :tau] = tau_full
         df[!, :pvals] = zscore2pval(df[!, :zscores])
+        qs, num_selected = Float64[], Int[]
+        for fdr in target_fdrs
+            q = mk_threshold(tau, kappa, m, fdr)
+            selected = zeros(Int, size(df, 1))
+            selected[findall(x -> x ≥ q, W)] .= 1
+            df[!, "selected_fdr$fdr"] = selected
+            push!(qs, q)
+            push!(num_selected, count(isone, selected))
+        end
+        # df[!, :group] = groups[original_idx]
+        # df[!, :zscores] = Zscores[original_idx]
+        # df[!, :lasso_beta] = beta[original_idx]
+        # df[!, :kappa] = kappa
+        # df[!, :tau] = tau
+        # df[!, :W] = W
+        # df[!, :qvals] = qvalues
+        # df[!, :pvals] = zscore2pval(df[!, :zscores])
 
         # pre-compute whether a variant is selected for easier interpretation
-        for fdr in target_fdrs
-            selected = zeros(Int, size(df, 1))
-            selected[findall(x -> x ≤ fdr, qvalues)] .= 1
-            df[!, "selected_fdr$fdr"] = selected
-        end
+        # for fdr in target_fdrs
+        #     selected = zeros(Int, size(df, 1))
+        #     selected[findall(x -> x ≤ fdr, qvalues)] .= 1
+        #     df[!, "selected_fdr$fdr"] = selected
+        # end
 
         # sort by chr and pos
         sort!(df, [:chr, Symbol("pos_hg$(hg_build)")])
@@ -316,9 +348,9 @@ function ghostknockoffgwas(
 
     # save summary info
     open(joinpath(outdir, outname * "_summary.txt"), "w") do io
-        for fdr in target_fdrs
-            println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≤ fdr, qvalues))
-        end
+        # for fdr in target_fdrs
+        #     println(io, "target_fdr_$(fdr)_num_selected,", count(x -> x ≤ fdr, qvalues))
+        # end
         println(io, "m,$m")
         println(io, "nregions,$nregions")
         println(io, "nsnps,$nsnps")
