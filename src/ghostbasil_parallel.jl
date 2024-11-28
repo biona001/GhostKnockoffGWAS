@@ -318,7 +318,7 @@ function ghostknockoffgwas(
         for fdr in target_fdrs
             q = mk_threshold(tau, kappa, m, fdr)
             selected = zeros(Int, size(df, 1))
-            selected[findall(x -> x ≥ q, W)] .= 1
+            selected[findall(x -> x ≥ q, W_full)] .= 1
             df[!, "selected_fdr$fdr"] = selected
             push!(qs, q)
             push!(num_selected, count(isone, selected))
