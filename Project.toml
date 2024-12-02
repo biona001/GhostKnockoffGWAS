@@ -1,7 +1,7 @@
 name = "GhostKnockoffGWAS"
 uuid = "28dc8d00-4921-4061-9921-3f423e4be5cc"
 authors = ["Benjamin Chu <benchu99@hotmail.com>"]
-version = "0.2.3"
+version = "0.2.4"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"

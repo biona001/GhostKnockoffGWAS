@@ -302,8 +302,12 @@ function sample_mvn_efficient(C::AbstractMatrix{T}, D::AbstractMatrix{T}, m::Int
     end
     e2_avg = 1/m * sum(e2)
     Zko = T[]
+    storage = zeros(p)
     for i in 1:m
-        append!(Zko, L.L*e1 + e2[i] - e2_avg)
+        e2[i] .-= e2_avg
+        mul!(storage, L.U', e1) # faster than L.L*e1 since L.L makes a copy
+        e2[i] .+= storage
+        append!(Zko, e2[i])
     end
     return Zko
 end
@@ -338,8 +342,10 @@ function ghost_knockoffs(Zscores::AbstractVector{T}, D::AbstractMatrix{T},
     DΣinv = D * Σinv
     C = 2D - DΣinv * D
     v = sample_mvn_efficient(C, D, m) # Jiaqi's trick
-    P = repeat(I - DΣinv, m)
-    return P*Zscores + v
+    DΣinv .*= -1
+    DΣinv += I
+    Pz = DΣinv * Zscores
+    return repeat(Pz, m) + v
 end
 
 """
