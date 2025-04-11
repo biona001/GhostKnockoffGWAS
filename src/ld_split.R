@@ -1,7 +1,8 @@
 # usage: Rscript --vanilla manhattan.R arg1 arg2 arg3 arg4 arg5 arg6
 # arg1 = chromosome number (must be an integer)
-# arg2 = path to PLINK binary file (without .bim/bed/fam extension)
-# arg3 = path to FBM file (if this file doesn't exist, it will be generated)
+# arg2 = path to PLINK binary file (must end in `.bed` extension)
+# arg3 = path to FBM file (without extensions. If this file doesn't exist, it
+#        will be generated)
 # arg4 = path to output file 
 # arg5 = thr_r2, this is the thr_r2 used by snp_ldsplit. All correlation
 #        smaller than thr_r2 are set to 0

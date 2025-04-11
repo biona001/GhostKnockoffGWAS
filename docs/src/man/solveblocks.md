@@ -64,8 +64,28 @@ Calling `solveblock` will create 3 files in the directory `outdir/chr` (the `chr
 
 ## Determining `start_bp` and `end_bp`
 
-+ In our papers, we defined each start and end position by adapting the [quasi-independent regions of ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/). 
-+ Given individual level data, one can compute approximately independent LD blocks directly, see [reference](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8696101/) and [R software](https://privefl.github.io/bigsnpr/reference/snp_ldsplit.html).
+There are 2 options:
+
+1. One can defined each start and end position by leveraging existing quasi-independent regions for your target sample. For example, we previously used the European blocks of [ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/). 
+2. Given individual level data, one can compute approximately independent LD blocks directly, see [reference](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8696101/) and [R software](https://privefl.github.io/bigsnpr/reference/snp_ldsplit.html).
+
+For option 2, we provide an [R script](https://github.com/biona001/GhostKnockoffGWAS/blob/main/src/ld_split.R) which can be ran in the terminal (this requires the `R` packages `bigsnpr` and `dplyr`). Usage:
+
+```R
+$ Rscript --vanilla ld_split.R arg1 arg2 arg3 arg4 arg5 arg6
+```
++ `arg1` = chromosome number (must be an integer)
++ `arg2` = path to PLINK binary file (must end in `.bed` extension)
++ `arg3` = path to FBM file (without extensions. If this file doesn't exist, it will be generated)
++ `arg4` = path to output file 
++ `arg5` = `thr_r2`, this is the `thr_r2` used by snp_ldsplit. All correlation smaller than `thr_r2` are set to 0
++ `arg6` = `max_r2`, this is the `max_r2` used by snp_ldsplit. This is the maximum acceptable correlation for SNPs in different blocks. 
+
+For example, 
+
+```R
+$ Rscript --vanilla ld_split.R 1 my_plink.bed my_plink_fbm regions.txt 0.01 0.3
+```
 
 ## A note on run-time
 
