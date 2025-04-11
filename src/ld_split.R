@@ -1,4 +1,4 @@
-# usage: Rscript --vanilla manhattan.R arg1 arg2 arg3 arg4 arg5 arg6
+# usage: Rscript --vanilla ld_split.R arg1 arg2 arg3 arg4 arg5 arg6
 # arg1 = chromosome number (must be an integer)
 # arg2 = path to PLINK binary file (must end in `.bed` extension)
 # arg3 = path to FBM file (without extensions. If this file doesn't exist, it
