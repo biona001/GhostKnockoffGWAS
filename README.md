@@ -6,6 +6,14 @@
 
 This is a package for analyzing summary statistics data from [*genome-wide association studies (GWAS)*](https://en.wikipedia.org/wiki/Genome-wide_association_study) under the statistical *knockoff framework*. Compared to marginal association testing which controls the FWER, the knockoff framework conducts conditional independence testing while controlling the FDR. As a consequence, `GhostKnockoffGWAS` can be both more precise and powerful than current state-of-the-art GWAS+fine-mapping methods. Its detailed evaluations can be found in our [companion paper](https://www.biorxiv.org/content/10.1101/2024.02.28.582621v1).
 
+## Installation
+
+GhostKnockoffGWAS is available:
++ as a **standalone binary**
++ as a regular Julia package
+
+For more extended instructions on installation, please refer to the [documentation](https://biona001.github.io/GhostKnockoffGWAS/dev/man/examples/).
+
 ## New users
 
 To get started, please refer to the [documentation](https://biona001.github.io/GhostKnockoffGWAS/dev). 
