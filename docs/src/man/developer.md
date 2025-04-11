@@ -1,34 +1,39 @@
-
 # Developer documentation
 
 This is for advanced users who wish to build customized knockoff analysis pipelines. It is possible at 2 levels: 
 
-1. Processing LD panels (see [Customizing LD files](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks))
-    + Specifying which LD panel to use or [use individual-level data](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks)
-    + Defining quasi-independent regions and groups
-    + Solving the knockoff (convex) optimization problem
-    + Saving the result in a easy-to-read format, which will be read in step 2
-2. Ghost Knockoff sampling and high dimensional Lasso regression
-    + Read pre-computed knockoff statistics from step 1
-    + Sample Ghost Knockoffs
-    + Fit a pseudo-lasso problem
-    + Applying the knockoff filter
+1. Create LD files that can be read by `GhostKnockoffGWAS` executable. This can be achieved in 2 ways:
+    + If you have individual-level genotypes, you can use the `solveblock` executable (see tutorial on [customizing LD files](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks))
+    + If you don't have individual-level genotypes, you can use LD-panels provided by [gnomAD](https://gnomad.broadinstitute.org/downloads#v2-linkage-disequilibrium) or [Pan-UKB](https://pan-dev.ukbb.broadinstitute.org/docs/hail-format/index.html). However, as explained in the [FAQ](https://biona001.github.io/GhostKnockoffGWAS/dev/man/FAQ/), this is not easy, and we suggest users who wish to do so reach out to us first. Nevertheless, a full example using the Pan-UKB LD files is provided in 3 separate jupyter notebooks: [part 0](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part0.ipynb), [part 1](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part1.ipynb), and [part 2](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part2.ipynb). If you need assistance on any of these steps, feel free to reach out to us. 
+2. Running `GhostKnockoffGWAS`, which performs ghost knockoff sampling and high dimensional Lasso regression
 
-A full example using the Pan-UKB LD files is provided in 3 separate jupyter notebooks: [part 0](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part0.ipynb), [part 1](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part1.ipynb), and [part 2](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part2.ipynb). If you need assistance on any of these steps, feel free to reach out to us. 
+The main purposes of step 1 include:
++ Specifying which LD panel to use or [use individual-level data](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks)
++ Defining quasi-independent regions and groups
++ Solving the knockoff (convex) optimization problem
++ Saving the result in a easy-to-read format, which will be read in step 2
 
-## 1. Processing downloaded LD panels
+The main purposes of step 2 include:
++ Read pre-computed knockoff statistics from step 1
++ Sample Ghost Knockoffs
++ Fit a pseudo-lasso problem
++ Applying the knockoff filter
+
+These steps are detailed below.
+
+## Step 1: Creating custom LD files
 
 See [Customizing LD files](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks) if you have individual level data and are willing to use in-sample LD. 
 
 Otherwise, large consortiums such as [Pan-UKBB](https://pan-dev.ukbb.broadinstitute.org/docs/hail-format/index.html) and [gnomAD](https://gnomad.broadinstitute.org/downloads#v2-linkage-disequilibrium) distributes LD panels for various population. 
 
 + These pre-existing LD panels can be downloaded and imported by [EasyLD.jl](https://github.com/biona001/EasyLD.jl) within Julia. 
-+ To partition the extremely large LD matrix into manageable pieces, we directly adopted the output of [ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/) for which `AFR` (african), `ASN` (east Asians), and `EUR` (european) results are already available (position coordinates are given in HG19). For the EUR panel, the autosomes are partitioned into 1703 "quasi-independent" regions, see Figure S2 of [this paper](https://arxiv.org/abs/2310.15069) for summaries. 
++ To partition the extremely large LD matrix into manageable pieces, we directly adopted the output of [ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/) for which `AFR` (african), `ASN` (east Asians), and `EUR` (european) results are already available (position coordinates are given in HG19). For other populations, it is currently unclear how to obtain a suitable block-diagonal approximation. But for the EUR panel, ldetect partitioned it into 1703 "quasi-independent" regions, see Figure S2 of [this paper](https://arxiv.org/abs/2310.15069) for summaries. 
 + Knockoff optimization problem was carried out by [Knockoffs.jl](https://github.com/biona001/Knockoffs.jl). In particular, we defined groups via average-linkage hierarchical clustering, chose group-key variants within each group via Algorithm A2 in the paper with threshold value $c=0.5$, and employed the maximum-entropy group-knockoff solver.
 
 For details, please see section 5.1 and 5.2 of [this paper](https://arxiv.org/pdf/2310.15069.pdf). Note that the precomputed knockoff statistics includes everything up to this point. 
 
-## 2. Ghost Knockoff sampling and high dimensional Lasso regression
+## Step 2: Ghost Knockoff sampling and high dimensional Lasso regression
 
 Over 1703 quasi-independent blocks, we have assembled
 ```math
