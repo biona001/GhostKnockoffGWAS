@@ -10,7 +10,7 @@ Simple run
 # VCF format
 solveblock --file test.vcf.gz --chr 1 --start_bp 10583 --end_bp 1892607 --outdir ./test_LD_files --genome-build 19 
 
-# PLINK format
+# binary PLINK format
 solveblock --file test.bed --chr 1 --start_bp 10583 --end_bp 1892607 --outdir ./test_LD_files --genome-build 19 
 ```
 
