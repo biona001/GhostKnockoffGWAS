@@ -300,7 +300,7 @@ function get_covariates(covfile::String, genotype_file::String)
     # read covariate data and match sample IDs
     covdata = CSV.read(covfile, DataFrame)
     cov_sampleIDs = string.(covdata[!, 1])
-    idx = indexin(sampleIDs, cov_sampleIDs)
+    idx = filter!(!isnothing, indexin(sampleIDs, cov_sampleIDs))
     if length(idx) != length(sampleIDs)
         error("A covariate file was supplied but >=1 genotyped sample(s)" * 
             " does not have covariate data. Please check if the covariate" * 
