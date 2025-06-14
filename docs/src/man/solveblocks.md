@@ -1,6 +1,6 @@
 # Customizing your own LD files
 
-One can customize the `--LD-files` input starting with individual level data stored in VCF or binary PLINK format. This feature is supported by the `solveblock` executable located within `GhostKnockoffGWAS/bin/solveblock`.
+One can customize the `--LD-files` (an input of the main software `GhostKnockoffGWAS`) starting with individual level data stored in VCF or binary PLINK format. This feature is supported by the `solveblock` executable located within `GhostKnockoffGWAS/bin/solveblock`.
 
 ## Command-line documentation of `solveblock` executable
 
@@ -78,14 +78,19 @@ $ Rscript --vanilla ld_split.R arg1 arg2 arg3 arg4 arg5 arg6
 + `arg2` = path to PLINK binary file (must end in `.bed` extension)
 + `arg3` = path to FBM file (without extensions. If this file doesn't exist, it will be generated)
 + `arg4` = path to output file 
-+ `arg5` = `thr_r2`, this is the `thr_r2` used by snp_ldsplit. All correlation smaller than `thr_r2` are set to 0
-+ `arg6` = `max_r2`, this is the `max_r2` used by snp_ldsplit. This is the maximum acceptable correlation for SNPs in different blocks. 
++ `arg5` = `thr_r2`, this is the `thr_r2` used by `snp_ldsplit`. All correlation smaller than `thr_r2` are set to 0
++ `arg6` = `max_r2`, this is the `max_r2` used by `snp_ldsplit`. This is the maximum acceptable correlation for SNPs in different blocks. 
 
 For example, 
 
 ```R
 $ Rscript --vanilla ld_split.R 1 my_plink.bed my_plink_fbm regions.txt 0.01 0.3
 ```
+
+
+!!! note
+
+    If the split is `NULL`, it means that the specified parameters (`thr_r2` ...etc) cannot successfully split the data into independent regions. You can try increasing `thr_r2` and `max_r2`. If this still fails, perhaps try increasing the `max_sizes` parameter within the `ld_split.R` script (not recommended). 
 
 ## A note on run-time
 
@@ -95,3 +100,12 @@ Because VCF files are plain text files, it is inherently slow to read even if it
 $plink_exe --vcf $vcffile --double-id --keep-allele-order --real-ref-alleles --make-bed --out $plinkprefix
 ```
 Note the `--keep-allele-order` is crucial to prevent PLINK from randomly converting the minor allele into A1. 
+
+
+## References
+
+The methodology is described in the following paper
+
+> Chu BB, He Z, Sabatti C. "It's a wrap: deriving distinct discoveries with FDR control after a GWAS pipeline", bioRxiv, 2025.06.05.658138; doi: https://doi.org/10.1101/2025.06.05.658138.
+
+A full example can be found in our paper's [reproducibility page](https://github.com/biona001/solveblock-reproducibility?tab=readme-ov-file#running-the-ghostknockoff-pipeline-for-real-data-and-simulated-experiments). 
