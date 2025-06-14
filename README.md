@@ -8,7 +8,7 @@ This is a package for analyzing summary statistics data from [*genome-wide assoc
 
 ## Installation
 
-GhostKnockoffGWAS is available:
+`GhostKnockoffGWAS` (and the accompanying software `solveblock`) are available:
 + as a **standalone binary**
 + as a regular Julia package
 
@@ -35,3 +35,7 @@ PRs and feature requests are welcomed!
 If you use `GhostKnockoffGWAS` in your research, please cite the following references:
 
 > He Z, Chu BB, Yang J, Gu J, Chen Z, Liu L, Morrison T, Bellow M, Qi X, Hejazi N, Mathur M, Le Guen Y, Tang H, Hastie T, Ionita-laza, I, Sabatti C, Candes C. "In silico identification of putative causal genetic variants", bioRxiv, 2024.02.28.582621; doi: https://doi.org/10.1101/2024.02.28.582621.
+
+If you use `solveblock` to generate LD files, please cite the following instead:
+
+> Chu BB, He Z, Sabatti C. "It's a wrap: deriving distinct discoveries with FDR control after a GWAS pipeline", bioRxiv, 2025.06.05.658138; doi: https://doi.org/10.1101/2025.06.05.658138.
