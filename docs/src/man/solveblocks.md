@@ -66,7 +66,7 @@ Calling `solveblock` will create 3 files in the directory `outdir/chr` (the `chr
 
 There are 2 options:
 
-1. One can defined each start and end position by leveraging existing quasi-independent regions for your target sample. For example, we previously used the European blocks of [ldetect](https://bitbucket.org/nygcresearch/ldetect-data/src/master/). 
+1. One can defined each start and end position by leveraging existing quasi-independent regions for your target sample. For example, we previously used the output of `ldetect` in [HG19](https://bitbucket.org/nygcresearch/ldetect-data/src/master/) or [HG38](https://github.com/jmacdon/LDblocks_GRCh38?tab=readme-ov-file). The blocks are defined using data from 1000 genomes project.
 2. Given individual level data, one can compute approximately independent LD blocks directly, see [reference](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8696101/) and [R software](https://privefl.github.io/bigsnpr/reference/snp_ldsplit.html).
 
 For option 2, we provide an [R script](https://github.com/biona001/GhostKnockoffGWAS/blob/main/src/ld_split.R) which can be ran in the terminal (this requires the `R` packages `bigsnpr` and `dplyr`). Usage:
