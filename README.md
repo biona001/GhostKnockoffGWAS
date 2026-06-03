@@ -1,8 +1,8 @@
 # GhostKnockoffGWAS
 
-| **Documentation** | **Build Status** | **Code Coverage**  |
-|-------------------|------------------|--------------------|
-| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://biona001.github.io/GhostKnockoffGWAS/dev/)| [![build Actions Status](https://github.com/biona001/GhostKnockoffGWAS/actions/workflows/CI.yml/badge.svg)](https://github.com/biona001/GhostKnockoffGWAS/actions) [![CI (Julia nightly)](https://github.com/biona001/GhostKnockoffGWAS/actions/workflows/JuliaNightly.yml/badge.svg)](https://github.com/biona001/GhostKnockoffGWAS.jl/actions/workflows/JuliaNightly.yml) | [![codecov](https://codecov.io/gh/biona001/GhostKnockoffGWAS/branch/main/graph/badge.svg)](https://codecov.io/gh/biona001/GhostKnockoffGWAS) |
+| **Documentation** | **Build Status** | **Code Coverage**  | **Citation** |
+|-------------------|------------------|--------------------|--------------|
+| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://biona001.github.io/GhostKnockoffGWAS/dev/)| [![build Actions Status](https://github.com/biona001/GhostKnockoffGWAS/actions/workflows/CI.yml/badge.svg)](https://github.com/biona001/GhostKnockoffGWAS/actions) [![CI (Julia nightly)](https://github.com/biona001/GhostKnockoffGWAS/actions/workflows/JuliaNightly.yml/badge.svg)](https://github.com/biona001/GhostKnockoffGWAS.jl/actions/workflows/JuliaNightly.yml) | [![codecov](https://codecov.io/gh/biona001/GhostKnockoffGWAS/branch/main/graph/badge.svg)](https://codecov.io/gh/biona001/GhostKnockoffGWAS) | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20519207.svg)](https://doi.org/10.5281/zenodo.20519207) |
 
 This is a package for analyzing summary statistics data from [*genome-wide association studies (GWAS)*](https://en.wikipedia.org/wiki/Genome-wide_association_study) under the statistical *knockoff framework*. Compared to marginal association testing which controls the FWER, the knockoff framework conducts conditional independence testing while controlling the FDR. As a consequence, `GhostKnockoffGWAS` can be both more precise and powerful than current state-of-the-art GWAS+fine-mapping methods. Its detailed evaluations can be found in our [companion paper](https://www.biorxiv.org/content/10.1101/2024.02.28.582621v1).
 
@@ -32,7 +32,9 @@ PRs and feature requests are welcomed!
 
 ## Citation
 
-If you use `GhostKnockoffGWAS` in your research, please cite the following references:
+If you use `GhostKnockoffGWAS` in your research, please cite the software DOI and the following references:
+
+> He Z, Chu BB, Yang J, Gu J, Chen Z, Liu L, Morrison T, Bellow M, Qi X, Hejazi N, Mathur M, Le Guen Y, Tang H, Hastie T, Ionita-laza, I, Candes C, Sabatti C. "v0.2.4 of GhostKnockoffGWAS software", Zenodo, 2026; doi: https://doi.org/10.5281/zenodo.20519207.
 
 > He Z, Chu BB, Yang J, Gu J, Chen Z, Liu L, Morrison T, Bellow M, Qi X, Hejazi N, Mathur M, Le Guen Y, Tang H, Hastie T, Ionita-laza, I, Sabatti C, Candes C. "In silico identification of putative causal genetic variants", bioRxiv, 2024.02.28.582621; doi: https://doi.org/10.1101/2024.02.28.582621.
 
