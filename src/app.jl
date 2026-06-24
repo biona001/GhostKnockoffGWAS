@@ -62,7 +62,7 @@ function julia_main()::Cint
 end
 
 function parse_ghostknockoffgwas_commandline(parseargs::Bool)
-    s = ArgParseSettings()
+    s = ArgParseSettings(exit_after_help=parseargs)
     @add_arg_table! s begin
         "--zfile"
             help = "Tab or comma separated summary Z-score file, which can be " * 
@@ -223,7 +223,7 @@ function julia_solveblock()::Cint
 end
 
 function parse_solveblock_commandline(parseargs::Bool)
-    s = ArgParseSettings()
+    s = ArgParseSettings(exit_after_help=parseargs)
     @add_arg_table! s begin
         "--file"
             help = "A VCF file (ending in `.vcf` or `.vcf.gz`) or binary PLINK" *  
