@@ -2,6 +2,11 @@ name: Build binaries
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional existing release tag to attach artifacts to, e.g. v0.3.0"
+        required: false
+        type: string
   release:
     types: [published]
   push:
@@ -22,17 +27,24 @@ jobs:
           - os: ubuntu-latest
             julia-arch: x64
             target: linux-x86_64
+            heap-size-hint: 12G
+          - os: ubuntu-24.04-arm
+            julia-arch: aarch64
+            target: linux-aarch64
+            heap-size-hint: 12G
           - os: macos-15-intel
             julia-arch: x64
             target: macos-x86_64
+            heap-size-hint: 10G
           - os: macos-15
             julia-arch: aarch64
             target: macos-aarch64
+            heap-size-hint: 5G
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v3
         with:
           version: "1.12"
           arch: ${{ matrix.julia-arch }}
@@ -48,8 +60,11 @@ jobs:
             ${{ runner.os }}-${{ matrix.julia-arch }}-
 
       - name: Prepare build environment
+        env:
+          JULIA_NUM_PRECOMPILE_TASKS: "1"
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
-          julia --project=/tmp/citlasso-build-env -e '
+          julia --heap-size-hint=${{ matrix.heap-size-hint }} --project=/tmp/citlasso-build-env -e '
             using Pkg
             Pkg.activate("/tmp/citlasso-build-env")
             Pkg.add("PackageCompiler")
@@ -61,17 +76,24 @@ jobs:
           '
 
       - name: Build app
+        env:
+          CITLASSO_HEAP_SIZE_HINT: ${{ matrix.heap-size-hint }}
+          JULIA_NUM_PRECOMPILE_TASKS: "1"
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
           mkdir -p build
-          julia --project=/tmp/citlasso-build-env -e '
+          julia --heap-size-hint=${{ matrix.heap-size-hint }} --project=/tmp/citlasso-build-env -e '
             using PackageCompiler, CITLasso
             src = normpath(pathof(CITLasso), "../..")
             app_dir = joinpath(pwd(), "build", "cit-lasso-${{ matrix.target }}")
             precompile_script = normpath(pathof(CITLasso), "../precompile.jl")
+            heap_size_hint = get(ENV, "CITLASSO_HEAP_SIZE_HINT", "")
+            sysimage_build_args = isempty(heap_size_hint) ? `` : Cmd(["--heap-size-hint=$heap_size_hint"])
             create_app(src, app_dir;
-                include_lazy_artifacts=true,
+                include_lazy_artifacts=false,
                 force=true,
                 precompile_execution_file=precompile_script,
+                sysimage_build_args=sysimage_build_args,
                 executables=[
                     "cit-lasso" => "julia_main",
                     "solveblock" => "julia_solveblock",
@@ -93,7 +115,8 @@ jobs:
           path: CIT-Lasso-${{ matrix.target }}.tar.gz
 
       - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
           files: CIT-Lasso-${{ matrix.target }}.tar.gz
