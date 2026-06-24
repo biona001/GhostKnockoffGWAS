@@ -32,6 +32,58 @@ function vcf_to_plink(plink_exe::String, vcffile::String, plinkprefix::String)
     run(`$plink_exe --vcf $vcffile --double-id --keep-allele-order --real-ref-alleles --make-bed --out $plinkprefix`)
 end
 
+function plink19_url()
+    if Sys.islinux() && Sys.ARCH == :x86_64
+        return "https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20250819.zip"
+    elseif Sys.isapple()
+        return "https://s3.amazonaws.com/plink1-assets/plink_mac_20250819.zip"
+    else
+        return nothing
+    end
+end
+
+function cleanup_generated_test_artifacts(testdir::String)
+    for filename in (
+        "app_linux_x86.tar.gz",
+        "GK_out_summary.txt",
+        "GK_out.txt",
+        "result_summary.txt",
+        "result.txt",
+        "test.08Jun17.d8b.vcf.gz",
+        "zfile.txt",
+        "plink_linux_x86_64_20250819.zip",
+        "plink_linux_x86_64_20231211.zip",
+        "plink_mac_20250819.zip",
+        "LICENSE",
+        "plink",
+        "prettify",
+        "test.08Jun17.d8b.bed",
+        "test.08Jun17.d8b.bim",
+        "test.08Jun17.d8b.fam",
+        "test.08Jun17.d8b.nosex",
+        "test.08Jun17.d8b.log",
+        "toy.map",
+        "toy.ped",
+    )
+        rm(joinpath(testdir, filename), force=true)
+    end
+
+    # get around directory not empty issue https://github.com/JuliaLang/julia/issues/34700
+    for dirname in ("app_linux_x86", "LD_files", "LD_files2")
+        path = joinpath(testdir, dirname)
+        n = 0
+        while n < 5
+            try
+                rm(path, force=true, recursive=true)
+                break
+            catch
+                sleep(2)
+                n += 1
+            end
+        end
+    end
+end
+
 @testset "utilities" begin
     # convert between z score and p-value
     p = 0.00695184371278
@@ -262,50 +314,54 @@ end
 
 @testset "solve_blocks (within julia) with PLINK input" begin
     # download plink 1.9 software
-    remote = "https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20231211.zip"
-    file = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
-        "test/plink_linux_x86_64_20231211.zip")
-    Downloads.download(remote, file)
-    run(`unzip $file`)
+    remote = plink19_url()
+    if isnothing(remote)
+        @warn "Skipping PLINK input test on unsupported platform" Sys.KERNEL Sys.ARCH
+    else
+        testdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test")
+        file = joinpath(testdir, basename(remote))
+        Downloads.download(remote, file)
+        run(`unzip -o $file -d $testdir`)
 
-    # convert VCF file to binary PLINK using PLINK 1.9
-    plink_exe = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/plink")
-    vcffile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
-        "test/test.08Jun17.d8b.vcf.gz")
-    plinkfile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
-        "test/test.08Jun17.d8b")
-    vcf_to_plink(plink_exe, vcffile, plinkfile)
+        # convert VCF file to binary PLINK using PLINK 1.9
+        plink_exe = joinpath(testdir, "plink")
+        vcffile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
+            "test/test.08Jun17.d8b.vcf.gz")
+        plinkfile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
+            "test/test.08Jun17.d8b")
+        vcf_to_plink(plink_exe, vcffile, plinkfile)
 
-    # check converted numeric matrix is the same after 0 <--> 2 flipping
-    # (see vcf_to_plink function for why there is a 0 <--> 2 flipping)
-    Xtrue = convert_gt(Float64, vcffile, impute=true)
-    Xtest = convert(Matrix{Float64}, SnpArray(plinkfile * ".bed"), impute=true)
-    @test size(Xtrue) == size(Xtest)
-    @test all(Xtrue .== 2 .- Xtest)
+        # check converted numeric matrix is the same after 0 <--> 2 flipping
+        # (see vcf_to_plink function for why there is a 0 <--> 2 flipping)
+        Xtrue = convert_gt(Float64, vcffile, impute=true)
+        Xtest = convert(Matrix{Float64}, SnpArray(plinkfile * ".bed"), impute=true)
+        @test size(Xtrue) == size(Xtest)
+        @test all(Xtrue .== 2 .- Xtest)
 
-    # run solve_block on PLINK file
-    chr = 22
-    start_bp = 1
-    end_bp = 999999999999
-    outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files2")
-    isdir(outdir) || mkpath(outdir)
-    hg_build = 19
-    covfile = ""
-    @time solve_blocks(plinkfile * ".bed", covfile, chr, start_bp, end_bp, outdir,
-        hg_build, min_maf = 0.01, min_hwe = 0.0)
+        # run solve_block on PLINK file
+        chr = 22
+        start_bp = 1
+        end_bp = 999999999999
+        outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files2")
+        isdir(outdir) || mkpath(outdir)
+        hg_build = 19
+        covfile = ""
+        @time solve_blocks(plinkfile * ".bed", covfile, chr, start_bp, end_bp, outdir,
+            hg_build, min_maf = 0.01, min_hwe = 0.0)
 
-    # check PLINK vs VCF output is the same
-    VCF_outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
-    VCF_h5 = joinpath(VCF_outdir, "chr22", "LD_start$(start_bp)_end$(end_bp).h5")
-    VCFh5reader = h5open(VCF_h5, "r")
-    PLINK_outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files2")
-    PLINK_h5 = joinpath(PLINK_outdir, "chr22", "LD_start$(start_bp)_end$(end_bp).h5")
-    PLINKh5reader = h5open(PLINK_h5, "r")
-    @test all(read(PLINKh5reader, "Sigma") .≈ read(VCFh5reader, "Sigma"))
-    @test all(read(PLINKh5reader, "groups") .== read(VCFh5reader, "groups"))
+        # check PLINK vs VCF output is the same
+        VCF_outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
+        VCF_h5 = joinpath(VCF_outdir, "chr22", "LD_start$(start_bp)_end$(end_bp).h5")
+        VCFh5reader = h5open(VCF_h5, "r")
+        PLINK_outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files2")
+        PLINK_h5 = joinpath(PLINK_outdir, "chr22", "LD_start$(start_bp)_end$(end_bp).h5")
+        PLINKh5reader = h5open(PLINK_h5, "r")
+        @test all(read(PLINKh5reader, "Sigma") .≈ read(VCFh5reader, "Sigma"))
+        @test all(read(PLINKh5reader, "groups") .== read(VCFh5reader, "groups"))
 
-    close(VCFh5reader)
-    close(PLINKh5reader)
+        close(VCFh5reader)
+        close(PLINKh5reader)
+    end
 
     # seems like group_reps could be slightly different due to floating point precision
     # (we have floating point precision issues due to PLINK's X is 2 .- X in VCF)
@@ -368,77 +424,57 @@ end
 end
 
 @testset "Download, unpack, and run exe" begin
-    wd = pwd()
+    testdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test")
+    if !(Sys.islinux() && Sys.ARCH == :x86_64)
+        @warn "Skipping released app test outside Linux x86_64" Sys.KERNEL Sys.ARCH
+        cleanup_generated_test_artifacts(testdir)
+    else
+        wd = pwd()
 
-    # download and unpack 
-    cd(joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test"))
-    run(`wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.1/app_linux_x86.tar.gz`)
-    run(`tar -xvzf app_linux_x86.tar.gz`)
-    @test isdir("app_linux_x86")
-    @test isfile("app_linux_x86/bin/GhostKnockoffGWAS")
-    @test isfile("app_linux_x86/bin/solveblock")
-
-    # help messages
-    help1 = run(`./app_linux_x86/bin/solveblock -h`)
-    help2 = run(`./app_linux_x86/bin/GhostKnockoffGWAS -h`)
-    @test help1.exitcode == 0
-    @test help2.exitcode == 0
-
-    # solveblock executable
-    exe = joinpath(dirname(pathof(GhostKnockoffGWAS)), "../test/app_linux_x86/bin/solveblock")
-    vcffile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/test.08Jun17.d8b.vcf.gz")
-    chr = 22
-    start_bp = 1
-    end_bp = 999999999999
-    outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
-    isdir(outdir) || mkpath(outdir)
-    hg_build = 19
-    sb = run(`$exe --vcffile $vcffile --chr $chr --start_bp $start_bp --end_bp $end_bp --outdir $outdir --genome-build $hg_build`)
-    @test sb.exitcode == 0
-
-    # GhostKnockoffGWAS executable
-    exe = joinpath(dirname(pathof(GhostKnockoffGWAS)), "../test/app_linux_x86/bin/GhostKnockoffGWAS")
-    LDfiles = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
-    outfile = "GK_out"
-    zfile = "zfile.txt"
-    gk = run(`$exe --zfile $zfile --LD-files $LDfiles --N 191 --genome-build 19 --out $outfile`)
-    @test gk.exitcode == 0
-
-    # cleanup
-    rm("app_linux_x86.tar.gz", force=true)
-    rm("GK_out_summary.txt", force=true)
-    rm("GK_out.txt", force=true)
-    rm("result_summary.txt", force=true)
-    rm("result.txt", force=true)
-    rm("test.08Jun17.d8b.vcf.gz", force=true)
-    rm("zfile.txt", force=true)
-    rm("plink_linux_x86_64_20231211.zip", force=true)
-    rm("LICENSE", force=true)
-    rm("plink", force=true)
-    rm("prettify", force=true)
-    rm("test.08Jun17.d8b.bed", force=true)
-    rm("test.08Jun17.d8b.bim", force=true)
-    rm("test.08Jun17.d8b.fam", force=true)
-    rm("test.08Jun17.d8b.nosex", force=true)
-    rm("test.08Jun17.d8b.log", force=true)
-    rm("toy.map", force=true)
-    rm("toy.ped", force=true)
-
-    # get around directory not empty issue https://github.com/JuliaLang/julia/issues/34700
-    n = 0
-    while n < 5
         try
-            rm("app_linux_x86", force=true, recursive=true)
-            rm("LD_files", force=true, recursive=true)
-            rm("LD_files2", force=true, recursive=true)
-            break
-        catch
-            sleep(2)
-            n += 1
+            # download and unpack
+            cd(testdir)
+            Downloads.download(
+                "https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.1/app_linux_x86.tar.gz",
+                "app_linux_x86.tar.gz",
+            )
+            run(`tar -xvzf app_linux_x86.tar.gz`)
+            @test isdir("app_linux_x86")
+            @test isfile("app_linux_x86/bin/GhostKnockoffGWAS")
+            @test isfile("app_linux_x86/bin/solveblock")
+
+            # help messages
+            help1 = run(`./app_linux_x86/bin/solveblock -h`)
+            help2 = run(`./app_linux_x86/bin/GhostKnockoffGWAS -h`)
+            @test help1.exitcode == 0
+            @test help2.exitcode == 0
+
+            # solveblock executable
+            exe = joinpath(testdir, "app_linux_x86/bin/solveblock")
+            vcffile = joinpath(testdir, "test.08Jun17.d8b.vcf.gz")
+            chr = 22
+            start_bp = 1
+            end_bp = 999999999999
+            outdir = joinpath(testdir, "LD_files")
+            isdir(outdir) || mkpath(outdir)
+            hg_build = 19
+            sb = run(`$exe --vcffile $vcffile --chr $chr --start_bp $start_bp --end_bp $end_bp --outdir $outdir --genome-build $hg_build`)
+            @test sb.exitcode == 0
+
+            # GhostKnockoffGWAS executable
+            exe = joinpath(testdir, "app_linux_x86/bin/GhostKnockoffGWAS")
+            LDfiles = joinpath(testdir, "LD_files")
+            outfile = "GK_out"
+            zfile = "zfile.txt"
+            gk = run(`$exe --zfile $zfile --LD-files $LDfiles --N 191 --genome-build 19 --out $outfile`)
+            @test gk.exitcode == 0
+
+            # cleanup
+            cleanup_generated_test_artifacts(testdir)
+        finally
+            cd(wd)
         end
     end
-
-    cd(wd)
 end
 
 @testset "app" begin

@@ -4,6 +4,6 @@ This is package for performing knockoff-based analysis of GWAS summary statistic
 
 ![cover](./assets/GK_cover_modified.png)
 
-!!! warning 
+!!! warning
 
-    This package currently only works on Linux platforms with `aarch64` or `x86_64` CPUs. We plan to support mac (`x86_64` and `aarch64`) in the near future, but not for windows. 
+    The Julia package supports Linux and macOS with Julia 1.10 or newer when a matching `Ghostbasil.jl`/`ghostbasil_jll` artifact is installed. Windows is not supported. Prebuilt app downloads may cover fewer platforms than the Julia package; see the downloads page for currently published bundles.
