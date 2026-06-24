@@ -8,16 +8,16 @@ Here is a short summary of this tutorial:
 
 1. Step 1: Download pre-processed LD files and binary executable and extract their content
 
-        wget https://github.com/biona001/CITLasso/releases/download/v0.2.4/app_linux_x86.tar.gz
+        wget https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-linux-x86_64.tar.gz
         wget https://zenodo.org/records/10433663/files/EUR.zip
-        tar -xvzf app_linux_x86.tar.gz
+        tar -xvzf CIT-Lasso-linux-x86_64.tar.gz
         unzip EUR.zip  # decompresses to ~8.7GB
 2. Step 2: Prepare a valid Z score file, or download an example as:
 
         wget https://github.com/biona001/CITLasso/raw/main/data/example_zfile.txt
 3. Step 3: Run the analysis
 
-        app_linux_x86/bin/cit-lasso --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
+        cit-lasso-linux-x86_64/bin/cit-lasso --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
         
 4. (optional): Make Manhattan plot with [this R script](https://github.com/biona001/CITLasso/blob/main/src/manhattan.R). 
 
@@ -25,15 +25,15 @@ Here is a short summary of this tutorial:
 
 Proceed to the [Downloads page](https://biona001.github.io/CITLasso/dev/man/download) and download (1) the software as well as (2) a pre-processed knockoff dataset suitable for your analysis, e.g.
 ```shell
-wget https://github.com/biona001/CITLasso/releases/download/v0.2.4/app_linux_x86.tar.gz
+wget https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-linux-x86_64.tar.gz
 wget https://zenodo.org/records/10433663/files/EUR.zip
 ```
 Next, unzip the files in linux command line via:
 ```shell
-tar -xvzf app_linux_x86.tar.gz
+tar -xvzf CIT-Lasso-linux-x86_64.tar.gz
 unzip EUR.zip # decompresses to ~8.7GB
 ```
-This should create 2 folders `app_linux_x86/` and `EUR/` in the current directory. The executable is located inside `app_linux_x86/bin/cit-lasso`. We recommend adding the folder containing the `cit-lasso` executable to `PATH` for easier access.
+This should create 2 folders `cit-lasso-linux-x86_64/` and `EUR/` in the current directory. The executable is located inside `cit-lasso-linux-x86_64/bin/cit-lasso`. We recommend adding the folder containing the `cit-lasso` executable to `PATH` for easier access.
 
 !!! warning
 

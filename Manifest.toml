@@ -164,7 +164,7 @@ version = "1.0.9+0"
 deps = ["ArgParse", "CSV", "CovarianceEstimation", "DataFrames", "DelimitedFiles", "Distributions", "ElasticArrays", "Ghostbasil", "HDF5", "Knockoffs", "LinearAlgebra", "Optim", "Random", "SnpArrays", "Statistics", "StatsBase", "VCFTools", "VariantCallFormat"]
 path = "."
 uuid = "28dc8d00-4921-4061-9921-3f423e4be5cc"
-version = "0.2.4"
+version = "0.3.0"
 
 [[deps.CPUSummary]]
 deps = ["CpuId", "IfElse", "PrecompileTools", "Preferences", "Static"]

@@ -24,18 +24,18 @@ Most users are expected to follow this workflow. Detailed explanations for each 
 
 1. Go to [Download Page](https://biona001.github.io/CITLasso/dev/man/download) and download (1) the software and (2) the pre-processed LD files. For example,
 
-        wget https://github.com/biona001/CITLasso/releases/download/v0.2.4/app_linux_x86.tar.gz
+        wget https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-linux-x86_64.tar.gz
         wget https://zenodo.org/records/10433663/files/EUR.zip
 2. Unzip them both:
 
-        tar -xvzf app_linux_x86.tar.gz
+        tar -xvzf CIT-Lasso-linux-x86_64.tar.gz
         unzip EUR.zip  # decompresses to ~8.7GB
 3. Prepare your input Z score file into accepted format, see [Acceptable Z-scores](https://biona001.github.io/CITLasso/dev/man/documentation/#Acceptable-Z-scores-file-format). A toy example can be downloaded by:
 
         wget https://github.com/biona001/CITLasso/raw/main/data/example_zfile.txt
 4. Run the executable
 
-        app_linux_x86/bin/cit-lasso --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
+        cit-lasso-linux-x86_64/bin/cit-lasso --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
         
 5. Make Manhattan plot with [this R script](https://github.com/biona001/CITLasso/blob/main/src/manhattan.R). See step 5 in [Tutorial](https://biona001.github.io/CITLasso/dev/man/examples/) for more details. 
 

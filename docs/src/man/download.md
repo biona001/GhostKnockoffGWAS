@@ -4,12 +4,14 @@ Here is the main downloads page. New software and pre-processed knockoff data wi
 
 ## Software
 
-| Operating System | v0.2.4 (April 21, 2024)      |
+| Operating System | v0.3.0 (June 24, 2026)      |
 | :---             |       :----:               |
-| Linux 64-bit     | [Download](https://github.com/biona001/CITLasso/releases/tag/v0.2.4)       |
-| macOS            | Not yet published as an app bundle |
+| Linux x86_64     | [Download](https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-linux-x86_64.tar.gz)       |
+| Linux ARM64      | [Download](https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-linux-aarch64.tar.gz)       |
+| macOS Intel      | [Download](https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-macos-x86_64.tar.gz)       |
+| macOS Apple Silicon | [Download](https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-macos-aarch64.tar.gz)       |
 
-After unzipping, the executable will be located inside `bin/cit-lasso`. We recommend adding the folder containing the `cit-lasso` executable to `PATH` for easier access. macOS users should currently install the Julia package directly until a macOS app bundle is published.
+After unzipping, the executable will be located inside `cit-lasso-<platform>/bin/cit-lasso`. We recommend adding the folder containing the `cit-lasso` executable to `PATH` for easier access.
 
 ## Pre-processed LD files
 
