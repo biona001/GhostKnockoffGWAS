@@ -107,6 +107,10 @@ with the understanding that $B_i$ is the covariance matrix for $(Z, \tilde{Z}_1,
 ```
 where $C_i = \Sigma_i - S_i$. In Julia, this functionality is supported via the [Ghostbasil.jl](https://github.com/biona001/ghostbasil.jl) package. 
 
+## HDF5 files
+
+LD files are stored in HDF5 format, and `GhostKnockoffGWAS` reads and writes them through upstream `HDF5.jl`. An older implementation went through `FileIO.load`, which could fail when HDF5's FileIO extension could not be loaded on shared filesystems. The current code uses `HDF5.h5open` directly, so no forked `HDF5.jl` package is required.
+
 ## Compiling GhostKnockoffGWAS
 
 I compiled this with julia v1.9.0 on Sherlock cluster, with `gcc/7.3.0` loaded. 

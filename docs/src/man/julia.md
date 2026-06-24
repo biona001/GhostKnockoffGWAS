@@ -1,18 +1,17 @@
 
 # Usage within Julia
 
-`GhostKnockoffGWAS` is a regular Julia package, which can be used directly within Julia for greater flexibility. To install it, execute the following in Julia
+`GhostKnockoffGWAS` is a regular Julia package, which can be used directly within Julia for greater flexibility. To install it, execute the following in Julia:
 ```julia
 using Pkg
 Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
 Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
-Pkg.add(url="https://github.com/biona001/HDF5.jl") # needed to resolve https://github.com/biona001/GhostKnockoffGWAS/issues/7
 Pkg.add(url="https://github.com/biona001/GhostKnockoffGWAS")
 ```
 
 !!! warning
 
-    This package currently only works on Linux machines with Julia 1.8.x, 1.9.x, and 1.10.0. If you need it to work on a different Julia version, let us know by filing an issue on Github. 
+    `GhostKnockoffGWAS` uses upstream `HDF5.jl` directly. A forked `HDF5.jl` install is no longer required.
 
 ## Usage example
 
