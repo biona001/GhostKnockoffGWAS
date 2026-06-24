@@ -1,12 +1,12 @@
-using GhostKnockoffGWAS
+using CITLasso
 using Documenter
 
 makedocs(
     doctest = false,
     checkdocs = :none,
-    sitename = "GhostKnockoffGWAS",
+    sitename = "CIT-Lasso",
     format = Documenter.HTML(size_threshold = nothing),
-    modules = [GhostKnockoffGWAS],
+    modules = [CITLasso],
     authors = "Benjamin Chu",
     clean = true,
     pages = [
@@ -28,7 +28,7 @@ makedocs(
 # See "Hosting Documentation" and deploydocs() in the Documenter manual
 # for more information.
 deploydocs(
-    repo   = "github.com/biona001/GhostKnockoffGWAS.git",
+    repo   = "github.com/biona001/CITLasso.git",
     target = "build",
     deps   = nothing,
     make   = nothing,

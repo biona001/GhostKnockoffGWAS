@@ -1,5 +1,5 @@
 # Please checkout the main documentation for use of this script:
-# https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks/#Determining-start_bp-and-end_bp
+# https://biona001.github.io/CITLasso/dev/man/solveblocks/#Determining-start_bp-and-end_bp
 
 # usage: Rscript --vanilla ld_split.R arg1 arg2 arg3 arg4 arg5 arg6
 # arg1 = chromosome number (must be an integer)

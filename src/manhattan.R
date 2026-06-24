@@ -1,12 +1,12 @@
 # usage: Rscript --vanilla manhattan.R arg1 arg2 arg3 arg4
-# arg1 = main output file from GhostKnockoffGWAS
+# arg1 = main output file from CITLasso
 # arg2 = output directory
 # arg3 = output filename (without extensions) to be used for both plots, 
 #       e.g. phenotype name
 # arg4 = target FDR in percentage
 
 # This is R code modified from https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/he_et_al/GKL_Manhattan.R
-# It operates directly on the output of GhostKnockoffGWAS, and
+# It operates directly on the output of CITLasso, and
 # produces 2 Manhattan plots using the R package CMplot.
 # The first is a regular manhattan plot based on marginal p-values. 
 # The second is a knockoff-equivalent manhattan plot based on W statistics.
@@ -33,18 +33,18 @@ original_dir = getwd()
 setwd(out_dir)
 
 # for testing
-# input_file = "/scratch/users/bbchu/GhostKnockoffGWAS/data/example_output.txt"
-# out_dir = "/scratch/users/bbchu/GhostKnockoffGWAS/data"
+# input_file = "/scratch/users/bbchu/CITLasso/data/example_output.txt"
+# out_dir = "/scratch/users/bbchu/CITLasso/data"
 # out_filename = "example_plot"
 # target_fdr = 0.1
 
-# input_file = "/scratch/users/bbchu/GhostKnockoffGWAS/67studies/results/BMI_Pulit_2018:WHR-Adjusted-For-BMI-Males/seed4001.permuteZ.txt"
-# out_dir = "/scratch/users/bbchu/GhostKnockoffGWAS/67studies/results/BMI_Pulit_2018:WHR-Adjusted-For-BMI-Males/"
+# input_file = "/scratch/users/bbchu/CITLasso/67studies/results/BMI_Pulit_2018:WHR-Adjusted-For-BMI-Males/seed4001.permuteZ.txt"
+# out_dir = "/scratch/users/bbchu/CITLasso/67studies/results/BMI_Pulit_2018:WHR-Adjusted-For-BMI-Males/"
 # out_filename = "manhattan"
 # target_fdr = 0.1
 
-# input_file = "/scratch/users/bbchu/GhostKnockoffGWAS/data/test_alzheimers_meta.txt"
-# out_dir = "/scratch/users/bbchu/GhostKnockoffGWAS/data"
+# input_file = "/scratch/users/bbchu/CITLasso/data/test_alzheimers_meta.txt"
+# out_dir = "/scratch/users/bbchu/CITLasso/data"
 # out_filename = "AD_meta"
 # target_fdr = 0.1
 
@@ -200,7 +200,7 @@ if (num_discoveries > 100) {
 ############################################################################
 
 main.text <- 'Knockoff conditional independent test' # plot title
-memo.text = paste('GhostKnockoffGWAS_',out_filename, sep='') # full file name
+memo.text = paste('CITLasso_',out_filename, sep='') # full file name
 
 ## read result file
 x1 <- fread(input_file,header=T)

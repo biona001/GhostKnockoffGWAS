@@ -1,6 +1,6 @@
 # Customizing your own LD files
 
-One can customize the `--LD-files` (an input of the main software `GhostKnockoffGWAS`) starting with individual level data stored in VCF or binary PLINK format. This feature is supported by the `solveblock` executable located within `GhostKnockoffGWAS/bin/solveblock`.
+One can customize the `--LD-files` (an input of the main software CIT-Lasso) starting with individual level data stored in VCF or binary PLINK format. This feature is supported by the `solveblock` executable located within `cit-lasso-app/bin/solveblock`.
 
 ## Command-line documentation of `solveblock` executable
 
@@ -69,7 +69,7 @@ There are 2 options:
 1. One can defined each start and end position by leveraging existing quasi-independent regions for your target sample. For example, we previously used the output of `ldetect` in [HG19](https://bitbucket.org/nygcresearch/ldetect-data/src/master/) or [HG38](https://github.com/jmacdon/LDblocks_GRCh38?tab=readme-ov-file). The blocks are defined using data from 1000 genomes project.
 2. Given individual level data, one can compute approximately independent LD blocks directly, see [reference](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8696101/) and [R software](https://privefl.github.io/bigsnpr/reference/snp_ldsplit.html).
 
-For option 2, we provide an [R script](https://github.com/biona001/GhostKnockoffGWAS/blob/main/src/ld_split.R) which can be ran in the terminal (this requires the `R` packages `bigsnpr` and `dplyr`). Usage:
+For option 2, we provide an [R script](https://github.com/biona001/CITLasso/blob/main/src/ld_split.R) which can be ran in the terminal (this requires the `R` packages `bigsnpr` and `dplyr`). Usage:
 
 ```R
 $ Rscript --vanilla ld_split.R arg1 arg2 arg3 arg4 arg5 arg6

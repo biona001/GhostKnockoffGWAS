@@ -145,7 +145,7 @@ end
     read_zscores(filepath::String)
 
 Helper function to read a Z-score file at `filepath`. This function is mainly 
-intended for Julia users running `GhostKnockoffGWAS` in the REPL.
+intended for Julia users running `CITLasso` in the REPL.
 
 # Input
 + `filepath`: Full file path to the Z-score file. First row must be a header

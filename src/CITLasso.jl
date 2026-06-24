@@ -1,4 +1,4 @@
-module GhostKnockoffGWAS
+module CITLasso
 
 using Ghostbasil
 using HDF5
@@ -30,4 +30,4 @@ include("utilities.jl")
 include("app.jl")
 include("make_hdf5.jl")
 
-end # module GhostKnockoffGWAS
+end # module CITLasso
