@@ -6,10 +6,10 @@ Here is the main downloads page. New software and pre-processed knockoff data wi
 
 | Operating System | v0.2.4 (April 21, 2024)      |
 | :---             |       :----:               |
-| Linux 64-bit     | [Download](https://github.com/biona001/GhostKnockoffGWAS/releases/tag/v0.2.4)       |
+| Linux 64-bit     | [Download](https://github.com/biona001/CITLasso/releases/tag/v0.2.4)       |
 | macOS            | Not yet published as an app bundle |
 
-After unzipping, the executable will be located inside `bin/GhostKnockoffGWAS`. We recommend adding the folder containing the `GhostKnockoffGWAS` executable to `PATH` for easier access. macOS users should currently install the Julia package directly until a macOS app bundle is published.
+After unzipping, the executable will be located inside `bin/cit-lasso`. We recommend adding the folder containing the `cit-lasso` executable to `PATH` for easier access. macOS users should currently install the Julia package directly until a macOS app bundle is published.
 
 ## Pre-processed LD files
 

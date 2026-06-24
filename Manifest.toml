@@ -2,7 +2,7 @@
 
 julia_version = "1.12.1"
 manifest_format = "2.0"
-project_hash = "eb3908126fa1eac9bf326a8b72fd1ff7e88c0a55"
+project_hash = "d7b70cb3b3c026e8985d8e7d9bcd4e36f9eb5514"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "d9aaef7c63466eee4de23b4d9dad03629df54bea"
@@ -159,6 +159,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "1b96ea4a01afe0ea4090c5c8039690672dd13f2e"
 uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.9+0"
+
+[[deps.CITLasso]]
+deps = ["ArgParse", "CSV", "CovarianceEstimation", "DataFrames", "DelimitedFiles", "Distributions", "ElasticArrays", "Ghostbasil", "HDF5", "Knockoffs", "LinearAlgebra", "Optim", "Random", "SnpArrays", "Statistics", "StatsBase", "VCFTools", "VariantCallFormat"]
+path = "."
+uuid = "28dc8d00-4921-4061-9921-3f423e4be5cc"
+version = "0.2.4"
 
 [[deps.CPUSummary]]
 deps = ["CpuId", "IfElse", "PrecompileTools", "Preferences", "Static"]
@@ -538,12 +544,6 @@ deps = ["LinearAlgebra", "Printf", "Random", "libblastrampoline_jll"]
 git-tree-sha1 = "fc6236b7fbc40bc283e0dc5a84ead1169a6d7dda"
 uuid = "14197337-ba66-59df-a3e3-ca00e7dcff7a"
 version = "0.3.19"
-
-[[deps.GhostKnockoffGWAS]]
-deps = ["ArgParse", "CSV", "CovarianceEstimation", "DataFrames", "DelimitedFiles", "Distributions", "ElasticArrays", "Ghostbasil", "HDF5", "Knockoffs", "LinearAlgebra", "Optim", "Random", "SnpArrays", "Statistics", "StatsBase", "VCFTools", "VariantCallFormat"]
-path = "."
-uuid = "28dc8d00-4921-4061-9921-3f423e4be5cc"
-version = "0.2.4"
 
 [[deps.Ghostbasil]]
 deps = ["CxxWrap", "ghostbasil_jll", "libcxxwrap_julia_jll"]

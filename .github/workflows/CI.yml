@@ -83,8 +83,7 @@ jobs:
             using Pkg
             Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
             Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
-            Pkg.add(url="https://github.com/biona001/HDF5.jl")
-            Pkg.add(url="https://github.com/biona001/GhostKnockoffGWAS")'
+            Pkg.add(url="https://github.com/biona001/HDF5.jl")'
       - run: |
           julia --project=docs -e '
             using Pkg
@@ -94,8 +93,8 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: doctest
-            using GhostKnockoffGWAS
-            doctest(GhostKnockoffGWAS)'
+            using CITLasso
+            doctest(CITLasso)'
       - run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

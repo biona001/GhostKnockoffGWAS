@@ -22,16 +22,13 @@ jobs:
           julia --project=docs -e '
             using Pkg
             Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
-            Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
-            Pkg.add(url="https://github.com/biona001/GhostKnockoffGWAS")'
+            Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")'
       - run: |
           julia --project=docs -e '
             using Pkg
             Pkg.add("Documenter")
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()'
-      - name: Install dependencies
-        run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # If authenticating with GitHub Actions token

@@ -8,24 +8,24 @@ Here is a short summary of this tutorial:
 
 1. Step 1: Download pre-processed LD files and binary executable and extract their content
 
-        wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.4/app_linux_x86.tar.gz
+        wget https://github.com/biona001/CITLasso/releases/download/v0.2.4/app_linux_x86.tar.gz
         wget https://zenodo.org/records/10433663/files/EUR.zip
         tar -xvzf app_linux_x86.tar.gz
         unzip EUR.zip  # decompresses to ~8.7GB
 2. Step 2: Prepare a valid Z score file, or download an example as:
 
-        wget https://github.com/biona001/GhostKnockoffGWAS/raw/main/data/example_zfile.txt
+        wget https://github.com/biona001/CITLasso/raw/main/data/example_zfile.txt
 3. Step 3: Run the analysis
 
-        app_linux_x86/bin/GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
+        app_linux_x86/bin/cit-lasso --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
         
-4. (optional): Make Manhattan plot with [this R script](https://github.com/biona001/GhostKnockoffGWAS/blob/main/src/manhattan.R). 
+4. (optional): Make Manhattan plot with [this R script](https://github.com/biona001/CITLasso/blob/main/src/manhattan.R). 
 
 ## Step 1: Download pre-processed LD files and binary executable
 
-Proceed to the [Downloads page](https://biona001.github.io/GhostKnockoffGWAS/dev/man/download) and download (1) the software as well as (2) a pre-processed knockoff dataset suitable for your analysis, e.g.
+Proceed to the [Downloads page](https://biona001.github.io/CITLasso/dev/man/download) and download (1) the software as well as (2) a pre-processed knockoff dataset suitable for your analysis, e.g.
 ```shell
-wget https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.4/app_linux_x86.tar.gz
+wget https://github.com/biona001/CITLasso/releases/download/v0.2.4/app_linux_x86.tar.gz
 wget https://zenodo.org/records/10433663/files/EUR.zip
 ```
 Next, unzip the files in linux command line via:
@@ -33,7 +33,7 @@ Next, unzip the files in linux command line via:
 tar -xvzf app_linux_x86.tar.gz
 unzip EUR.zip # decompresses to ~8.7GB
 ```
-This should create 2 folders `app_linux_x86/` and `EUR/` in the current directory. The executable is located inside `app_linux_x86/bin/GhostKnockoffGWAS`. We recommend adding the folder containing the `GhostKnockoffGWAS` executable to `PATH` for easier access.
+This should create 2 folders `app_linux_x86/` and `EUR/` in the current directory. The executable is located inside `app_linux_x86/bin/cit-lasso`. We recommend adding the folder containing the `cit-lasso` executable to `PATH` for easier access.
 
 !!! warning
 
@@ -41,9 +41,9 @@ This should create 2 folders `app_linux_x86/` and `EUR/` in the current director
 
 ## Step 2: Prepare a valid Z score file
 
-One needs a [valid Z score file](https://biona001.github.io/GhostKnockoffGWAS/dev/man/documentation/#Acceptable-Z-scores-file-format) as input. 
+One needs a [valid Z score file](https://biona001.github.io/CITLasso/dev/man/documentation/#Acceptable-Z-scores-file-format) as input. 
 
-If you would like to follow along with this tutorial, feel free to download this test data [example_zfile.txt](https://github.com/biona001/GhostKnockoffGWAS/blob/main/data/example_zfile.txt) (17MB). The first few rows is
+If you would like to follow along with this tutorial, feel free to download this test data [example_zfile.txt](https://github.com/biona001/CITLasso/blob/main/data/example_zfile.txt) (17MB). The first few rows is
 ```
 CHR	POS	REF	ALT	Z
 7	27916	T	C	1.82946485242
@@ -61,22 +61,22 @@ CHR	POS	REF	ALT	Z
 
 In this example
 
-+ The `POS` field corresponds to hg38 positions. GhostKnockoffGWAS requires the position to be either hg19 or hg38.
++ The `POS` field corresponds to hg38 positions. CIT-Lasso requires the position to be either hg19 or hg38.
 + The sample size used for generating this data is `506200`. Thus one should specify `--N 506200`.
 
 ## Step 3: Running the analysis
 
-To see a list of available arguments, execute `GhostKnockoffGWAS --help`. 
+To see a list of available arguments, execute `cit-lasso --help`. 
 
 To run the example analysis, run the following in the terminal
 
 ```shell
-GhostKnockoffGWAS --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
+cit-lasso --zfile example_zfile.txt --LD-files EUR --N 506200 --genome-build 38 --out example_output
 ```
 
 Here is the expected output:
 ```
-Welcome to GhostKnockoffGWAS analysis!
+Welcome to CIT-Lasso analysis!
 You have specified the following options:
 zfile           = /oak/stanford/groups/zihuai/pan_ukb_group_knockoffs/example_zfile.txt
 LD_files        = /oak/stanford/groups/zihuai/pan_ukb_group_knockoffs/EUR
@@ -107,7 +107,7 @@ Overall runtime = 59.10963104499999 seconds, with
 
 **Explanation for intermediate outputs**:
 
-+ `GhostKnockoffGWAS` first prints the user-specified parameters in the analysis. Verify that they are correct.
++ CIT-Lasso first prints the user-specified parameters in the analysis. Verify that they are correct.
 + Next we print the output of `count_matchable_snps`. It is essentially matching user supplied Z scores to the pre-computed knockoff data and counting how many SNPs can be matched. This information will be used to quantify the level shrinkage in Lasso regression. 
 + Then for each region, it will try to analyze the genome in quasi-independent regions, e.g. 
 ```
@@ -121,7 +121,7 @@ region 3 / 99 (f = LD_start103197510_end104159524.h5): chr 7, nz beta = 12, nsnp
 
 ## Step 4: Interpreting the result
 
-If you are following along, `GhostKnockoffGWAS` should have produced 2 outputs
+If you are following along, CIT-Lasso should have produced 2 outputs
 1. `example_output_summary.txt`
 2. `example_output.txt`
 
@@ -150,12 +150,12 @@ sample_knockoff_time_t23,1.0207068969999997
 sample_knockoff_time_t24,3.2455576749999993
 ```
 
-+ The first 4 rows indicate the number of discovered SNPs according to `GhostKnockoffGWAS`, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 15 significant SNPs whose knockoff q-value is below 0.1. If these SNPs reside in different groups, then according to the knockoff procedure, these discoveries are conditionally independent. Later in step 5, we will apply a post-processing step to further count the number of independent discoveries as determined by the physical distance between these SNPs. 
++ The first 4 rows indicate the number of discovered SNPs according to CIT-Lasso, for different target FDR levels. For example, when target $\text{FDR} = 0.1$, there are 15 significant SNPs whose knockoff q-value is below 0.1. If these SNPs reside in different groups, then according to the knockoff procedure, these discoveries are conditionally independent. Later in step 5, we will apply a post-processing step to further count the number of independent discoveries as determined by the physical distance between these SNPs. 
 + The next few rows contain parameters used in the analysis, as well as timing results. 
 
 !!! tip
     
-    One should always check the value of `mean_LD_shrinkage`, here it is $0.02050$. As discussed above, this value quantifies how well the correlation matrices used in the analysis approximates the LD structure for the original GWAS study. A value close to 0 is good, while larger values indicate deviation. `GhostKnokcoffGWAS` automatically terminates when this value exceeds a certain threshold.
+    One should always check the value of `mean_LD_shrinkage`, here it is $0.02050$. As discussed above, this value quantifies how well the correlation matrices used in the analysis approximates the LD structure for the original GWAS study. A value close to 0 is good, while larger values indicate deviation. CIT-Lasso automatically terminates when this value exceeds a certain threshold.
 
 ### `example_output.txt`
 
@@ -186,12 +186,12 @@ The first row is a header row. Each proceeding row corresponds to a SNP that was
 
 ## Step 5: Generating Manhattan plots
 
-We can generate Manhattan plots by running [this R script](https://github.com/biona001/GhostKnockoffGWAS/blob/main/src/manhattan.R) in the terminal (this requires the `R` packages `data.table`, `plyr`, `dplyr`, `CMplot`). Usage:
+We can generate Manhattan plots by running [this R script](https://github.com/biona001/CITLasso/blob/main/src/manhattan.R) in the terminal (this requires the `R` packages `data.table`, `plyr`, `dplyr`, `CMplot`). Usage:
 
 ```R
 $ Rscript --vanilla manhattan.R arg1 arg2 arg3 arg4
 ```
-+ `arg1`: Main output file from GhostKnockoffGWAS
++ `arg1`: Main output file from CIT-Lasso
 + `arg2`: Where output Manhattan plots should be stored (a `.` indicates store in current directory)
 + `arg3`: Output filename (without extensions) to be used for both plots, e.g. phenotype name
 + `arg4`: Target FDR in percentage
@@ -204,11 +204,11 @@ $ Rscript --vanilla manhattan.R example_output.txt . example_plot 0.1
 
 This produced the following plots
 
-![knockoff_manhattan](../assets/Rect_Manhtn.GhostKnockoffGWAS_chr7.jpg)
+![knockoff_manhattan](../assets/Rect_Manhtn.CIT-Lasso_chr7.jpg)
 ![marginal_manhattan](../assets/Rect_Manhtn.MarginalAssociationTest_chr7.jpg)
 
 ### Explanation:
 
-+ The knockoff plot displays the knockoff W values on the y-axis, one dot for each SNP. The most significant SNP within a 1Mb region is labeled and colored with purple. Light blue dots are knockoff discoveries that are within 1Mb distance to another more significant SNP. Careful readers may recall that in the summary file (shown in step 4), `GhostKnockoffGWAS` discovered 15 SNPs which falls within 11 unique *groups*, but here only 9 SNPs were labelled. This is because some discoveries are too close to each other. In this example, only 9 among 15 SNPs are physically greater than 1Mb apart. This immediate begs the question of how many discoveries one should report. Our papers typically report the number of discoveries physically >1Mb apart (i.e. 9 discoveries in this case), but please note that there are in fact at least 11 conditionally independent discoveries according to the knockoff methodology.
++ The knockoff plot displays the knockoff W values on the y-axis, one dot for each SNP. The most significant SNP within a 1Mb region is labeled and colored with purple. Light blue dots are knockoff discoveries that are within 1Mb distance to another more significant SNP. Careful readers may recall that in the summary file (shown in step 4), CIT-Lasso discovered 15 SNPs which falls within 11 unique *groups*, but here only 9 SNPs were labelled. This is because some discoveries are too close to each other. In this example, only 9 among 15 SNPs are physically greater than 1Mb apart. This immediate begs the question of how many discoveries one should report. Our papers typically report the number of discoveries physically >1Mb apart (i.e. 9 discoveries in this case), but please note that there are in fact at least 11 conditionally independent discoveries according to the knockoff methodology.
 + The marginal plot is a standard Manhattan plot with the y-axis plotting the negative logged p-values. Similar to the knockoff plot, all dots above the dotted line are marginally significant and colored with light blue, while the most signicant SNP within 1Mb region is colored with purple. 
 + The color bars beneath the x-axis displays chromosome density.

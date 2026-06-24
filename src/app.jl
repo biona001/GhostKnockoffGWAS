@@ -1,4 +1,4 @@
-# this becomes the GhostKnockoffGWAS executable
+# this becomes the cit-lasso executable
 function julia_main()::Cint
     try
         # read command line arguments
@@ -7,7 +7,7 @@ function julia_main()::Cint
             random_shuffle, skip_shrinkage_check = 
             parse_ghostknockoffgwas_commandline(true)
 
-        println("\n\nWelcome to GhostKnockoffGWAS analysis!")
+        println("\n\nWelcome to CIT-Lasso analysis!")
         println("You have specified the following options:")
         println("zfile           = ", abspath(zfile))
         println("LD_files        = ", abspath(LD_files))
@@ -190,7 +190,7 @@ function julia_solveblock()::Cint
             min_hwe, method, linkage, force_contiguous, group_cor_cutoff, 
             group_rep_cutoff, verbose = parse_solveblock_commandline(true)
 
-        println("\n\nWelcome to the `solve_block` module of GhostKnockoffGWAS!")
+        println("\n\nWelcome to the `solve_block` module of CIT-Lasso!")
         println("You have specified the following options:")
         println("genotype file    = ", abspath(file))
         println("covariate file   = ", covfile == "" ? "" : abspath(covfile))

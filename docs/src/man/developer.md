@@ -2,13 +2,13 @@
 
 This is for advanced users who wish to build customized knockoff analysis pipelines. It is possible at 2 levels: 
 
-1. Create LD files that can be read by `GhostKnockoffGWAS` executable. This can be achieved in 2 ways:
-    + If you have individual-level genotypes, you can use the `solveblock` executable (see tutorial on [customizing LD files](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks))
-    + If you don't have individual-level genotypes, you can use LD-panels provided by [gnomAD](https://gnomad.broadinstitute.org/downloads#v2-linkage-disequilibrium) or [Pan-UKB](https://pan-dev.ukbb.broadinstitute.org/docs/hail-format/index.html). However, as explained in the [FAQ](https://biona001.github.io/GhostKnockoffGWAS/dev/man/FAQ/), this is not easy, and we suggest users who wish to do so reach out to us first. Nevertheless, a full example using the Pan-UKB LD files is provided in 3 separate jupyter notebooks: [part 0](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part0.ipynb), [part 1](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part1.ipynb), and [part 2](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part2.ipynb). If you need assistance on any of these steps, feel free to reach out to us. 
-2. Running `GhostKnockoffGWAS`, which performs ghost knockoff sampling and high dimensional Lasso regression
+1. Create LD files that can be read by the `cit-lasso` executable. This can be achieved in 2 ways:
+    + If you have individual-level genotypes, you can use the `solveblock` executable (see tutorial on [customizing LD files](https://biona001.github.io/CITLasso/dev/man/solveblocks))
+    + If you don't have individual-level genotypes, you can use LD-panels provided by [gnomAD](https://gnomad.broadinstitute.org/downloads#v2-linkage-disequilibrium) or [Pan-UKB](https://pan-dev.ukbb.broadinstitute.org/docs/hail-format/index.html). However, as explained in the [FAQ](https://biona001.github.io/CITLasso/dev/man/FAQ/), this is not easy, and we suggest users who wish to do so reach out to us first. Nevertheless, a full example using the Pan-UKB LD files is provided in 3 separate jupyter notebooks: [part 0](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part0.ipynb), [part 1](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part1.ipynb), and [part 2](https://github.com/biona001/ghostknockoff-gwas-reproducibility/blob/main/chu_et_al/ghostknockoff-part2.ipynb). If you need assistance on any of these steps, feel free to reach out to us. 
+2. Running CIT-Lasso, which performs ghost knockoff sampling and high dimensional Lasso regression
 
 The main purposes of step 1 include:
-+ Specifying which LD panel to use or [use individual-level data](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks)
++ Specifying which LD panel to use or [use individual-level data](https://biona001.github.io/CITLasso/dev/man/solveblocks)
 + Defining quasi-independent regions and groups
 + Solving the knockoff (convex) optimization problem
 + Saving the result in a easy-to-read format, which will be read in step 2
@@ -23,7 +23,7 @@ These steps are detailed below.
 
 ## Step 1: Creating custom LD files
 
-See [Customizing LD files](https://biona001.github.io/GhostKnockoffGWAS/dev/man/solveblocks) if you have individual level data and are willing to use in-sample LD. 
+See [Customizing LD files](https://biona001.github.io/CITLasso/dev/man/solveblocks) if you have individual level data and are willing to use in-sample LD. 
 
 Otherwise, large consortiums such as [Pan-UKBB](https://pan-dev.ukbb.broadinstitute.org/docs/hail-format/index.html) and [gnomAD](https://gnomad.broadinstitute.org/downloads#v2-linkage-disequilibrium) distributes LD panels for various population. 
 
@@ -64,7 +64,7 @@ where $\Sigma_i$ are LD matrices obtained from the Pan-UKBB panel and $S_i$ is t
     \min \frac{1}{2}\beta^t A \beta - \beta^tr + \lambda\sum_ip_i\left(\alpha|\beta_i| + \frac{1-\alpha}{2}\beta_i^2\right)
 \end{aligned}
 ```
-In `GhostKnockoffGWAS`, we set $\alpha = 1$ (i.e. a Lasso problem) and $p_i = 1$ for all $i$. $A = \frac{1}{n}[X,\tilde{X}]'[X,\tilde{X}]$ and $\beta$ contains the effect size for both original variables and their knockoffs. 
+In CIT-Lasso, we set $\alpha = 1$ (i.e. a Lasso problem) and $p_i = 1$ for all $i$. $A = \frac{1}{n}[X,\tilde{X}]'[X,\tilde{X}]$ and $\beta$ contains the effect size for both original variables and their knockoffs. 
 
 To solve this problem, we leverage the fact that Lasso's objective is seprable over the blocks: as long as we can find a lambda sequence to be used for all blocks, we can fit each block separately. Since the max lambda is only related to the marginal correlation between each feature and $y$, and the knockoffs are exchangeable to the original features, we can use the original genome-wide Z-scores to compute the lambda sequence. 
 
@@ -109,33 +109,44 @@ where $C_i = \Sigma_i - S_i$. In Julia, this functionality is supported via the 
 
 ## HDF5 files
 
-LD files are stored in HDF5 format, and `GhostKnockoffGWAS` reads and writes them through upstream `HDF5.jl`. An older implementation went through `FileIO.load`, which could fail when HDF5's FileIO extension could not be loaded on shared filesystems. The current code uses `HDF5.h5open` directly, so no forked `HDF5.jl` package is required.
+LD files are stored in HDF5 format, and `CITLasso` reads and writes them through upstream `HDF5.jl`. An older implementation went through `FileIO.load`, which could fail when HDF5's FileIO extension could not be loaded on shared filesystems. The current code uses `HDF5.h5open` directly, so no forked `HDF5.jl` package is required.
 
-## Compiling GhostKnockoffGWAS
+## Compiling CIT-Lasso
 
-I compiled this with julia v1.9.0 on Sherlock cluster, with `gcc/7.3.0` loaded. 
+The paper/software name is CIT-Lasso, the Julia package name is `CITLasso`, and
+the command-line executable is `cit-lasso`. Julia package and module names cannot
+use a dash, but PackageCompiler can emit an executable whose name contains one.
 
-1. Within julia,
-    ```
-    ]add libcxxwrap_julia_jll
-    ```
-    Note: as of Feb 2024, `libcxxwrap_julia_jll` must be v0.11.x
-2. Make sure `GhostKnockoffGWAS` is installed within Julia. 
-3. `dev` the package via
-    ```julia
-    ]dev GhostKnockoffGWAS
-    ```
-4. Compile using [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl)
+PackageCompiler apps are built for the operating system and CPU architecture of
+the machine that creates them. Build Linux x86_64 on Linux x86_64, macOS
+Apple Silicon on macOS arm64, and macOS Intel on macOS x86_64. GitHub Actions
+can build all three with the release workflow in this repository.
+
+To build locally:
+
+1. Use Julia 1.10 or newer.
+2. Make sure `CITLasso` and its unregistered dependencies are available in the
+   active Julia environment.
+3. Compile using [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl):
+
 ```julia
-using PackageCompiler, GhostKnockoffGWAS
-src = normpath(pathof(GhostKnockoffGWAS), "../..")
-des = normpath(pathof(GhostKnockoffGWAS), "../../app_linux_x86")
-precompile_script = normpath(pathof(GhostKnockoffGWAS), "../precompile.jl")
-@time create_app(src, des, 
-    include_lazy_artifacts=true, 
-    force=true, 
+using PackageCompiler, CITLasso
+src = normpath(pathof(CITLasso), "../..")
+des = normpath(pathof(CITLasso), "../../cit-lasso-app")
+precompile_script = normpath(pathof(CITLasso), "../precompile.jl")
+
+@time create_app(src, des;
+    include_lazy_artifacts=true,
+    force=true,
     precompile_execution_file=precompile_script,
-    executables=["GhostKnockoffGWAS"=>"julia_main", "solveblock"=>"julia_solveblock"]
+    executables=["cit-lasso" => "julia_main", "solveblock" => "julia_solveblock"],
 )
 ```
-The last step takes >15 minutes. 
+
+The executable will be available at `cit-lasso-app/bin/cit-lasso`. The last step
+can take more than 15 minutes.
+
+To run the GitHub Actions binary build, open the **Build binaries** workflow,
+choose **Run workflow**, and download the uploaded tarballs after the jobs
+finish. Pushing a version tag such as `v0.2.5` also builds the tarballs and
+attaches them to a GitHub release.

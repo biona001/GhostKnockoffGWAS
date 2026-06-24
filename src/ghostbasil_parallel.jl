@@ -7,7 +7,7 @@
         [target_fdrs=[0.01, 0.05, 0.1, 0.2]], [verbose=true], 
         [skip_shrinkage_check=false])
 
-Runs the main `GhostKnockoffGWAS` pipeline on the Z scores in `z` using 
+Runs the main `CITLasso` pipeline on the Z scores in `z` using 
 pre-computed knockoff data in `LD_files`. 
 
 # Inputs

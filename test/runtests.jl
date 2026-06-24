@@ -1,5 +1,5 @@
 using Test
-using GhostKnockoffGWAS
+using CITLasso
 using Ghostbasil
 using LinearAlgebra
 using DelimitedFiles
@@ -45,6 +45,7 @@ end
 function cleanup_generated_test_artifacts(testdir::String)
     for filename in (
         "app_linux_x86.tar.gz",
+        "CIT-Lasso-linux-x86_64.tar.gz",
         "GK_out_summary.txt",
         "GK_out.txt",
         "result_summary.txt",
@@ -69,7 +70,7 @@ function cleanup_generated_test_artifacts(testdir::String)
     end
 
     # get around directory not empty issue https://github.com/JuliaLang/julia/issues/34700
-    for dirname in ("app_linux_x86", "LD_files", "LD_files2")
+    for dirname in ("app_linux_x86", "cit-lasso-linux-x86_64", "LD_files", "LD_files2")
         path = joinpath(testdir, dirname)
         n = 0
         while n < 5
@@ -89,13 +90,13 @@ end
     p = 0.00695184371278
     beta = -0.010602
     z = 2.6991423324213346
-    @test GhostKnockoffGWAS.zscore(p, beta) ≈ 2.6991423324213346
-    @test GhostKnockoffGWAS.pval(z) ≈ 0.00695184371278
+    @test CITLasso.zscore(p, beta) ≈ 2.6991423324213346
+    @test CITLasso.pval(z) ≈ 0.00695184371278
 
     # find_matching_indices
     a = [1, 2, 3, 2, 6]
     b = [2, 1, 2, 4, 3]
-    c = GhostKnockoffGWAS.find_matching_indices(a, b)
+    c = CITLasso.find_matching_indices(a, b)
     @test c == [[2], [1, 3], [5], [1, 3], Int[]]
     @test typeof(c) <: Vector{Vector{Int64}}
 end
@@ -112,7 +113,7 @@ end
     -0.06831703956672884 -0.0248758148261822 -0.02981323926900486 -0.027896176152173473 -0.03616407173066363 0.21936244494341658 -0.027283609452267554 -0.020149157087303162 1.0 -0.015041050757637644; 
     0.1119291270044286 -0.01685099072623645 -0.02095834431260501 -0.01715817220843155 -0.02240494855276279 -0.0015389401383875156 -0.019604609586933476 -0.013591443637752606 -0.015041050757637644 1.0]
     z = [-0.0830535851088237, -2.25068631502435, 1.49776720532444, 1.65978366398296, 1.06042628327983, -1.41526767195536, -0.522515227438188, -0.140465835528732, 0.484580620845268, -0.981466593482507]
-    γ = GhostKnockoffGWAS.find_optimal_shrinkage(Σ, z)
+    γ = CITLasso.find_optimal_shrinkage(Σ, z)
     γtrue = 6.149509305168035e-15
     @test 0 ≤ γ ≤ 1
     @test isapprox(γ, γtrue, atol=1e-12)
@@ -237,7 +238,7 @@ end
     kappa = [0, 0, 1, 5, 2, 0, 2]
     groups = [1, 1, 2, 3, 4, 1, 5]
     tau = [0.1, 0.21, 0.01, 0.05, 0.02, 0.04, 0.2]
-    qvalues = GhostKnockoffGWAS.get_knockoff_qvalue(kappa, tau, m, groups=groups)
+    qvalues = CITLasso.get_knockoff_qvalue(kappa, tau, m, groups=groups)
 
     # true answer compared with Zihuai's code
     @test all(qvalues .≈ [0.3, 0.2, 1.0, 1.0, 1.0, 0.33333333333333333, 1.0])
@@ -250,7 +251,7 @@ end
         # - some rsIDs are missing
         # - some GT fields are missing?
         # - chr field as integers
-    vcffile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
+    vcffile = joinpath(dirname(pathof(CITLasso)), "..", 
         "test/test.08Jun17.d8b.vcf.gz")
     isfile(vcffile) || Downloads.download(
         "http://faculty.washington.edu/browning/beagle/test.08Jun17.d8b.vcf.gz",
@@ -269,7 +270,7 @@ end
     chr = 22
     start_bp = 1
     end_bp = 999999999999
-    outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
+    outdir = joinpath(dirname(pathof(CITLasso)), "..", "test/LD_files")
     isdir(outdir) || mkpath(outdir)
     hg_build = 19
     covfile = ""
@@ -318,16 +319,16 @@ end
     if isnothing(remote)
         @warn "Skipping PLINK input test on unsupported platform" Sys.KERNEL Sys.ARCH
     else
-        testdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test")
+        testdir = joinpath(dirname(pathof(CITLasso)), "..", "test")
         file = joinpath(testdir, basename(remote))
         Downloads.download(remote, file)
         run(`unzip -o $file -d $testdir`)
 
         # convert VCF file to binary PLINK using PLINK 1.9
         plink_exe = joinpath(testdir, "plink")
-        vcffile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
+        vcffile = joinpath(dirname(pathof(CITLasso)), "..", 
             "test/test.08Jun17.d8b.vcf.gz")
-        plinkfile = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", 
+        plinkfile = joinpath(dirname(pathof(CITLasso)), "..", 
             "test/test.08Jun17.d8b")
         vcf_to_plink(plink_exe, vcffile, plinkfile)
 
@@ -342,7 +343,7 @@ end
         chr = 22
         start_bp = 1
         end_bp = 999999999999
-        outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files2")
+        outdir = joinpath(dirname(pathof(CITLasso)), "..", "test/LD_files2")
         isdir(outdir) || mkpath(outdir)
         hg_build = 19
         covfile = ""
@@ -350,10 +351,10 @@ end
             hg_build, min_maf = 0.01, min_hwe = 0.0)
 
         # check PLINK vs VCF output is the same
-        VCF_outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
+        VCF_outdir = joinpath(dirname(pathof(CITLasso)), "..", "test/LD_files")
         VCF_h5 = joinpath(VCF_outdir, "chr22", "LD_start$(start_bp)_end$(end_bp).h5")
         VCFh5reader = h5open(VCF_h5, "r")
-        PLINK_outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files2")
+        PLINK_outdir = joinpath(dirname(pathof(CITLasso)), "..", "test/LD_files2")
         PLINK_h5 = joinpath(PLINK_outdir, "chr22", "LD_start$(start_bp)_end$(end_bp).h5")
         PLINKh5reader = h5open(PLINK_h5, "r")
         @test all(read(PLINKh5reader, "Sigma") .≈ read(VCFh5reader, "Sigma"))
@@ -371,7 +372,7 @@ end
 end
 
 @testset "ghostbasil (within julia)" begin
-    testdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "../test")
+    testdir = joinpath(dirname(pathof(CITLasso)), "../test")
     k = 10
     mu = 0
     sigma = 5.0 # beta ~ N(mu, sigma)
@@ -402,12 +403,12 @@ end
     LD_files = joinpath(testdir, "LD_files")
     CSV.write(zfile, DataFrame("CHR"=>chr,"POS"=>pos,"REF"=>ref,"ALT"=>alt,"Z"=>z))
 
-    # GhostKnockoffGWAS function
-    LDfiles = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test/LD_files")
+    # CITLasso function
+    LDfiles = joinpath(dirname(pathof(CITLasso)), "..", "test/LD_files")
     chr = parse.(Int, chr)
     N = size(X, 1)
     hg_build = 19
-    outdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test")
+    outdir = joinpath(dirname(pathof(CITLasso)), "..", "test")
     ghostknockoffgwas(LDfiles, z, chr, pos, alt, ref, N, hg_build, outdir)
     @test isfile(joinpath(outdir, "result.txt"))
     @test isfile(joinpath(outdir, "result_summary.txt"))
@@ -424,8 +425,11 @@ end
 end
 
 @testset "Download, unpack, and run exe" begin
-    testdir = joinpath(dirname(pathof(GhostKnockoffGWAS)), "..", "test")
-    if !(Sys.islinux() && Sys.ARCH == :x86_64)
+    testdir = joinpath(dirname(pathof(CITLasso)), "..", "test")
+    if get(ENV, "CITLASSO_TEST_RELEASE_APP", "false") != "true"
+        @warn "Skipping released app test; set CITLASSO_TEST_RELEASE_APP=true to enable it"
+        cleanup_generated_test_artifacts(testdir)
+    elseif !(Sys.islinux() && Sys.ARCH == :x86_64)
         @warn "Skipping released app test outside Linux x86_64" Sys.KERNEL Sys.ARCH
         cleanup_generated_test_artifacts(testdir)
     else
@@ -435,22 +439,24 @@ end
             # download and unpack
             cd(testdir)
             Downloads.download(
-                "https://github.com/biona001/GhostKnockoffGWAS/releases/download/v0.2.1/app_linux_x86.tar.gz",
+                get(ENV, "CITLASSO_RELEASE_APP_URL", "https://github.com/biona001/CITLasso/releases/download/v0.2.5/CIT-Lasso-linux-x86_64.tar.gz"),
                 "app_linux_x86.tar.gz",
             )
             run(`tar -xvzf app_linux_x86.tar.gz`)
-            @test isdir("app_linux_x86")
-            @test isfile("app_linux_x86/bin/GhostKnockoffGWAS")
-            @test isfile("app_linux_x86/bin/solveblock")
+            appdirs = filter(path -> isfile(joinpath(path, "bin", "cit-lasso")), readdir(testdir, join=true))
+            @test !isempty(appdirs)
+            appdir = first(appdirs)
+            @test isfile(joinpath(appdir, "bin", "cit-lasso"))
+            @test isfile(joinpath(appdir, "bin", "solveblock"))
 
             # help messages
-            help1 = run(`./app_linux_x86/bin/solveblock -h`)
-            help2 = run(`./app_linux_x86/bin/GhostKnockoffGWAS -h`)
+            help1 = run(`$(joinpath(appdir, "bin", "solveblock")) -h`)
+            help2 = run(`$(joinpath(appdir, "bin", "cit-lasso")) -h`)
             @test help1.exitcode == 0
             @test help2.exitcode == 0
 
             # solveblock executable
-            exe = joinpath(testdir, "app_linux_x86/bin/solveblock")
+            exe = joinpath(appdir, "bin", "solveblock")
             vcffile = joinpath(testdir, "test.08Jun17.d8b.vcf.gz")
             chr = 22
             start_bp = 1
@@ -461,8 +467,8 @@ end
             sb = run(`$exe --vcffile $vcffile --chr $chr --start_bp $start_bp --end_bp $end_bp --outdir $outdir --genome-build $hg_build`)
             @test sb.exitcode == 0
 
-            # GhostKnockoffGWAS executable
-            exe = joinpath(testdir, "app_linux_x86/bin/GhostKnockoffGWAS")
+            # cit-lasso executable
+            exe = joinpath(appdir, "bin", "cit-lasso")
             LDfiles = joinpath(testdir, "LD_files")
             outfile = "GK_out"
             zfile = "zfile.txt"
@@ -478,8 +484,8 @@ end
 end
 
 @testset "app" begin
-    s1 = GhostKnockoffGWAS.parse_ghostknockoffgwas_commandline(false)
-    s2 = GhostKnockoffGWAS.parse_solveblock_commandline(false)
+    s1 = CITLasso.parse_ghostknockoffgwas_commandline(false)
+    s2 = CITLasso.parse_solveblock_commandline(false)
     @test isnothing(s1)
     @test isnothing(s2)
 end
