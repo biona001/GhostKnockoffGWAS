@@ -7,7 +7,6 @@ Here is the main downloads page. New software and pre-processed knockoff data wi
 | Operating System | v0.3.0 (June 24, 2026)      |
 | :---             |       :----:               |
 | Linux x86_64     | [Download](https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-linux-x86_64.tar.gz)       |
-| Linux ARM64      | [Download](https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-linux-aarch64.tar.gz)       |
 | macOS Intel      | [Download](https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-macos-x86_64.tar.gz)       |
 | macOS Apple Silicon | [Download](https://github.com/biona001/CITLasso/releases/download/v0.3.0/CIT-Lasso-macos-aarch64.tar.gz)       |
 
