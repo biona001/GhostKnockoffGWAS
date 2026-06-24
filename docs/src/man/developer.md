@@ -137,7 +137,7 @@ des = normpath(pathof(CITLasso), "../../cit-lasso-app")
 precompile_script = normpath(pathof(CITLasso), "../precompile.jl")
 
 @time create_app(src, des;
-    include_lazy_artifacts=false,
+    include_lazy_artifacts=true,
     force=true,
     precompile_execution_file=precompile_script,
     executables=["cit-lasso" => "julia_main", "solveblock" => "julia_solveblock"],
@@ -145,9 +145,9 @@ precompile_script = normpath(pathof(CITLasso), "../precompile.jl")
 ```
 
 The executable will be available at `cit-lasso-app/bin/cit-lasso`. The last step
-can take more than 15 minutes. Set `include_lazy_artifacts=true` only if you
-need a fully offline app that bundles artifacts which are downloaded lazily at
-runtime.
+can take more than 15 minutes. `include_lazy_artifacts=true` keeps the app
+bundle suitable for offline use when dependencies rely on artifacts that are
+downloaded lazily.
 
 To run the GitHub Actions binary build, open the **Build binaries** workflow,
 choose **Run workflow**, and download the uploaded tarballs after the jobs
