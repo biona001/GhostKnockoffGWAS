@@ -73,21 +73,39 @@ jobs:
             Pkg.develop(PackageSpec(path=pwd()))
             if Sys.ARCH === :aarch64
                 Pkg.develop(PackageSpec(name="HostCPUFeatures"))
-                hcf_uuid = Base.UUID("3e5b6fbb-0976-4d2c-9146-d79de83f2fb0")
-                hcf_source = Pkg.dependencies()[hcf_uuid].source
-                hcf_file = joinpath(hcf_source, "src", "cpu_info_aarch64.jl")
-                hcf_code = read(hcf_file, String)
-                patched_hcf_code = replace(
-                    hcf_code,
-                    "@noinline vscale() = ccall(\"llvm.vscale.i64\", llvmcall, Int64, ())" =>
-                        "@noinline vscale() = Int64(1)",
-                    "@noinline vscale() = ccall(\"llvm.vscale.i32\", llvmcall, Int32, ())" =>
-                        "@noinline vscale() = Int32(1)",
-                )
-                if patched_hcf_code == hcf_code
-                    @warn "HostCPUFeatures aarch64 vscale patch did not change $(hcf_file)"
-                else
-                    write(hcf_file, patched_hcf_code)
+                hcf_files = String[]
+                for depot in DEPOT_PATH
+                    dev_hcf_file = joinpath(depot, "dev", "HostCPUFeatures", "src", "cpu_info_aarch64.jl")
+                    if isfile(dev_hcf_file)
+                        push!(hcf_files, dev_hcf_file)
+                    end
+                    pkg_hcf_root = joinpath(depot, "packages", "HostCPUFeatures")
+                    if isdir(pkg_hcf_root)
+                        for entry in readdir(pkg_hcf_root)
+                            pkg_hcf_file = joinpath(pkg_hcf_root, entry, "src", "cpu_info_aarch64.jl")
+                            if isfile(pkg_hcf_file)
+                                push!(hcf_files, pkg_hcf_file)
+                            end
+                        end
+                    end
+                end
+                if isempty(hcf_files)
+                    @warn "HostCPUFeatures aarch64 vscale patch found no cpu_info_aarch64.jl files"
+                end
+                for hcf_file in unique(hcf_files)
+                    hcf_code = read(hcf_file, String)
+                    patched_hcf_code = replace(
+                        hcf_code,
+                        "@noinline vscale() = ccall(\"llvm.vscale.i64\", llvmcall, Int64, ())" =>
+                            "@noinline vscale() = Int64(1)",
+                        "@noinline vscale() = ccall(\"llvm.vscale.i32\", llvmcall, Int32, ())" =>
+                            "@noinline vscale() = Int32(1)",
+                    )
+                    if patched_hcf_code == hcf_code
+                        @warn "HostCPUFeatures aarch64 vscale patch did not change $(hcf_file)"
+                    else
+                        write(hcf_file, patched_hcf_code)
+                    end
                 end
             end
             Pkg.instantiate()
