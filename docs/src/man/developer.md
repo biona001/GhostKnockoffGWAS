@@ -139,3 +139,53 @@ precompile_script = normpath(pathof(GhostKnockoffGWAS), "../precompile.jl")
 )
 ```
 The last step takes >15 minutes. 
+
+## JuliaC experiment
+
+JuliaC expects the executable entrypoint to define `function @main(args::Vector{String})::Cint`.
+The experimental entrypoint in `src/juliac_main.jl` therefore uses a small typed parser instead
+of `ArgParse`, and it includes `src/juliac_gwas_module.jl`, a lightweight module that loads only
+the GWAS runtime path. This avoids pulling in the `solve_blocks` stack while JuliaC is still
+immature.
+
+For a minimal JuliaC project, instantiate the dependencies separately from this package project:
+
+```bash
+rm -rf /tmp/gkgwas_juliac/min_project
+mkdir -p /tmp/gkgwas_juliac/min_project
+julia --project=/tmp/gkgwas_juliac/min_project -e '
+using Pkg
+Pkg.develop(path="/Users/biona001/.julia/dev/ghostbasil_jll")
+Pkg.develop(path="/Users/biona001/.julia/dev/Ghostbasil.jl")
+Pkg.add(["CodecZlib", "HDF5", "Distributions", "Optim", "StatsBase"])
+Pkg.instantiate()
+Pkg.precompile()
+'
+```
+
+Then build the current runnable no-trim bundle:
+
+```bash
+julia --project=/Users/biona001/.julia/dev/JuliaC -e 'using JuliaC; JuliaC.main(ARGS)' -- \
+  --output-exe GhostKnockoffGWAS \
+  --project /tmp/gkgwas_juliac/min_project \
+  --bundle /tmp/gkgwas_juliac/build_notrim_min/GhostKnockoffGWAS \
+  --trim=no \
+  --experimental \
+  --verbose \
+  /Users/biona001/.julia/dev/GhostKnockoffGWAS/src/juliac_main.jl
+```
+
+Smoke-test the resulting executable with:
+
+```bash
+/tmp/gkgwas_juliac/build_notrim_min/GhostKnockoffGWAS/bin/GhostKnockoffGWAS --help
+```
+
+As of Julia 1.12.1 and JuliaC 0.3.8 on macOS aarch64, this lightweight no-trim
+bundle builds and runs a test LD panel end-to-end. The bundle is about 545 MiB.
+A fully trimmed AOT binary is still blocked by JuliaC trim verifier failures around
+`HDF5.h5open`, typed HDF5 reads, `open(...) do` blocks, and local closures. Building
+the full package graph without trimming also failed locally in LLVM host CPU feature
+code on Apple Silicon, so the lightweight module is currently the most useful JuliaC
+path.
