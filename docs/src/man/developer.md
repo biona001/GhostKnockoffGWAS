@@ -118,9 +118,10 @@ the command-line executable is `cit-lasso`. Julia package and module names canno
 use a dash, but PackageCompiler can emit an executable whose name contains one.
 
 PackageCompiler apps are built for the operating system and CPU architecture of
-the machine that creates them. Build Linux x86_64 on Linux x86_64, macOS
-Apple Silicon on macOS arm64, and macOS Intel on macOS x86_64. GitHub Actions
-can build all three with the release workflow in this repository.
+the machine that creates them. Build Linux x86_64 on Linux x86_64, Linux
+aarch64 on Linux aarch64, macOS Apple Silicon on macOS arm64, and macOS Intel
+on macOS x86_64. GitHub Actions can build these with the release workflow in
+this repository.
 
 To build locally:
 
@@ -136,7 +137,7 @@ des = normpath(pathof(CITLasso), "../../cit-lasso-app")
 precompile_script = normpath(pathof(CITLasso), "../precompile.jl")
 
 @time create_app(src, des;
-    include_lazy_artifacts=true,
+    include_lazy_artifacts=false,
     force=true,
     precompile_execution_file=precompile_script,
     executables=["cit-lasso" => "julia_main", "solveblock" => "julia_solveblock"],
@@ -144,7 +145,9 @@ precompile_script = normpath(pathof(CITLasso), "../precompile.jl")
 ```
 
 The executable will be available at `cit-lasso-app/bin/cit-lasso`. The last step
-can take more than 15 minutes.
+can take more than 15 minutes. Set `include_lazy_artifacts=true` only if you
+need a fully offline app that bundles artifacts which are downloaded lazily at
+runtime.
 
 To run the GitHub Actions binary build, open the **Build binaries** workflow,
 choose **Run workflow**, and download the uploaded tarballs after the jobs
