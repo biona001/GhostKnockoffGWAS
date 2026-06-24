@@ -27,11 +27,11 @@ jobs:
           - os: ubuntu-latest
             julia-arch: x64
             target: linux-x86_64
-            heap-size-hint: 12G
+            heap-size-hint: 8G
           - os: ubuntu-24.04-arm
             julia-arch: aarch64
             target: linux-aarch64
-            heap-size-hint: 12G
+            heap-size-hint: 8G
           - os: macos-15-intel
             julia-arch: x64
             target: macos-x86_64
@@ -71,6 +71,25 @@ jobs:
             Pkg.develop(url="https://github.com/biona001/ghostbasil_jll.jl")
             Pkg.develop(url="https://github.com/biona001/Ghostbasil.jl")
             Pkg.develop(PackageSpec(path=pwd()))
+            if Sys.ARCH === :aarch64
+                Pkg.develop(PackageSpec(name="HostCPUFeatures"))
+                hcf_uuid = Base.UUID("3e5b6fbb-0976-4d2c-9146-d79de83f2fb0")
+                hcf_source = Pkg.dependencies()[hcf_uuid].source
+                hcf_file = joinpath(hcf_source, "src", "cpu_info_aarch64.jl")
+                hcf_code = read(hcf_file, String)
+                patched_hcf_code = replace(
+                    hcf_code,
+                    "@noinline vscale() = ccall(\"llvm.vscale.i64\", llvmcall, Int64, ())" =>
+                        "@noinline vscale() = Int64(1)",
+                    "@noinline vscale() = ccall(\"llvm.vscale.i32\", llvmcall, Int32, ())" =>
+                        "@noinline vscale() = Int32(1)",
+                )
+                if patched_hcf_code == hcf_code
+                    @warn "HostCPUFeatures aarch64 vscale patch did not change $(hcf_file)"
+                else
+                    write(hcf_file, patched_hcf_code)
+                end
+            end
             Pkg.instantiate()
             Pkg.precompile()
           '
@@ -82,15 +101,20 @@ jobs:
           JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
           mkdir -p build
+          df -h
           julia --heap-size-hint=${{ matrix.heap-size-hint }} --project=/tmp/citlasso-build-env -e '
             using PackageCompiler, CITLasso
+            println("Julia version: ", VERSION)
+            println("PackageCompiler version: ", pkgversion(PackageCompiler))
+            println("CITLasso path: ", pathof(CITLasso))
+            println("Memory total/free bytes: ", Sys.total_memory(), " / ", Sys.free_memory())
             src = normpath(pathof(CITLasso), "../..")
             app_dir = joinpath(pwd(), "build", "cit-lasso-${{ matrix.target }}")
             precompile_script = normpath(pathof(CITLasso), "../precompile.jl")
             heap_size_hint = get(ENV, "CITLASSO_HEAP_SIZE_HINT", "")
             sysimage_build_args = isempty(heap_size_hint) ? `` : Cmd(["--heap-size-hint=$heap_size_hint"])
             create_app(src, app_dir;
-                include_lazy_artifacts=false,
+                include_lazy_artifacts=true,
                 force=true,
                 precompile_execution_file=precompile_script,
                 sysimage_build_args=sysimage_build_args,
@@ -100,6 +124,7 @@ jobs:
                 ],
             )
           '
+          df -h
 
       - name: Smoke test
         run: |
