@@ -6,4 +6,4 @@ This is package for performing knockoff-based analysis of GWAS summary statistic
 
 !!! warning
 
-    The Julia package supports Linux and macOS with Julia 1.10 or newer when a matching `Ghostbasil.jl`/`ghostbasil_jll` artifact is installed. Windows is not supported. Prebuilt app downloads may cover fewer platforms than the Julia package; see the downloads page for currently published bundles.
+    The Julia package supports Linux and macOS on Julia 1.10 and 1.12 when a matching `Ghostbasil.jl`/`ghostbasil_jll` artifact is installed. Windows is not supported. Julia 1.11 is not currently supported by the published `ghostbasil_jll` artifacts. Prebuilt app downloads may cover fewer platforms than the Julia package; see the downloads page for currently published bundles.

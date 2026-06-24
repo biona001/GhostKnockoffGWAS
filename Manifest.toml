@@ -547,7 +547,9 @@ version = "0.2.4"
 
 [[deps.Ghostbasil]]
 deps = ["CxxWrap", "ghostbasil_jll", "libcxxwrap_julia_jll"]
-path = "/Users/biona001/.julia/dev/Ghostbasil.jl"
+git-tree-sha1 = "bb33af237d3858c6d5d47fd5cc62c2a167bd5837"
+repo-rev = "main"
+repo-url = "https://github.com/biona001/Ghostbasil.jl"
 uuid = "42a9b20f-2d23-465a-b7ed-975dbff4a4d6"
 version = "0.0.2"
 
@@ -1498,7 +1500,9 @@ version = "1.4.2+0"
 
 [[deps.ghostbasil_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "libcxxwrap_julia_jll"]
-path = "/Users/biona001/.julia/dev/ghostbasil_jll"
+git-tree-sha1 = "7fddcd6617d266818e6c4f9c7fde0a8a2cc18802"
+repo-rev = "main"
+repo-url = "https://github.com/biona001/ghostbasil_jll.jl"
 uuid = "caeec347-1c5e-53ac-8e86-7f5e1a690164"
 version = "0.0.16+0"
 
