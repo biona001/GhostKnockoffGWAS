@@ -68,6 +68,52 @@ jobs:
           JULIA_NUM_PRECOMPILE_TASKS: "1"
           JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
+          mkdir -p /tmp/citlasso-build-env
+          julia --heap-size-hint=${{ matrix.heap-size-hint }} --project=. -e '
+            using Pkg
+
+            function patch_hostcpufeatures_vscale!()
+                hcf_uuid = Base.UUID("3e5b6fbb-0976-4d2c-9146-d79de83f2fb0")
+                hcf_source = Pkg.dependencies()[hcf_uuid].source
+                hcf_file = joinpath(hcf_source, "src", "cpu_info_aarch64.jl")
+                hcf_code = read(hcf_file, String)
+                patched_hcf_code = replace(
+                    hcf_code,
+                    "@noinline vscale() = ccall(\"llvm.vscale.i64\", llvmcall, Int64, ())" =>
+                        "@noinline vscale() = Int64(1)",
+                    "@noinline vscale() = ccall(\"llvm.vscale.i32\", llvmcall, Int32, ())" =>
+                        "@noinline vscale() = Int32(1)",
+                )
+                if patched_hcf_code == hcf_code
+                    @warn "HostCPUFeatures aarch64 vscale patch did not change $(hcf_file)"
+                else
+                    write(hcf_file, patched_hcf_code)
+                end
+            end
+
+            function show_package_sources()
+                deps = Pkg.dependencies()
+                for uuid in (
+                    Base.UUID("42a9b20f-2d23-465a-b7ed-975dbff4a4d6"),
+                    Base.UUID("caeec347-1c5e-53ac-8e86-7f5e1a690164"),
+                )
+                    pkg = deps[uuid]
+                    println(pkg.name, " source: ", something(pkg.source, "<none>"))
+                end
+            end
+
+            Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
+            Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
+            if Sys.ARCH === :aarch64
+                Pkg.develop(PackageSpec(name="HostCPUFeatures"))
+                patch_hostcpufeatures_vscale!()
+            end
+            Pkg.resolve()
+            Pkg.instantiate()
+            Pkg.precompile()
+            show_package_sources()
+          '
+
           julia --heap-size-hint=${{ matrix.heap-size-hint }} --project=/tmp/citlasso-build-env -e '
             using Pkg
 
@@ -90,25 +136,31 @@ jobs:
                 end
             end
 
-            Pkg.activate(pwd())
-            Pkg.develop(url="https://github.com/biona001/ghostbasil_jll.jl")
-            Pkg.develop(url="https://github.com/biona001/Ghostbasil.jl")
-            if Sys.ARCH === :aarch64
-                Pkg.develop(PackageSpec(name="HostCPUFeatures"))
-                patch_hostcpufeatures_vscale!()
+            function show_package_sources()
+                deps = Pkg.dependencies()
+                for uuid in (
+                    Base.UUID("28dc8d00-4921-4061-9921-3f423e4be5cc"),
+                    Base.UUID("42a9b20f-2d23-465a-b7ed-975dbff4a4d6"),
+                    Base.UUID("caeec347-1c5e-53ac-8e86-7f5e1a690164"),
+                )
+                    pkg = deps[uuid]
+                    println(pkg.name, " source: ", something(pkg.source, "<none>"))
+                end
             end
-            Pkg.instantiate()
-            Pkg.precompile()
 
             Pkg.activate("/tmp/citlasso-build-env")
             Pkg.add("PackageCompiler")
+            Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
+            Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
             Pkg.develop(PackageSpec(path=pwd()))
             if Sys.ARCH === :aarch64
                 Pkg.develop(PackageSpec(name="HostCPUFeatures"))
                 patch_hostcpufeatures_vscale!()
             end
+            Pkg.resolve()
             Pkg.instantiate()
             Pkg.precompile()
+            show_package_sources()
           '
 
       - name: Build app
