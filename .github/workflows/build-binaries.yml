@@ -20,26 +20,31 @@ jobs:
   build:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
+            julia-version: "1.10"
             julia-arch: x64
             target: linux-x86_64
-            heap-size-hint: 8G
+            heap-size-hint: 6G
             incremental: true
           - os: ubuntu-24.04-arm
+            julia-version: "1.10"
             julia-arch: aarch64
             target: linux-aarch64
-            heap-size-hint: 8G
+            heap-size-hint: 6G
             incremental: true
           - os: macos-15-intel
+            julia-version: "1.12"
             julia-arch: x64
             target: macos-x86_64
             heap-size-hint: 10G
             incremental: false
           - os: macos-15
+            julia-version: "1.12"
             julia-arch: aarch64
             target: macos-aarch64
             heap-size-hint: 4G
@@ -50,7 +55,7 @@ jobs:
 
       - uses: julia-actions/setup-julia@v3
         with:
-          version: "1.12"
+          version: ${{ matrix.julia-version }}
           arch: ${{ matrix.julia-arch }}
 
       - uses: actions/cache@v4
@@ -58,10 +63,20 @@ jobs:
           path: |
             ~/.julia/artifacts
             ~/.julia/compiled
-          key: ${{ runner.os }}-${{ matrix.julia-arch }}-packagecompiler-${{ hashFiles('Project.toml', 'Manifest.toml') }}
+          key: ${{ runner.os }}-${{ matrix.julia-version }}-${{ matrix.julia-arch }}-packagecompiler-${{ hashFiles('Project.toml', 'Manifest.toml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.julia-arch }}-packagecompiler-
-            ${{ runner.os }}-${{ matrix.julia-arch }}-
+            ${{ runner.os }}-${{ matrix.julia-version }}-${{ matrix.julia-arch }}-packagecompiler-
+            ${{ runner.os }}-${{ matrix.julia-version }}-${{ matrix.julia-arch }}-
+
+      - name: Add Linux swap
+        if: runner.os == 'Linux'
+        run: |
+          sudo fallocate -l 16G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=16384
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+          swapon --show
 
       - name: Prepare build environment
         env:
@@ -175,6 +190,14 @@ jobs:
             while true; do
               date
               df -h .
+              if command -v free >/dev/null 2>&1; then
+                free -h
+                swapon --show || true
+                ps -eo pid,ppid,rss,vsz,comm,args --sort=-rss | head -n 12
+              elif command -v vm_stat >/dev/null 2>&1; then
+                vm_stat
+                ps -arcwwwxo pid,ppid,rss,vsz,comm | head -n 12
+              fi
               sleep 60
             done
           ) &
