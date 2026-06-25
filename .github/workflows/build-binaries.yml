@@ -28,18 +28,22 @@ jobs:
             julia-arch: x64
             target: linux-x86_64
             heap-size-hint: 8G
+            incremental: true
           - os: ubuntu-24.04-arm
             julia-arch: aarch64
             target: linux-aarch64
             heap-size-hint: 8G
+            incremental: true
           - os: macos-15-intel
             julia-arch: x64
             target: macos-x86_64
             heap-size-hint: 10G
+            incremental: false
           - os: macos-15
             julia-arch: aarch64
             target: macos-aarch64
-            heap-size-hint: 5G
+            heap-size-hint: 4G
+            incremental: true
 
     steps:
       - uses: actions/checkout@v4
@@ -66,13 +70,8 @@ jobs:
         run: |
           julia --heap-size-hint=${{ matrix.heap-size-hint }} --project=/tmp/citlasso-build-env -e '
             using Pkg
-            Pkg.activate("/tmp/citlasso-build-env")
-            Pkg.add("PackageCompiler")
-            Pkg.develop(url="https://github.com/biona001/ghostbasil_jll.jl")
-            Pkg.develop(url="https://github.com/biona001/Ghostbasil.jl")
-            Pkg.develop(PackageSpec(path=pwd()))
-            if Sys.ARCH === :aarch64
-                Pkg.develop(PackageSpec(name="HostCPUFeatures"))
+
+            function patch_hostcpufeatures_vscale!()
                 hcf_uuid = Base.UUID("3e5b6fbb-0976-4d2c-9146-d79de83f2fb0")
                 hcf_source = Pkg.dependencies()[hcf_uuid].source
                 hcf_file = joinpath(hcf_source, "src", "cpu_info_aarch64.jl")
@@ -90,6 +89,24 @@ jobs:
                     write(hcf_file, patched_hcf_code)
                 end
             end
+
+            Pkg.activate(pwd())
+            Pkg.develop(url="https://github.com/biona001/ghostbasil_jll.jl")
+            Pkg.develop(url="https://github.com/biona001/Ghostbasil.jl")
+            if Sys.ARCH === :aarch64
+                Pkg.develop(PackageSpec(name="HostCPUFeatures"))
+                patch_hostcpufeatures_vscale!()
+            end
+            Pkg.instantiate()
+            Pkg.precompile()
+
+            Pkg.activate("/tmp/citlasso-build-env")
+            Pkg.add("PackageCompiler")
+            Pkg.develop(PackageSpec(path=pwd()))
+            if Sys.ARCH === :aarch64
+                Pkg.develop(PackageSpec(name="HostCPUFeatures"))
+                patch_hostcpufeatures_vscale!()
+            end
             Pkg.instantiate()
             Pkg.precompile()
           '
@@ -102,6 +119,15 @@ jobs:
         run: |
           mkdir -p build
           df -h
+          (
+            while true; do
+              date
+              df -h .
+              sleep 60
+            done
+          ) &
+          keepalive_pid=$!
+          trap "kill $keepalive_pid 2>/dev/null || true" EXIT
           julia --heap-size-hint=${{ matrix.heap-size-hint }} --project=/tmp/citlasso-build-env -e '
             using PackageCompiler, CITLasso
             println("Julia version: ", VERSION)
@@ -113,8 +139,10 @@ jobs:
             precompile_script = normpath(pathof(CITLasso), "../precompile.jl")
             heap_size_hint = get(ENV, "CITLASSO_HEAP_SIZE_HINT", "")
             sysimage_build_args = isempty(heap_size_hint) ? `` : Cmd(["--heap-size-hint=$heap_size_hint"])
+            incremental = parse(Bool, "${{ matrix.incremental }}")
             create_app(src, app_dir;
                 include_lazy_artifacts=true,
+                incremental=incremental,
                 force=true,
                 precompile_execution_file=precompile_script,
                 sysimage_build_args=sysimage_build_args,
@@ -124,6 +152,8 @@ jobs:
                 ],
             )
           '
+          kill $keepalive_pid 2>/dev/null || true
+          trap - EXIT
           df -h
 
       - name: Smoke test
