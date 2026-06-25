@@ -26,16 +26,16 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            julia-version: "1.10"
+            julia-version: "1.12"
             julia-arch: x64
             target: linux-x86_64
-            heap-size-hint: 6G
+            heap-size-hint: 4G
             incremental: true
           - os: ubuntu-24.04-arm
-            julia-version: "1.10"
+            julia-version: "1.12"
             julia-arch: aarch64
             target: linux-aarch64
-            heap-size-hint: 6G
+            heap-size-hint: 4G
             incremental: true
           - os: macos-15-intel
             julia-version: "1.12"
@@ -80,6 +80,7 @@ jobs:
 
       - name: Prepare build environment
         env:
+          JULIA_IMAGE_THREADS: "1"
           JULIA_NUM_PRECOMPILE_TASKS: "1"
           JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
@@ -181,6 +182,7 @@ jobs:
       - name: Build app
         env:
           CITLASSO_HEAP_SIZE_HINT: ${{ matrix.heap-size-hint }}
+          JULIA_IMAGE_THREADS: "1"
           JULIA_NUM_PRECOMPILE_TASKS: "1"
           JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
