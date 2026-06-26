@@ -20,7 +20,7 @@ jobs:
   build:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -91,10 +91,12 @@ jobs:
 
       - name: Prepare build environment
         env:
-          JULIA_IMAGE_THREADS: "1"
           JULIA_NUM_PRECOMPILE_TASKS: "1"
           JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            export JULIA_IMAGE_THREADS=1
+          fi
           mkdir -p /tmp/citlasso-build-env
           julia --heap-size-hint=${{ matrix.heap-size-hint }} --project=. -e '
             using Pkg
@@ -193,10 +195,12 @@ jobs:
       - name: Build app
         env:
           CITLASSO_HEAP_SIZE_HINT: ${{ matrix.heap-size-hint }}
-          JULIA_IMAGE_THREADS: "1"
           JULIA_NUM_PRECOMPILE_TASKS: "1"
           JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            export JULIA_IMAGE_THREADS=1
+          fi
           mkdir -p build
           df -h
           (
