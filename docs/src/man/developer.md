@@ -121,7 +121,10 @@ PackageCompiler apps are built for the operating system and CPU architecture of
 the machine that creates them. Build Linux x86_64 on Linux x86_64, Linux
 aarch64 on Linux aarch64, macOS Apple Silicon on macOS arm64, and macOS Intel
 on macOS x86_64. GitHub Actions can build these with the release workflow in
-this repository.
+this repository. The Linux release jobs intentionally build inside manylinux
+containers and check the packaged apps for newer `GLIBC_*` symbols. Linux
+x86_64 targets glibc 2.17 for older HPC distributions; Linux aarch64 targets
+glibc 2.28 because official Julia aarch64 binaries do not start on glibc 2.17.
 
 To build locally:
 

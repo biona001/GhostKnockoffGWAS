@@ -17,7 +17,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-linux:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
@@ -26,17 +26,291 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            julia-version: "1.12"
-            julia-arch: x64
             target: linux-x86_64
-            heap-size-hint: 4G
-            incremental: true
+            julia-archive-url: https://julialang-s3.julialang.org/bin/linux/x64/1.12/julia-1.12.6-linux-x86_64.tar.gz
+            manylinux-image: quay.io/pypa/manylinux2014_x86_64:latest
+            manylinux-key: manylinux2014
+            glibc-max: "2.17"
           - os: ubuntu-24.04-arm
-            julia-version: "1.12"
-            julia-arch: aarch64
             target: linux-aarch64
-            heap-size-hint: 4G
-            incremental: true
+            julia-archive-url: https://julialang-s3.julialang.org/bin/linux/aarch64/1.12/julia-1.12.6-linux-aarch64.tar.gz
+            manylinux-image: quay.io/pypa/manylinux_2_28_aarch64:latest
+            manylinux-key: manylinux228
+            glibc-max: "2.28"
+    env:
+      TARGET: ${{ matrix.target }}
+      JULIA_VERSION: "1.12.6"
+      JULIA_ARCHIVE_URL: ${{ matrix.julia-archive-url }}
+      JULIA_DEPOT_PATH: /workspace/.julia-${{ matrix.target }}-cache
+      JULIA_INSTALL_DIR: .julia-${{ matrix.target }}-julia
+      MANYLINUX_IMAGE: ${{ matrix.manylinux-image }}
+      JULIA_NUM_PRECOMPILE_TASKS: "1"
+      JULIA_PKG_PRECOMPILE_AUTO: "0"
+      JULIA_IMAGE_THREADS: "1"
+      CITLASSO_HEAP_SIZE_HINT: 4G
+      CITLASSO_LINUX_GLIBC_MAX: ${{ matrix.glibc-max }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: .julia-${{ matrix.target }}-cache
+          key: Linux-${{ env.JULIA_VERSION }}-${{ matrix.target }}-packagecompiler-${{ matrix.manylinux-key }}-${{ hashFiles('Project.toml', 'Manifest.toml') }}
+          restore-keys: |
+            Linux-${{ env.JULIA_VERSION }}-${{ matrix.target }}-packagecompiler-${{ matrix.manylinux-key }}-
+            Linux-${{ env.JULIA_VERSION }}-${{ matrix.target }}-
+
+      - name: Add Linux swap
+        run: |
+          free -h
+          swapon --show || true
+          existing_swap_mib=$(awk '/SwapTotal/ { print int($2 / 1024) }' /proc/meminfo)
+          if [ "$existing_swap_mib" -ge 12000 ]; then
+            echo "Existing swap is sufficient (${existing_swap_mib} MiB)."
+            exit 0
+          fi
+
+          swapfile=/mnt/citlasso-swapfile
+          sudo swapoff "$swapfile" 2>/dev/null || true
+          sudo rm -f "$swapfile"
+          sudo fallocate -l 16G "$swapfile" || sudo dd if=/dev/zero of="$swapfile" bs=1M count=16384
+          sudo chmod 600 "$swapfile"
+          sudo mkswap "$swapfile"
+          sudo swapon "$swapfile"
+          free -h
+          swapon --show
+
+      - name: Build Linux app in manylinux container
+        run: |
+          mkdir -p ".julia-${TARGET}-cache" "$JULIA_INSTALL_DIR"
+          docker run --rm \
+            --workdir /workspace \
+            -e TARGET \
+            -e JULIA_VERSION \
+            -e JULIA_ARCHIVE_URL \
+            -e JULIA_DEPOT_PATH \
+            -e JULIA_INSTALL_DIR \
+            -e JULIA_NUM_PRECOMPILE_TASKS \
+            -e JULIA_PKG_PRECOMPILE_AUTO \
+            -e JULIA_IMAGE_THREADS \
+            -e CITLASSO_HEAP_SIZE_HINT \
+            -v "$PWD:/workspace" \
+            "$MANYLINUX_IMAGE" \
+            bash -euo pipefail -c '
+              ldd --version > /tmp/ldd-version.txt 2>&1
+              sed -n "1p" /tmp/ldd-version.txt
+              chown -R "$(id -u):$(id -g)" "$JULIA_DEPOT_PATH" "$JULIA_INSTALL_DIR" 2>/dev/null || true
+
+              if [ ! -x "$JULIA_INSTALL_DIR/bin/julia" ]; then
+                rm -rf "$JULIA_INSTALL_DIR"
+                mkdir -p "$JULIA_INSTALL_DIR"
+                curl -fsSL "$JULIA_ARCHIVE_URL" -o /tmp/julia-linux.tar.gz
+                tar -xzf /tmp/julia-linux.tar.gz --strip-components=1 -C "$JULIA_INSTALL_DIR"
+              fi
+              export PATH="/workspace/$JULIA_INSTALL_DIR/bin:$PATH"
+              julia --version
+
+              mkdir -p /tmp/citlasso-build-env
+              julia --heap-size-hint="$CITLASSO_HEAP_SIZE_HINT" --project=. -e '"'"'
+                using Pkg
+
+                function patch_hostcpufeatures_vscale!()
+                    hcf_uuid = Base.UUID("3e5b6fbb-0976-4d2c-9146-d79de83f2fb0")
+                    hcf_source = Pkg.dependencies()[hcf_uuid].source
+                    hcf_file = joinpath(hcf_source, "src", "cpu_info_aarch64.jl")
+                    hcf_code = read(hcf_file, String)
+                    patched_hcf_code = replace(
+                        hcf_code,
+                        "@noinline vscale() = ccall(\"llvm.vscale.i64\", llvmcall, Int64, ())" =>
+                            "@noinline vscale() = Int64(1)",
+                        "@noinline vscale() = ccall(\"llvm.vscale.i32\", llvmcall, Int32, ())" =>
+                            "@noinline vscale() = Int32(1)",
+                    )
+                    if patched_hcf_code == hcf_code
+                        @warn "HostCPUFeatures aarch64 vscale patch did not change $(hcf_file)"
+                    else
+                        write(hcf_file, patched_hcf_code)
+                    end
+                end
+
+                function show_package_sources()
+                    deps = Pkg.dependencies()
+                    for uuid in (
+                        Base.UUID("42a9b20f-2d23-465a-b7ed-975dbff4a4d6"),
+                        Base.UUID("caeec347-1c5e-53ac-8e86-7f5e1a690164"),
+                    )
+                        pkg = deps[uuid]
+                        println(pkg.name, " source: ", something(pkg.source, "<none>"))
+                    end
+                end
+
+                Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
+                Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
+                if Sys.ARCH === :aarch64
+                    Pkg.develop(PackageSpec(name="HostCPUFeatures"))
+                    patch_hostcpufeatures_vscale!()
+                end
+                Pkg.resolve()
+                Pkg.instantiate()
+                Pkg.precompile()
+                show_package_sources()
+              '"'"'
+
+              julia --heap-size-hint="$CITLASSO_HEAP_SIZE_HINT" --project=/tmp/citlasso-build-env -e '"'"'
+                using Pkg
+
+                function patch_hostcpufeatures_vscale!()
+                    hcf_uuid = Base.UUID("3e5b6fbb-0976-4d2c-9146-d79de83f2fb0")
+                    hcf_source = Pkg.dependencies()[hcf_uuid].source
+                    hcf_file = joinpath(hcf_source, "src", "cpu_info_aarch64.jl")
+                    hcf_code = read(hcf_file, String)
+                    patched_hcf_code = replace(
+                        hcf_code,
+                        "@noinline vscale() = ccall(\"llvm.vscale.i64\", llvmcall, Int64, ())" =>
+                            "@noinline vscale() = Int64(1)",
+                        "@noinline vscale() = ccall(\"llvm.vscale.i32\", llvmcall, Int32, ())" =>
+                            "@noinline vscale() = Int32(1)",
+                    )
+                    if patched_hcf_code == hcf_code
+                        @warn "HostCPUFeatures aarch64 vscale patch did not change $(hcf_file)"
+                    else
+                        write(hcf_file, patched_hcf_code)
+                    end
+                end
+
+                function show_package_sources()
+                    deps = Pkg.dependencies()
+                    for uuid in (
+                        Base.UUID("28dc8d00-4921-4061-9921-3f423e4be5cc"),
+                        Base.UUID("42a9b20f-2d23-465a-b7ed-975dbff4a4d6"),
+                        Base.UUID("caeec347-1c5e-53ac-8e86-7f5e1a690164"),
+                    )
+                        pkg = deps[uuid]
+                        println(pkg.name, " source: ", something(pkg.source, "<none>"))
+                    end
+                end
+
+                Pkg.activate("/tmp/citlasso-build-env")
+                Pkg.add("PackageCompiler")
+                Pkg.add(url="https://github.com/biona001/ghostbasil_jll.jl")
+                Pkg.add(url="https://github.com/biona001/Ghostbasil.jl")
+                Pkg.develop(PackageSpec(path=pwd()))
+                if Sys.ARCH === :aarch64
+                    Pkg.develop(PackageSpec(name="HostCPUFeatures"))
+                    patch_hostcpufeatures_vscale!()
+                end
+                Pkg.resolve()
+                Pkg.instantiate()
+                Pkg.precompile()
+                show_package_sources()
+              '"'"'
+
+              mkdir -p build
+              df -h
+              (
+                while true; do
+                  date
+                  df -h .
+                  free -h
+                  ps -eo pid,ppid,rss,vsz,comm,args --sort=-rss | sed -n "1,12p" || true
+                  sleep 60
+                done
+              ) &
+              keepalive_pid=$!
+              trap "kill $keepalive_pid 2>/dev/null || true" EXIT
+
+              julia --heap-size-hint="$CITLASSO_HEAP_SIZE_HINT" --project=/tmp/citlasso-build-env -e '"'"'
+                using PackageCompiler, CITLasso
+                println("Julia version: ", VERSION)
+                println("PackageCompiler version: ", pkgversion(PackageCompiler))
+                println("CITLasso path: ", pathof(CITLasso))
+                println("Memory total/free bytes: ", Sys.total_memory(), " / ", Sys.free_memory())
+                src = normpath(pathof(CITLasso), "../..")
+                app_dir = joinpath(pwd(), "build", "cit-lasso-" * ENV["TARGET"])
+                precompile_script = normpath(pathof(CITLasso), "../precompile.jl")
+                heap_size_hint = get(ENV, "CITLASSO_HEAP_SIZE_HINT", "")
+                sysimage_build_args = isempty(heap_size_hint) ? `` : Cmd(["--heap-size-hint=$heap_size_hint"])
+                create_app(src, app_dir;
+                    include_lazy_artifacts=true,
+                    incremental=true,
+                    force=true,
+                    cpu_target="generic",
+                    precompile_execution_file=precompile_script,
+                    sysimage_build_args=sysimage_build_args,
+                    executables=[
+                        "cit-lasso" => "julia_main",
+                        "solveblock" => "julia_solveblock",
+                    ],
+                )
+              '"'"'
+
+              kill $keepalive_pid 2>/dev/null || true
+              trap - EXIT
+              df -h
+            '
+          sudo chown -R "$USER":"$(id -gn)" ".julia-${TARGET}-cache" "$JULIA_INSTALL_DIR" build
+
+      - name: Smoke test
+        run: |
+          ./build/cit-lasso-${TARGET}/bin/cit-lasso --help
+          ./build/cit-lasso-${TARGET}/bin/solveblock --help
+
+      - name: Check glibc symbol floor
+        run: |
+          versions="$(
+            find "build/cit-lasso-${TARGET}" -type f -print0 |
+              while IFS= read -r -d '' file; do
+                if readelf -h "$file" >/dev/null 2>&1; then
+                  readelf --version-info "$file" 2>/dev/null |
+                    grep -o 'GLIBC_[0-9][0-9.]*' || true
+                fi
+              done |
+              sort -Vu
+          )"
+          printf '%s\n' "$versions"
+
+          bad="$(
+            printf '%s\n' "$versions" |
+              awk -F_ -v max="${CITLASSO_LINUX_GLIBC_MAX}" '
+                BEGIN { split(max, m, ".") }
+                /^GLIBC_/ {
+                  split($2, v, ".")
+                  if (v[1] > m[1] || (v[1] == m[1] && v[2] > m[2])) {
+                    print
+                  }
+                }
+              '
+          )"
+          if [ -n "$bad" ]; then
+            echo "Found GLIBC symbols newer than ${CITLASSO_LINUX_GLIBC_MAX}:"
+            printf '%s\n' "$bad"
+            exit 1
+          fi
+
+      - name: Archive app
+        run: tar -czf CIT-Lasso-${TARGET}.tar.gz -C build cit-lasso-${TARGET}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CIT-Lasso-${{ env.TARGET }}
+          path: CIT-Lasso-${{ env.TARGET }}.tar.gz
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          files: CIT-Lasso-${{ env.TARGET }}.tar.gz
+
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
           - os: macos-15-intel
             julia-version: "1.12"
             julia-arch: x64
@@ -210,10 +484,10 @@ jobs:
               if command -v free >/dev/null 2>&1; then
                 free -h
                 swapon --show || true
-                ps -eo pid,ppid,rss,vsz,comm,args --sort=-rss | head -n 12
+                ps -eo pid,ppid,rss,vsz,comm,args --sort=-rss | sed -n '1,12p' || true
               elif command -v vm_stat >/dev/null 2>&1; then
                 vm_stat
-                ps -arcwwwxo pid,ppid,rss,vsz,comm | head -n 12
+                ps -arcwwwxo pid,ppid,rss,vsz,comm | sed -n '1,12p' || true
               fi
               sleep 60
             done
