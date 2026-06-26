@@ -1,7 +1,7 @@
 name = "CITLasso"
 uuid = "28dc8d00-4921-4061-9921-3f423e4be5cc"
-authors = ["Benjamin Chu <benchu99@hotmail.com>"]
 version = "0.3.0"
+authors = ["Benjamin Chu <benchu99@hotmail.com>"]
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -26,22 +26,22 @@ VariantCallFormat = "28eba6e3-a997-4ad9-87c6-d933b8bca6c1"
 [compat]
 ArgParse = "1.0"
 CSV = "0.10"
+CovarianceEstimation = "0.2"
 DataFrames = "1"
 DelimitedFiles = "1"
 Distributions = "0.25"
 ElasticArrays = "1.2"
 Ghostbasil = "0.0.1, 0.0.2"
+HDF5 = "0.17"
 Knockoffs = "2"
 LinearAlgebra = "1"
-Optim = "1.7"
+Optim = "1.7, 2"
 Random = "1"
 SnpArrays = "0.3"
 Statistics = "1"
 StatsBase = "0.34"
-HDF5 = "0.17"
 VCFTools = "0.2"
 VariantCallFormat = "0.5"
-CovarianceEstimation = "0.2"
 julia = "1.10"
 
 [extras]
