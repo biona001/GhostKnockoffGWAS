@@ -71,10 +71,21 @@ jobs:
       - name: Add Linux swap
         if: runner.os == 'Linux'
         run: |
-          sudo fallocate -l 16G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=16384
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          free -h
+          swapon --show || true
+          existing_swap_mib=$(awk '/SwapTotal/ { print int($2 / 1024) }' /proc/meminfo)
+          if [ "$existing_swap_mib" -ge 12000 ]; then
+            echo "Existing swap is sufficient (${existing_swap_mib} MiB)."
+            exit 0
+          fi
+
+          swapfile=/mnt/citlasso-swapfile
+          sudo swapoff "$swapfile" 2>/dev/null || true
+          sudo rm -f "$swapfile"
+          sudo fallocate -l 16G "$swapfile" || sudo dd if=/dev/zero of="$swapfile" bs=1M count=16384
+          sudo chmod 600 "$swapfile"
+          sudo mkswap "$swapfile"
+          sudo swapon "$swapfile"
           free -h
           swapon --show
 
