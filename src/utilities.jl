@@ -71,8 +71,8 @@ function count_matchable_snps(
     effect_allele::Vector{String},       # effect allele of Z score
     non_effect_allele::Vector{String},   # non-effect allele of Z score
     hg_build::Int,
-    target_chrs=sort!(unique(chr)),
-    )
+    target_chrs::AbstractVector{Int}=sort!(unique(chr)),
+    )::Tuple{Int, Int}
     nregions, nsnps, nknockoff_snps = 0, 0, 0
     for c in target_chrs
         files = readdir(joinpath(LD_files, "chr$c"))
@@ -86,22 +86,22 @@ function count_matchable_snps(
             fname = f[4:end-3]
 
             # read LD/knockoff files
-            Sigma_info = CSV.read(
-                joinpath(LD_files, "chr$(c)", "Info_$fname.csv"), DataFrame
+            Sigma_info = read_ld_info_csv(
+                joinpath(LD_files, "chr$(c)", "Info_$fname.csv"), hg_build
             )
-            nknockoff_snps += size(Sigma_info, 1)
+            nknockoff_snps += length(Sigma_info.pos)
             # map reference LD panel to GWAS Z-scores by position
-            LD_pos = Sigma_info[!, "pos_hg$(hg_build)"]
+            LD_pos = Sigma_info.pos
             shared_snps = intersect(LD_pos, GWAS_pos)
             # delete SNPs if ref/alt don't match
             remove_idx = Int[]
             for (i, snp) in enumerate(shared_snps)
                 GWAS_idx = findfirst(x -> x == snp, GWAS_pos)
                 LD_idx = findfirst(x -> x == snp, LD_pos)
-                ref_match_ea = Sigma_info[LD_idx, "ref"] == GWAS_ea[GWAS_idx]
-                alt_match_nea = Sigma_info[LD_idx, "alt"] == GWAS_nea[GWAS_idx]
-                ref_match_nea = Sigma_info[LD_idx, "ref"] == GWAS_nea[GWAS_idx]
-                alt_match_ea = Sigma_info[LD_idx, "alt"] == GWAS_ea[GWAS_idx]
+                ref_match_ea = Sigma_info.ref[LD_idx] == GWAS_ea[GWAS_idx]
+                alt_match_nea = Sigma_info.alt[LD_idx] == GWAS_nea[GWAS_idx]
+                ref_match_nea = Sigma_info.ref[LD_idx] == GWAS_nea[GWAS_idx]
+                alt_match_ea = Sigma_info.alt[LD_idx] == GWAS_ea[GWAS_idx]
                 if ref_match_nea && alt_match_ea
                     continue
                 elseif ref_match_ea && alt_match_nea
@@ -124,6 +124,174 @@ function count_matchable_snps(
               "if the human genome build of the target study is $hg_build")
     end
     return nsnps, nregions
+end
+
+struct LDInfoTable
+    rsid::Vector{String}
+    af::Vector{Float64}
+    chr::Vector{Int}
+    ref::Vector{String}
+    alt::Vector{String}
+    pos::Vector{Int}
+end
+
+function detect_delimiter(line::String)::Char
+    return occursin('\t', line) ? '\t' : ','
+end
+
+function split_table_line(line::String, delim::Char)::Vector{SubString{String}}
+    return split(chomp(line), delim; keepempty=true)
+end
+
+function find_column(header::Vector{String}, name::String)::Int
+    idx = findfirst(==(name), header)
+    isnothing(idx) && error("Column $name not found")
+    return idx
+end
+
+function resolve_column(
+    header::Vector{String},
+    col::Union{Nothing, Int, String},
+    default::String,
+    )::Int
+    if isnothing(col)
+        return find_column(header, default)
+    elseif col isa Int
+        return col
+    else
+        isempty(col) && return find_column(header, default)
+        parsed = tryparse(Int, col)
+        return isnothing(parsed) ? find_column(header, col) : parsed
+    end
+end
+
+function parse_zscore_value(value::AbstractString)::Float64
+    stripped = strip(value)
+    if isempty(stripped) || stripped in ("NA", "Na", "na", "missing", "Missing")
+        return NaN
+    end
+    return parse(Float64, stripped)
+end
+
+function open_table_reader(f::Function, filepath::String)
+    if endswith(lowercase(filepath), ".gz")
+        raw = open(filepath, "r")
+        io = GzipDecompressorStream(raw)
+        try
+            return f(io)
+        finally
+            close(io)
+            close(raw)
+        end
+    end
+    return open(f, filepath, "r")
+end
+
+function read_ld_info_csv(filepath::String, hg_build::Int)::LDInfoTable
+    header_line = open_table_reader(filepath) do io
+        eof(io) && error("LD info file $filepath is empty")
+        readline(io)
+    end
+    delim = detect_delimiter(header_line)
+    header = String.(split_table_line(header_line, delim))
+    rsid_col = find_column(header, "rsid")
+    af_col = find_column(header, "AF")
+    chr_col = find_column(header, "chr")
+    ref_col = find_column(header, "ref")
+    alt_col = find_column(header, "alt")
+    pos_col = find_column(header, "pos_hg$hg_build")
+
+    rsid = String[]
+    af = Float64[]
+    chr = Int[]
+    ref = String[]
+    alt = String[]
+    pos = Int[]
+
+    open_table_reader(filepath) do io
+        readline(io)
+        for line in eachline(io)
+            isempty(strip(line)) && continue
+            fields = split_table_line(line, delim)
+            push!(rsid, String(strip(fields[rsid_col])))
+            push!(af, parse(Float64, strip(fields[af_col])))
+            push!(chr, parse(Int, strip(fields[chr_col])))
+            push!(ref, String(strip(fields[ref_col])))
+            push!(alt, String(strip(fields[alt_col])))
+            push!(pos, parse(Int, strip(fields[pos_col])))
+        end
+    end
+
+    return LDInfoTable(rsid, af, chr, ref, alt, pos)
+end
+
+function matching_indices(needles::AbstractVector{T}, haystack::AbstractVector{T})::Vector{Int} where T
+    indices = Int[]
+    for value in needles
+        idx = findfirst(==(value), haystack)
+        isnothing(idx) || push!(indices, idx)
+    end
+    return indices
+end
+
+function csv_escape(value)::String
+    s = string(value)
+    if occursin(',', s) || occursin('"', s) || occursin('\n', s) || occursin('\r', s)
+        return "\"" * replace(s, "\"" => "\"\"") * "\""
+    end
+    return s
+end
+
+function write_ghostknockoff_result_csv(
+    filepath::String,
+    hg_build::Int,
+    order::Vector{Int},
+    rsid::Vector{String},
+    af::Vector{Float64},
+    chr::Vector{Int},
+    ref::Vector{String},
+    alt::Vector{String},
+    pos::Vector{Int},
+    groups::Vector{String},
+    zscores::Vector{Float64},
+    lasso_beta::Vector{Float64},
+    kappa::Vector{Int},
+    tau::Vector{Float64},
+    W::Vector{Float64},
+    qvalues::Vector{Float64},
+    pvalues::Vector{Float64},
+    target_fdrs::AbstractVector{<:Real},
+    selected_by_fdr::Vector{Vector{Int}},
+    )::Nothing
+    open(filepath, "w") do io
+        print(io, "rsid,AF,chr,ref,alt,pos_hg$hg_build,group,zscores,lasso_beta,kappa,tau,W,qvals,pvals")
+        for fdr in target_fdrs
+            print(io, ",selected_fdr$fdr")
+        end
+        println(io)
+
+        for idx in order
+            print(io, csv_escape(rsid[idx]), ",")
+            print(io, csv_escape(af[idx]), ",")
+            print(io, csv_escape(chr[idx]), ",")
+            print(io, csv_escape(ref[idx]), ",")
+            print(io, csv_escape(alt[idx]), ",")
+            print(io, csv_escape(pos[idx]), ",")
+            print(io, csv_escape(groups[idx]), ",")
+            print(io, csv_escape(zscores[idx]), ",")
+            print(io, csv_escape(lasso_beta[idx]), ",")
+            print(io, csv_escape(kappa[idx]), ",")
+            print(io, csv_escape(tau[idx]), ",")
+            print(io, csv_escape(W[idx]), ",")
+            print(io, csv_escape(qvalues[idx]), ",")
+            print(io, csv_escape(pvalues[idx]))
+            for selected in selected_by_fdr
+                print(io, ",", csv_escape(selected[idx]))
+            end
+            println(io)
+        end
+    end
+    return nothing
 end
 
 function count_total_snps(
@@ -175,95 +343,50 @@ intended for Julia users running `CITLasso` in the REPL.
 """
 function read_zscores(
     filepath::String;
-    chr_col::Union{Nothing, Int}=nothing, 
-    pos_col::Union{Nothing, Int}=nothing, 
-    ref_col::Union{Nothing, Int}=nothing, 
-    alt_col::Union{Nothing, Int}=nothing, 
-    z_col::Union{Nothing, Int}=nothing
+    chr_col::Union{Nothing, Int, String}=nothing,
+    pos_col::Union{Nothing, Int, String}=nothing,
+    ref_col::Union{Nothing, Int, String}=nothing,
+    alt_col::Union{Nothing, Int, String}=nothing,
+    z_col::Union{Nothing, Int, String}=nothing
     )
-    # create CSV.File object (this reads the file lazily)
-    csv_file = CSV.File(filepath)
+    header_line = open_table_reader(filepath) do io
+        eof(io) && error("Z score file $filepath is empty")
+        readline(io)
+    end
+    delim = detect_delimiter(header_line)
+    header = String.(split_table_line(header_line, delim))
+    chr_idx = resolve_column(header, chr_col, "CHR")
+    pos_idx = resolve_column(header, pos_col, "POS")
+    ref_idx = resolve_column(header, ref_col, "REF")
+    alt_idx = resolve_column(header, alt_col, "ALT")
+    z_idx = resolve_column(header, z_col, "Z")
 
-    # read chr, pos, ref/alt alleles, and Z scores
-    chr = try
-        isnothing(chr_col) ? csv_file.CHR : [csv_file[i][chr_col] for i in eachindex(csv_file)]
-    catch
-        error("Error reading CHR from $filepath.")
-    end
-    pos = try
-        isnothing(pos_col) ? csv_file.POS : [csv_file[i][pos_col] for i in eachindex(csv_file)]
-    catch
-        error("Error reading POS from $filepath.")
-    end
-    non_effect_allele = try
-        isnothing(ref_col) ? csv_file.REF : [csv_file[i][ref_col] for i in eachindex(csv_file)]
-    catch
-        error("Error reading REF from $filepath.")
-    end
-    effect_allele = try
-        isnothing(alt_col) ? csv_file.ALT : [csv_file[i][alt_col] for i in eachindex(csv_file)]
-    catch
-        error("Error reading ALT from $filepath.")
-    end
-    z = try
-        isnothing(z_col) ? csv_file.Z : [csv_file[i][z_col] for i in eachindex(csv_file)]
-    catch
-        error("Error reading Z scores from $filepath.")
-    end
+    z = Float64[]
+    chr = Int[]
+    pos = Int[]
+    effect_allele = String[]
+    non_effect_allele = String[]
 
-    # chr must be integer valued
-    if eltype(chr) <: AbstractString
-        try
-            chr = parse.(Int, chr)
-        catch e
-            println(
-                "Error parsing CHR field of Z score file $filepath. " * 
-                "Note that CHR field must be integer valued (e.g. chr22 " *
-                "and sex chromosomes are NOT valid!)"
-            )
-            rethrow(e)
+    open_table_reader(filepath) do io
+        readline(io)
+        for line in eachline(io)
+            isempty(strip(line)) && continue
+            fields = split_table_line(line, delim)
+            chr_value = parse(Int, strip(fields[chr_idx]))
+            pos_value = parse(Int, strip(fields[pos_idx]))
+            ref_value = String(strip(fields[ref_idx]))
+            alt_value = String(strip(fields[alt_idx]))
+            z_value = parse_zscore_value(fields[z_idx])
+            if isempty(ref_value) || isempty(alt_value) || isnan(z_value) || isinf(z_value)
+                continue
+            end
+            push!(z, z_value)
+            push!(chr, chr_value)
+            push!(pos, pos_value)
+            push!(effect_allele, alt_value)
+            push!(non_effect_allele, ref_value)
         end
     end
-
-    # Z must be Float64 valued
-    if eltype(z) <: AbstractString
-        try
-            # try to parse some commonly used values for missing, even though 
-            # in the docs we don't allow it
-            replace!(z, ""=>"NaN")
-            replace!(z, "NA"=>"NaN")
-            replace!(z, "Na"=>"NaN")
-            replace!(z, "na"=>"NaN")
-            replace!(z, "missing"=>"NaN")
-            replace!(z, "Missing"=>"NaN")
-            z = parse.(Float64, z)
-        catch e
-            println(
-                "Error parsing z-scores of Z score file $filepath. " * 
-                "Note that Z scores should be floating point valued. Missing " * 
-                "Z scores can be specified as NaN or as an empty cell."
-            )
-            rethrow(e)
-        end
-    end
-
-    # detect duplicate SNPs
-    # check_all_snps_are_unique(chr, pos, effect_allele, non_effect_allele)
-
-    # find missing/NaN/Inf
-    chr_idx = findall(x -> !ismissing(x) && !isnothing(x) && !isnan(x) && !isinf(x), chr)
-    pos_idx = findall(x -> !ismissing(x) && !isnothing(x) && !isnan(x) && !isinf(x), pos)
-    ref_idx = findall(x -> !ismissing(x) && !isnothing(x), non_effect_allele)
-    alt_idx = findall(x -> !ismissing(x) && !isnothing(x), effect_allele)
-    z_idx = findall(x -> !ismissing(x) && !isnothing(x) && !isnan(x) && !isinf(x), z)
-    idx = intersect(chr_idx, pos_idx, ref_idx, alt_idx, z_idx)
-
-    # filter Z/CHR/POS/REF/ALT for valid values
-    z = z[idx] |> Vector{Float64}
-    chr = chr[idx] |> Vector{Int}
-    pos = pos[idx] |> Vector{Int}
-    effect_allele = effect_allele[idx] |> Vector{String}
-    non_effect_allele = non_effect_allele[idx] |> Vector{String}
 
     return z, chr, pos, effect_allele, non_effect_allele
 end

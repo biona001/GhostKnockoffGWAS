@@ -156,3 +156,21 @@ To run the GitHub Actions binary build, open the **Build binaries** workflow,
 choose **Run workflow**, and download the uploaded tarballs after the jobs
 finish. Pushing a version tag such as `v0.2.5` also builds the tarballs and
 attaches them to a GitHub release.
+
+## JuliaC AOT build
+
+The **Build AOT binaries** workflow builds the `cit-lasso` command with
+JuliaC.jl from `src/juliac_cit_lasso.jl`. That entrypoint intentionally avoids
+the full package CLI stack and the `solveblock` dependencies so the AOT build
+only loads the GWAS runtime path.
+
+To build locally:
+
+```bash
+julia --project=. scripts/build_juliac_cit_lasso.jl --target local --trim no
+```
+
+The verified build uses `--trim=no`. `--trim=safe` is exposed in the workflow
+for debugging, but currently fails during JuliaC trim verification in the HDF5
+read path. `--trim=unsafe` can produce a much smaller bundle, but it currently
+aborts at startup in the CxxWrap/Ghostbasil runtime and should not be released.

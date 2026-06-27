@@ -1,0 +1,80 @@
+name: Build AOT binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional existing release tag to attach artifacts to, e.g. v0.3.0"
+        required: false
+        type: string
+      trim:
+        description: "JuliaC trim mode. Use no for the verified build; safe currently fails in HDF5 trim verification."
+        required: false
+        default: "no"
+        type: choice
+        options:
+          - "no"
+          - "safe"
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: linux-x86_64
+          - os: ubuntu-24.04-arm
+            target: linux-aarch64
+          - os: macos-15-intel
+            target: macos-x86_64
+          - os: macos-15
+            target: macos-aarch64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.12"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.julia
+          key: ${{ runner.os }}-${{ matrix.target }}-julia-1.12-juliac-${{ hashFiles('scripts/build_juliac_cit_lasso.jl', 'src/juliac_cit_lasso.jl', 'src/utilities.jl', 'src/ghostbasil_parallel.jl') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-julia-1.12-juliac-
+            ${{ runner.os }}-${{ matrix.target }}-julia-1.12-
+
+      - name: Build JuliaC AOT cit-lasso
+        env:
+          JULIA_NUM_PRECOMPILE_TASKS: "1"
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
+          CITLASSO_JULIAC_TRIM: ${{ inputs.trim || 'no' }}
+        run: julia --project=. scripts/build_juliac_cit_lasso.jl --target "${{ matrix.target }}"
+
+      - name: Archive AOT app
+        run: tar -czf CIT-Lasso-AOT-${{ matrix.target }}.tar.gz -C build cit-lasso-${{ matrix.target }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CIT-Lasso-AOT-${{ matrix.target }}
+          path: CIT-Lasso-AOT-${{ matrix.target }}.tar.gz
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          files: CIT-Lasso-AOT-${{ matrix.target }}.tar.gz

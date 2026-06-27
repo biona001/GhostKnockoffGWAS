@@ -114,8 +114,12 @@ function ghostknockoffgwas(
     t21, t22, t23, t24 = 0.0, 0.0, 0.0, 0.0# some timers
     start_t = time()
     γ_mean = 0.0                           # keeps track of LD shrinkage across regions
-    headers = ["rsid", "AF", "chr", "ref", "alt", "pos_hg$(hg_build)"]
-    df = DataFrame([String[], Float64[], Int[], String[], String[], Int[]], headers)
+    result_rsid = String[]
+    result_af = Float64[]
+    result_chr = Int[]
+    result_ref = String[]
+    result_alt = String[]
+    result_pos = Int[]
 
     # assemble knockoff results across regions
     nregions, nsnps, nknockoff_snps = 0, 0, 0
@@ -133,59 +137,73 @@ function ghostknockoffgwas(
             # read knockoff results in current region
             t1 += @elapsed begin
                 h5reader = HDF5.h5open(joinpath(LD_files, "chr$c", f), "r")
-                Sigma_info = CSV.read(joinpath(LD_files, "chr$(c)", "Info_$fname.csv"), DataFrame)
-                nknockoff_snps += size(Sigma_info, 1)
+                Sigma_info = read_ld_info_csv(
+                    joinpath(LD_files, "chr$(c)", "Info_$fname.csv"), hg_build
+                )
+                nknockoff_snps += length(Sigma_info.pos)
                 # map reference LD panel to GWAS Z-scores by position
-                LD_pos = Sigma_info[!, "pos_hg$(hg_build)"]
-                rep_pos = LD_pos[read(h5reader, "group_reps")]
+                LD_pos = Sigma_info.pos
+                group_reps = Vector{Int}(read(h5reader, "group_reps"))
+                rep_pos = LD_pos[group_reps]
                 shared_pos = intersect(LD_pos, GWAS_pos)
                 # delete SNPs if ref/alt don't match
                 pos2remove = Int[]
-                for pos in shared_pos
-                    GWAS_idx = findfirst(x -> x == pos, GWAS_pos)
-                    LD_idx = findfirst(x -> x == pos, LD_pos)
-                    ref_match_ea = Sigma_info[LD_idx, "ref"] == GWAS_ea[GWAS_idx]
-                    alt_match_nea = Sigma_info[LD_idx, "alt"] == GWAS_nea[GWAS_idx]
-                    ref_match_nea = Sigma_info[LD_idx, "ref"] == GWAS_nea[GWAS_idx]
-                    alt_match_ea = Sigma_info[LD_idx, "alt"] == GWAS_ea[GWAS_idx]
+                for snp_pos in shared_pos
+                    GWAS_idx = findfirst(x -> x == snp_pos, GWAS_pos)
+                    LD_idx = findfirst(x -> x == snp_pos, LD_pos)
+                    ref_match_ea = Sigma_info.ref[LD_idx] == GWAS_ea[GWAS_idx]
+                    alt_match_nea = Sigma_info.alt[LD_idx] == GWAS_nea[GWAS_idx]
+                    ref_match_nea = Sigma_info.ref[LD_idx] == GWAS_nea[GWAS_idx]
+                    alt_match_ea = Sigma_info.alt[LD_idx] == GWAS_ea[GWAS_idx]
                     if ref_match_nea && alt_match_ea
                         continue
                     elseif ref_match_ea && alt_match_nea
                         zscores[GWAS_idx] *= -1
                     else # SNP cannot get matched to LD panel
-                        push!(pos2remove, pos)
+                        push!(pos2remove, snp_pos)
                     end
                 end
                 setdiff!(shared_pos, unique!(pos2remove))
                 setdiff!(rep_pos, pos2remove)
                 # save matching snps info
-                LD_keep_idx = indexin(shared_pos, LD_pos)
-                GWAS_keep_idx = indexin(shared_pos, GWAS_pos)
-                append!(df, @view(Sigma_info[LD_keep_idx, headers]))
+                LD_keep_idx = matching_indices(shared_pos, LD_pos)
+                GWAS_keep_idx = matching_indices(shared_pos, GWAS_pos)
                 if length(LD_keep_idx) == 0 || length(GWAS_keep_idx) == 0 
                     nregions += 1
                     if verbose
                         println("region $nregions / $tregions (f = $f) matched 0 SNPs!")
                         flush(stdout)
                     end
+                    close(h5reader)
                     continue
+                end
+                for idx in LD_keep_idx
+                    push!(result_rsid, Sigma_info.rsid[idx])
+                    push!(result_af, Sigma_info.af[idx])
+                    push!(result_chr, Sigma_info.chr[idx])
+                    push!(result_ref, Sigma_info.ref[idx])
+                    push!(result_alt, Sigma_info.alt[idx])
+                    push!(result_pos, Sigma_info.pos[idx])
                 end
             end
 
             # generate knockoffs for z scores
             t2 += @elapsed begin
                 # use original Sigma and D (S matrix for rep+nonrep variables)
-                Si = read(h5reader, "D")[LD_keep_idx, LD_keep_idx]
-                Σi = read(h5reader, "Sigma")[LD_keep_idx, LD_keep_idx]
+                D = Matrix{Float64}(read(h5reader, "D"))
+                Sigma = Matrix{Float64}(read(h5reader, "Sigma"))
+                Si = D[LD_keep_idx, LD_keep_idx]
+                Σi = Sigma[LD_keep_idx, LD_keep_idx]
                 zi = @view(zscores[GWAS_keep_idx])
 
                 # shrinkage for consistency
                 t21 += @elapsed begin
                     if length(zi) > 1000 # use reps to compute shrinkage
                         shared_rep_pos = intersect(shared_pos, rep_pos)
-                        Σi_idx = filter!(!isnothing, indexin(shared_rep_pos, rep_pos))
-                        zi_idx = filter!(!isnothing, indexin(shared_rep_pos, shared_pos))
-                        Σi_rep = read(h5reader, "Sigma_reps")[Σi_idx, Σi_idx]
+                        Σi_idx = matching_indices(shared_rep_pos, rep_pos)
+                        zi_idx = matching_indices(shared_rep_pos, shared_pos)
+                        Sigma_reps = Matrix{Float64}(read(h5reader, "Sigma_reps"))
+                        Σi_rep = Sigma_reps[Σi_idx, Σi_idx]
                         zi_rep = zi[zi_idx]
                         γ = find_optimal_shrinkage(Σi_rep, zi_rep)
                     else
@@ -209,7 +227,8 @@ function ghostknockoffgwas(
             append!(Zscores_store, zi)         # append original Z scores 
             append!(Zscores_store, Zko)        # append knockoffs
             append!(Zscores, Zscores_store)
-            current_groups = read(h5reader, "groups")[LD_keep_idx]
+            h5_groups = Vector{Int}(read(h5reader, "groups"))
+            current_groups = h5_groups[LD_keep_idx]
             grp = ["chr$(c)_$(fname)_group$(g)_0" for g in current_groups] # the last _0 implies this is original variable
             append!(groups, grp)
             for k in 1:m
@@ -255,6 +274,7 @@ function ghostknockoffgwas(
                         ", shrinkage = $(round(γ, digits=4))")
                 flush(stdout)
             end
+            close(h5reader)
         end
     end
 
@@ -290,28 +310,46 @@ function ghostknockoffgwas(
         kappa, tau, W = MK_statistics(T0, Tk)
         qvalues = get_knockoff_qvalue(kappa, tau, m, groups=groups)
 
-        # append result
-        df[!, :group] = groups[original_idx]
-        df[!, :zscores] = Zscores[original_idx]
-        df[!, :lasso_beta] = beta[original_idx]
-        df[!, :kappa] = kappa
-        df[!, :tau] = tau
-        df[!, :W] = W
-        df[!, :qvals] = qvalues
-        df[!, :pvals] = zscore2pval(df[!, :zscores])
+        result_groups = groups[original_idx]
+        result_zscores = Zscores[original_idx]
+        result_beta = beta[original_idx]
+        pvalues = zscore2pval(result_zscores)
+        length(result_rsid) == length(result_groups) ||
+            error("Number of SNP metadata rows should match original variables")
 
         # pre-compute whether a variant is selected for easier interpretation
+        selected_by_fdr = Vector{Vector{Int}}()
         for fdr in target_fdrs
-            selected = zeros(Int, size(df, 1))
+            selected = zeros(Int, length(result_groups))
             selected[findall(x -> x ≤ fdr, qvalues)] .= 1
-            df[!, "selected_fdr$fdr"] = selected
+            push!(selected_by_fdr, selected)
         end
 
         # sort by chr and pos
-        sort!(df, [:chr, Symbol("pos_hg$(hg_build)")])
+        order = sortperm(eachindex(result_chr), by=i -> (result_chr[i], result_pos[i]))
 
         # write to output
-        CSV.write(joinpath(outdir, outname * ".txt"), df)
+        write_ghostknockoff_result_csv(
+            joinpath(outdir, outname * ".txt"),
+            hg_build,
+            order,
+            result_rsid,
+            result_af,
+            result_chr,
+            result_ref,
+            result_alt,
+            result_pos,
+            result_groups,
+            result_zscores,
+            result_beta,
+            kappa,
+            tau,
+            W,
+            qvalues,
+            pvalues,
+            target_fdrs,
+            selected_by_fdr,
+        )
     end
 
     # save summary info
