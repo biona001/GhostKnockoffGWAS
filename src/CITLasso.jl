@@ -3,6 +3,7 @@ module CITLasso
 using Ghostbasil
 using HDF5
 using CSV
+using CodecZlib
 using DataFrames
 using LinearAlgebra
 using Random
